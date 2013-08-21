@@ -20,9 +20,17 @@
 package org.apache.samza.system
 
 import java.util.ArrayDeque
+import org.apache.samza.config.Config
 
-class RoundRobinChooser extends MessageChooser {
-  var q = new ArrayDeque[IncomingMessageEnvelope]()
-  def update(envelope: IncomingMessageEnvelope) = q.add(envelope)
-  def choose = q.poll
+/**
+ * A chooser that round robins between all system stream partitions.
+ */
+class RoundRobinChooser extends PriorityChooser {
+  var idx = 0L
+
+  def prioritize = idx -= 1
+}
+
+class RoundRobinChooserFactory extends MessageChooserFactory {
+  def getChooser(config: Config) = new RoundRobinChooser
 }

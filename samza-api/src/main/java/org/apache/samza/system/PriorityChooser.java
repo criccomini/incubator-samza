@@ -7,10 +7,10 @@ import java.util.PriorityQueue;
  * priority. This class will always choose the message with the highest priority
  * (larger double).
  */
-public abstract class PriorityMessageChooser implements MessageChooser {
+public abstract class PriorityChooser implements MessageChooser {
   private final PriorityQueue<PrioritizedEnvelope> queue;
 
-  public PriorityMessageChooser() {
+  public PriorityChooser() {
     this.queue = new PriorityQueue<PrioritizedEnvelope>();
   }
 
