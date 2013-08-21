@@ -20,7 +20,7 @@
 package org.apache.samza.system;
 
 public interface MessageChooser {
-  void update(IncomingMessageEnvelope envelopes);
+  void update(IncomingMessageEnvelope envelope);
 
   IncomingMessageEnvelope choose();
 }

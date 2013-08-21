@@ -21,7 +21,7 @@ package org.apache.samza.system
 
 import java.util.ArrayDeque
 
-class DefaultChooser extends MessageChooser {
+class RoundRobinChooser extends MessageChooser {
   var q = new ArrayDeque[IncomingMessageEnvelope]()
   def update(envelope: IncomingMessageEnvelope) = q.add(envelope)
   def choose = q.poll
