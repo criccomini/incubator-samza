@@ -19,6 +19,8 @@ import org.apache.samza.util.Util
 class StreamChooser(prioritizedStreamLists: Seq[SystemStream]) extends PriorityChooser {
   val prioritizedStreams = prioritizedStreamLists
     .zipWithIndex
+    // Do size - idx, because we want 0th element to have highest priority (size - 0).
+    .map { case (systemStream, idx) => (systemStream, prioritizedStreamLists.size - idx) }
     .toMap
 
   def prioritize(envelope: IncomingMessageEnvelope) = {

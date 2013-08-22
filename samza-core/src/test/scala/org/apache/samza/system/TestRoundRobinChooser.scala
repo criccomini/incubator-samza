@@ -14,6 +14,11 @@ class TestRoundRobinChooser {
 
     assertEquals(null, chooser.choose)
 
+    // Test one message.
+    chooser.update(envelope1)
+    assertEquals(envelope1, chooser.choose)
+    assertEquals(null, chooser.choose)
+
     // Verify simple ordering.
     chooser.update(envelope1)
     chooser.update(envelope2)
@@ -24,7 +29,7 @@ class TestRoundRobinChooser {
     assertEquals(envelope3, chooser.choose)
     assertEquals(null, chooser.choose)
 
-    // Verify out mixed ordering.
+    // Verify mixed ordering.
     chooser.update(envelope2)
     chooser.update(envelope1)
 

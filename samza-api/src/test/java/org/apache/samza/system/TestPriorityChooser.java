@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 public class TestPriorityChooser {
-
   @Test
   public void testPriorityChooser() {
     MockPriorityChooser chooser = new MockPriorityChooser();
@@ -14,6 +13,13 @@ public class TestPriorityChooser {
 
     assertEquals(null, chooser.choose());
 
+    // Test one message.
+    chooser.setPriority(1);
+    chooser.update(envelope1);
+    assertEquals(envelope1, chooser.choose());
+    assertEquals(null, chooser.choose());
+
+    // Test multiple and duplicate out of order messages.
     chooser.setPriority(1);
     chooser.update(envelope1);
     chooser.setPriority(0);
