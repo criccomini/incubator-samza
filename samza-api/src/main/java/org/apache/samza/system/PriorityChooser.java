@@ -68,7 +68,9 @@ public abstract class PriorityChooser implements MessageChooser {
 
     @Override
     public int compareTo(PrioritizedEnvelope prioritizedEnvelope) {
-      return Double.compare(priority, prioritizedEnvelope.getPriority());
+      // Reverse compare because PriorityQueue puts the LEAST element at the
+      // head of the queue, using natural ordering.
+      return Double.compare(prioritizedEnvelope.getPriority(), priority);
     }
   }
 }
