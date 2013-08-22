@@ -28,7 +28,10 @@ import org.apache.samza.config.Config
 class RoundRobinChooser extends PriorityChooser {
   var idx = 0L
 
-  def prioritize = idx -= 1
+  def prioritize(envelope: IncomingMessageEnvelope) = {
+    idx -= 1
+    idx
+  }
 }
 
 class RoundRobinChooserFactory extends MessageChooserFactory {
