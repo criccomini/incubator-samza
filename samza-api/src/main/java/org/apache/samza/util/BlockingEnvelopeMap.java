@@ -190,7 +190,7 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
     private static final String GROUP = "samza.consumers";
 
     private final MetricsRegistry metricsRegistry;
-    private final ConcurrentHashMap<SystemStreamPartition, Counter> bufferedMessageCountMap;
+    private final ConcurrentHashMap<SystemStreamPartition, Gauge<Integer>> bufferedMessageCountMap;
     private final ConcurrentHashMap<SystemStreamPartition, Gauge<Boolean>> noMoreMessageGaugeMap;
     private final ConcurrentHashMap<SystemStreamPartition, Counter> pollCountMap;
     private final ConcurrentHashMap<SystemStreamPartition, Counter> blockingPollCountMap;
@@ -199,7 +199,7 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
 
     public BlockingEnvelopeMapMetrics(MetricsRegistry metricsRegistry) {
       this.metricsRegistry = metricsRegistry;
-      this.bufferedMessageCountMap = new ConcurrentHashMap<SystemStreamPartition, Counter>();
+      this.bufferedMessageCountMap = new ConcurrentHashMap<SystemStreamPartition, Gauge<Integer>>();
       this.noMoreMessageGaugeMap = new ConcurrentHashMap<SystemStreamPartition, Gauge<Boolean>>();
       this.pollCountMap = new ConcurrentHashMap<SystemStreamPartition, Counter>();
       this.blockingPollCountMap = new ConcurrentHashMap<SystemStreamPartition, Counter>();
@@ -208,7 +208,7 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
     }
 
     public void initMetrics(SystemStreamPartition systemStreamPartition) {
-      this.bufferedMessageCountMap.putIfAbsent(systemStreamPartition, metricsRegistry.newCounter(GROUP, "BufferedMessageCount-" + systemStreamPartition));
+      this.bufferedMessageCountMap.putIfAbsent(systemStreamPartition, metricsRegistry.<Integer> newGauge(GROUP, "BufferedMessageCount-" + systemStreamPartition, 0));
       this.noMoreMessageGaugeMap.putIfAbsent(systemStreamPartition, metricsRegistry.<Boolean> newGauge(GROUP, "NoMoreMessages-" + systemStreamPartition, false));
       this.pollCountMap.putIfAbsent(systemStreamPartition, metricsRegistry.newCounter(GROUP, "PollCount-" + systemStreamPartition));
       this.blockingPollCountMap.putIfAbsent(systemStreamPartition, metricsRegistry.newCounter(GROUP, "BlockingPollCount-" + systemStreamPartition));
@@ -216,11 +216,12 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
     }
 
     public void incBufferedMessageCount(SystemStreamPartition systemStreamPartition, int count) {
-      this.bufferedMessageCountMap.get(systemStreamPartition).inc(count);
+      Gauge<Integer> gauge = this.bufferedMessageCountMap.get(systemStreamPartition);
+      gauge.set(gauge.getValue() + count);
     }
 
     public void decBufferedMessageCount(SystemStreamPartition systemStreamPartition, int count) {
-      this.bufferedMessageCountMap.get(systemStreamPartition).dec(count);
+      incBufferedMessageCount(systemStreamPartition, -count);
     }
 
     public void setNoMoreMessages(SystemStreamPartition systemStreamPartition, boolean noMoreMessages) {
