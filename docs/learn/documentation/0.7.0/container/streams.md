@@ -37,4 +37,23 @@ When the TaskRunner starts up, it will use the stream-related properties in your
 
 In the process method in StreamTask, there is a MessageCollector parameter given to use. When the TaskRunner calls process() on one of your StreamTask instances, it provides the collector. After the process() method completes, the TaskRunner takes any output messages that your StreamTask wrote to the collector, serializes the messages, and calls the send() method on the appropriate StreamProducer.
 
+### Message Ordering
+
+If a job is consuming messages from more than one system/stream/partition combination, by default, messages will be processed in a round robin fashion. For example, if a job is reading partitions 1 and 2 of page-view-events from a Kafka system, and there are messages available to be processed from both partitions, your StreamTask will get messages in round robin order.
+
+This behavior can be overridden by implementing a custom MessageChooser. To write a custom MessageChooser, take a look at the Javadocs, and then configure your task with the "task.chooser.class" configuration, which should point to your MessageChooserFactory.
+
+Out of the box, Samza ships with a RoundRobinChooser, which is the default, and a StreamChooser, which lets you favor certain streams over others. Samza also provides a helper class called PriorityChooser which lets you choose which message to process next based on a priority score.
+
+#### Example
+
+You can use the StreamChooser by adding the following configuration to your job.
+
+```
+task.chooser.class=org.apache.samza.system.StreamChooserFactory
+task.chooser.stream.order=kafka.higher-priority-stream,kafka.lower-priority-stream
+```
+
+This configuration would always favor messages from the high priority stream over the low priority stream in cases where messages from both streams are available.
+
 ## [Checkpointing &raquo;](checkpointing.html)

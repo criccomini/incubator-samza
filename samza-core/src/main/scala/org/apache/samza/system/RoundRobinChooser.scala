@@ -25,13 +25,10 @@ import org.apache.samza.config.Config
 /**
  * A chooser that round robins between all system stream partitions.
  */
-class RoundRobinChooser extends PriorityChooser {
-  var idx = 0L
-
-  def prioritize(envelope: IncomingMessageEnvelope) = {
-    idx -= 1
-    idx
-  }
+class RoundRobinChooser extends MessageChooser {
+  var q = new ArrayDeque[IncomingMessageEnvelope]()
+  def update(envelope: IncomingMessageEnvelope) = q.add(envelope)
+  def choose = q.poll
 }
 
 class RoundRobinChooserFactory extends MessageChooserFactory {
