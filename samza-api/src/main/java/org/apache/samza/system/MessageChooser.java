@@ -50,16 +50,40 @@ package org.apache.samza.system;
  * the entire SamzaContainer.</li>
  * <li>A MessageChooser should never return the same envelope more than once.</li>
  * <li>Non-deterministic (e.g. time-based) MessageChoosers are allowed.</li>
+ * <li>A MessageChooser does not need to be thread-safe.</li>
  * </ul>
  */
 public interface MessageChooser {
+  /**
+   * Called after all SystemStreamPartitions have been registered. Start is used
+   * to notify the chooser that it will start receiving update and choose calls.
+   */
+  void start();
+
+  /**
+   * Called when the chooser is about to be discarded. No more messages will be
+   * given to the chooser after it is stopped.
+   */
+  void stop();
+
+  /**
+   * Called before start, to let the chooser know that it will be handling
+   * envelopes from the given SystemStreamPartition. Register will only be
+   * called before start.
+   * 
+   * @param systemStreamPartition
+   *          A SystemStreamPartition that envelopes will be coming from.
+   */
+  void register(SystemStreamPartition systemStreamPartition);
+
   /**
    * Notify the chooser that a new envelope is available for a processing.A
    * MessageChooser will receive, at most, one outstanding envelope per
    * system/stream/partition combination. For example, if update is called for
    * partition 7 of kafka.mystream, then update will not be called with an
    * envelope from partition 7 of kafka.mystream until the previous envelope has
-   * been returned via the choose method.
+   * been returned via the choose method. Update will only be invoked after the
+   * chooser has been started.
    * 
    * @param envelope
    *          An unprocessed envelope.
@@ -69,7 +93,8 @@ public interface MessageChooser {
   /**
    * The choose method is invoked when the SamzaContainer is ready to process a
    * new message. The chooser may elect to return any envelope that it's been
-   * given via the update method, which hasn't yet been returned.
+   * given via the update method, which hasn't yet been returned. Choose will
+   * only be called after the chooser has been started.
    * 
    * @return The next envelope to process, or null if the chooser has no
    *         messages or doesn't want to process any at the moment.
