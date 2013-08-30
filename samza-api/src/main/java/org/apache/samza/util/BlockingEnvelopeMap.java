@@ -217,7 +217,10 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
 
     public void incBufferedMessageCount(SystemStreamPartition systemStreamPartition, int count) {
       Gauge<Integer> gauge = this.bufferedMessageCountMap.get(systemStreamPartition);
-      gauge.set(gauge.getValue() + count);
+
+      synchronized (gauge) {
+        gauge.set(gauge.getValue() + count);
+      }
     }
 
     public void decBufferedMessageCount(SystemStreamPartition systemStreamPartition, int count) {
