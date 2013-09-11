@@ -186,7 +186,7 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
     return getNumMessagesInQueue(systemStreamPartition) == 0 && isAtHead != null && isAtHead.equals(true);
   }
 
-  public static final class BlockingEnvelopeMapMetrics {
+  public class BlockingEnvelopeMapMetrics {
     private static final String GROUP = "samza.consumers";
 
     private final MetricsRegistry metricsRegistry;
@@ -216,11 +216,11 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
     }
 
     public void incBufferedMessageCount(SystemStreamPartition systemStreamPartition, int count) {
-      Gauge<Integer> gauge = this.bufferedMessageCountMap.get(systemStreamPartition);
-
-      synchronized (gauge) {
-        gauge.set(gauge.getValue() + count);
-      }
+//      Gauge<Integer> gauge = this.bufferedMessageCountMap.get(systemStreamPartition);
+//      Integer old = gauge.getValue();
+//      while (!gauge.compareAndSet(old, old + count)) {
+//        old = gauge.getValue();
+//      }
     }
 
     public void decBufferedMessageCount(SystemStreamPartition systemStreamPartition, int count) {
