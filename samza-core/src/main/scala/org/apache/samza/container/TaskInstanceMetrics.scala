@@ -22,13 +22,25 @@ package org.apache.samza.container
 import org.apache.samza.metrics.ReadableMetricsRegistry
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.Partition
+import org.apache.samza.metrics.MetricsHelper
+import org.apache.samza.system.SystemStream
+import org.apache.samza.metrics.Gauge
 
 class TaskInstanceMetrics(
   val partition: Partition,
-  val registry: ReadableMetricsRegistry = new MetricsRegistryMap) {
+  implicit val registry: ReadableMetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
 
-  val source = "Partition-%s" format partition.getPartitionId
-  val commits = registry.newCounter("samza.task.TaskInstance", "commits")
-
-  // TODO .. etc ..
+  val SOURCE = "Partition-%s" format partition.getPartitionId
+  val commits = newCounter("commit-calls")
+  val commitsSkipped = newCounter("commit-skipped")
+  val windows = newCounter("window-calls")
+  val windowsSkipped = newCounter("window-skipped")
+  val processes = newCounter("process-calls")
+  val sends = newCounter("send-calls")
+  val sendsSkipped = newCounter("send-skipped")
+  val messagesSent = newCounter("messages-sent")
+  val offsets = scala.collection.mutable.Map[SystemStream, Gauge[String]]()
+    .withDefault((systemStream: SystemStream) => {
+      newGauge("offset-%s-%s" format (systemStream.getSystem, systemStream.getStream), "")
+    })
 }
