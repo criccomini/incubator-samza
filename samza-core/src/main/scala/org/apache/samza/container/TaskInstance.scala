@@ -83,7 +83,7 @@ class TaskInstance(
   def registerMetrics {
     debug("Registering metrics for partition: %s." format partition)
 
-    reporters.values.foreach(_.register(metrics.source, metrics.registry))
+    reporters.values.foreach(_.register(metrics.SOURCE, metrics.registry))
   }
 
   def registerCheckpoints {
@@ -123,7 +123,7 @@ class TaskInstance(
   def registerProducers {
     debug("Registering producers for partition: %s." format partition)
 
-    producerMultiplexer.register(metrics.source)
+    producerMultiplexer.register(metrics.SOURCE)
   }
 
   def registerConsumers {
@@ -136,6 +136,8 @@ class TaskInstance(
         for ((systemStream, offset) <- checkpoint.getOffsets) {
           if (!resetInputStreams.getOrElse(systemStream, false)) {
             offsets += systemStream -> offset
+
+            metrics.offsets(systemStream).set(offset)
           } else {
             info("Got offset %s for %s, but ignoring, since stream was configured to reset offsets." format (offset, systemStream))
           }
@@ -156,6 +158,8 @@ class TaskInstance(
   }
 
   def process(envelope: IncomingMessageEnvelope, coordinator: ReadableCoordinator) {
+    metrics.processes.inc
+
     listeners.foreach(_.beforeProcess(envelope, config, context))
 
     trace("Processing incoming message envelope for partition: %s, %s" format (partition, envelope.getSystemStreamPartition))
@@ -167,11 +171,15 @@ class TaskInstance(
     trace("Updating offset map for partition: %s, %s, %s" format (partition, envelope.getSystemStreamPartition, envelope.getOffset))
 
     offsets += envelope.getSystemStreamPartition -> envelope.getOffset
+
+    metrics.offsets(envelope.getSystemStreamPartition.getSystemStream).set(envelope.getOffset)
   }
 
   def window(coordinator: ReadableCoordinator) {
     if (isWindowableTask && windowMs >= 0 && lastWindowMs + windowMs < clock()) {
       trace("Windowing for partition: %s" format partition)
+
+      metrics.windows.inc
 
       task.asInstanceOf[WindowableTask].window(collector, coordinator)
       lastWindowMs = clock()
@@ -179,6 +187,8 @@ class TaskInstance(
       trace("Assigned last window time for partition: %s, %s" format (partition, lastWindowMs))
     } else {
       trace("Skipping window for partition: %s" format partition)
+
+      metrics.windowsSkipped.inc
     }
   }
 
@@ -186,13 +196,18 @@ class TaskInstance(
     if (collector.envelopes.size > 0) {
       trace("Sending messages for partition: %s, %s" format (partition, collector.envelopes.size))
 
-      collector.envelopes.foreach(envelope => producerMultiplexer.send(metrics.source, envelope))
+      metrics.sends.inc
+      metrics.messagesSent.inc(collector.envelopes.size)
+
+      collector.envelopes.foreach(envelope => producerMultiplexer.send(metrics.SOURCE, envelope))
 
       trace("Resetting collector for partition: %s" format partition)
 
       collector.reset
     } else {
       trace("Skipping send for partition %s because no messages were collected." format partition)
+
+      metrics.sendsSkipped.inc
     }
   }
 
@@ -200,11 +215,13 @@ class TaskInstance(
     if (lastCommitMs + commitMs < clock() || coordinator.isCommitRequested || coordinator.isShutdownRequested) {
       trace("Flushing state stores for partition: %s" format partition)
 
+      metrics.commits.inc
+
       storageManager.flush
 
       trace("Flushing producers for partition: %s" format partition)
 
-      producerMultiplexer.flush(metrics.source)
+      producerMultiplexer.flush(metrics.SOURCE)
 
       if (checkpointManager != null) {
         trace("Committing checkpoint manager for partition: %s" format partition)
@@ -213,6 +230,10 @@ class TaskInstance(
       }
 
       lastCommitMs = clock()
+    } else {
+      trace("Skipping commit for partition: %s" format partition)
+
+      metrics.commitsSkipped.inc
     }
   }
 

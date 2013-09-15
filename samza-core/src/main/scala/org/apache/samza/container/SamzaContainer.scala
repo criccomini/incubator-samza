@@ -476,7 +476,7 @@ class SamzaContainer(
     info("Starting metrics reporters.")
 
     reporters.values.foreach(reporter => {
-      reporter.register(metrics.source, metrics.registry)
+      reporter.register(metrics.SOURCE, metrics.registry)
       reporter.start
     })
   }
@@ -530,6 +530,8 @@ class SamzaContainer(
   def process(coordinator: ReadableCoordinator) {
     trace("Attempting to choose a message to process.")
 
+    metrics.processes.inc
+
     val envelope = consumerMultiplexer.choose
 
     if (envelope != null) {
@@ -537,14 +539,20 @@ class SamzaContainer(
 
       trace("Processing incoming message envelope for partition %s." format partition)
 
+      metrics.envelopes.inc
+
       taskInstances(partition).process(envelope, coordinator)
     } else {
       trace("No incoming message envelope was available.")
+
+      metrics.nullEnvelopes.inc
     }
   }
 
   def window(coordinator: ReadableCoordinator) {
     trace("Windowing stream tasks.")
+
+    metrics.windows.inc
 
     taskInstances.values.foreach(_.window(coordinator))
   }
@@ -552,11 +560,15 @@ class SamzaContainer(
   def send {
     trace("Triggering send in task instances.")
 
+    metrics.sends.inc
+
     taskInstances.values.foreach(_.send)
   }
 
   def commit(coordinator: ReadableCoordinator) {
     trace("Committing task instances.")
+
+    metrics.commits.inc
 
     taskInstances.values.foreach(_.commit(coordinator))
   }
