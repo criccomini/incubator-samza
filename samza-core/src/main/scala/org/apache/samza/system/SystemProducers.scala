@@ -20,30 +20,41 @@
 package org.apache.samza.system
 
 import org.apache.samza.serializers.SerdeManager
+import grizzled.slf4j.Logging
 
 class SystemProducers(
   producers: Map[String, SystemProducer],
-  serdeManager: SerdeManager) {
+  serdeManager: SerdeManager) extends Logging {
 
-  // TODO add metrics and logging
+  // TODO add metrics
 
   def start {
+    debug("Starting producers.")
+
     producers.values.foreach(_.start)
   }
 
   def stop {
+    debug("Stopping producers.")
+
     producers.values.foreach(_.stop)
   }
 
   def register(source: String) {
+    debug("Registering source: %s" format source)
+
     producers.values.foreach(_.register(source))
   }
 
   def flush(source: String) {
+    debug("Flushing source: %s" format source)
+
     producers.values.foreach(_.flush(source))
   }
 
   def send(source: String, envelope: OutgoingMessageEnvelope) {
+    trace("Sending message from source: %s, %s" format (envelope, source))
+
     producers(envelope.getSystemStream.getSystem).send(source, serdeManager.toBytes(envelope))
   }
 }
