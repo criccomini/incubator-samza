@@ -24,7 +24,7 @@ import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.Counter
 import org.apache.samza.metrics.MetricsHelper
 
-class LevelDbKeyValueStoreMetrics(
+class SerializedKeyValueStoreMetrics(
   val storeName: String = "unknown",
   val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
 
@@ -34,8 +34,8 @@ class LevelDbKeyValueStoreMetrics(
   val puts = newCounter("puts")
   val deletes = newCounter("deletes")
   val flushes = newCounter("flushes")
-  val bytesWritten = newCounter("bytes-written")
-  val bytesRead = newCounter("bytes-read")
+  val bytesSerialized = newCounter("bytes-serialized")
+  val bytesDeserialized = newCounter("bytes-deserialized")
 
   override def getPrefix = storeName + "-"
 }
