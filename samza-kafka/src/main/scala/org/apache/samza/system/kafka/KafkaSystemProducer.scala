@@ -52,9 +52,15 @@ class KafkaSystemProducer(
 
   def register(source: String) {
     sourceBuffers += source -> ArrayBuffer()
+
+    metrics.setBufferSize(source, () => sourceBuffers(source).size)
   }
 
   def send(source: String, envelope: OutgoingMessageEnvelope) {
+    debug("Enqueueing message: %s, %s." format (source, envelope))
+
+    metrics.sends.inc
+
     sourceBuffers(source) += new KeyedMessage[Object, Object](
       envelope.getSystemStream.getStream,
       envelope.getKey,
@@ -72,6 +78,8 @@ class KafkaSystemProducer(
 
     debug("Flushing buffer with size: %s." format buffer.size)
 
+    metrics.flushes.inc
+
     while (!done) {
       try {
         if (producer == null) {
@@ -82,6 +90,7 @@ class KafkaSystemProducer(
 
         producer.send(buffer: _*)
         done = true
+        metrics.flushSizes.inc(buffer.size)
       } catch {
         case e: Throwable =>
           warn("Triggering a reconnect for %s because connection failed: %s" format (systemName, e.getMessage))
