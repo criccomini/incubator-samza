@@ -70,13 +70,11 @@ private[kafka] class KafkaSystemConsumer(
   type HostPort = (String, Int)
   val brokerProxies = scala.collection.mutable.Map[HostPort, BrokerProxy]()
   var lastReadOffsets = Map[SystemStreamPartition, String]()
-  val topicAndPartitionMetrics = new TopicAndPartitionMetrics(metrics.registry)
 
   def start() {
     val topicPartitionsAndOffsets = lastReadOffsets.map {
       case (systemStreamPartition, offset) =>
         val topicAndPartition = KafkaSystemConsumer.toTopicAndPartition(systemStreamPartition)
-        topicAndPartitionMetrics.addNewTopicAndPartition(topicAndPartition)
         (topicAndPartition, offset)
     }
 
@@ -89,6 +87,8 @@ private[kafka] class KafkaSystemConsumer(
     super.register(systemStreamPartition, lastReadOffset)
 
     lastReadOffsets += systemStreamPartition -> lastReadOffset
+
+    metrics.registerTopicAndPartition(KafkaSystemConsumer.toTopicAndPartition(systemStreamPartition))
   }
 
   def stop() {
@@ -122,7 +122,7 @@ private[kafka] class KafkaSystemConsumer(
 
             brokerOption match {
               case Some(broker) =>
-                val brokerProxy = brokerProxies.getOrElseUpdate((broker.host, broker.port), new BrokerProxy(broker.host, broker.port, systemName, clientId, topicAndPartitionMetrics, timeout, bufferSize, offsetGetter) {
+                val brokerProxy = brokerProxies.getOrElseUpdate((broker.host, broker.port), new BrokerProxy(broker.host, broker.port, systemName, clientId, metrics, timeout, bufferSize, offsetGetter) {
                   val messageSink: MessageSink = sink
                 })
 

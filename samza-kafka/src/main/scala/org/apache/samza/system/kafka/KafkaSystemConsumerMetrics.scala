@@ -22,14 +22,30 @@ package org.apache.samza.system.kafka
 import org.apache.samza.metrics.MetricsHelper
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.MetricsRegistry
+import java.util.concurrent.ConcurrentHashMap
+import kafka.common.TopicAndPartition
+import org.apache.samza.metrics.Counter
+import org.apache.samza.metrics.Gauge
 
 class KafkaSystemConsumerMetrics(val systemName: String, val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
-  val reconnects = newCounter("%s-producer-reconnects" format systemName)
-  val sends = newCounter("%s-producer-sends" format systemName)
-  val flushes = newCounter("%s-flushes" format systemName)
-  val flushSizes = newCounter("%s-flush-sizes" format systemName)
+  val offsets = new ConcurrentHashMap[TopicAndPartition, Counter]
+  val bytesRead = new ConcurrentHashMap[TopicAndPartition, Counter]
+  val reads = new ConcurrentHashMap[TopicAndPartition, Counter]
+  val lag = new ConcurrentHashMap[TopicAndPartition, Gauge[Long]]
+  val reconnects = new ConcurrentHashMap[(String, Int), Counter]
+  val topicPartitions = new ConcurrentHashMap[(String, Int), Gauge[Int]]
 
-  def setBufferSize(source: String, getValue: () => Int) {
-    newGauge("%s-%s-producer-buffer-size" format (systemName, source), getValue)
+  def registerTopicAndPartition(tp: TopicAndPartition) = {
+    if (!offsets.contains(tp)) {
+      offsets.put(tp, newCounter("%s-%s-%s-offset-change" format (systemName, tp.topic, tp.partition)))
+      bytesRead.put(tp, newCounter("%s-%s-%s-bytes-read" format (systemName, tp.topic, tp.partition)))
+      reads.put(tp, newCounter("%s-%s-%s-reads" format (systemName, tp.topic, tp.partition)))
+      lag.put(tp, newGauge("%s-%s-%s-messages-behind-high-watermark", 0L))
+    }
+  }
+
+  def registerBrokerProxy(host: String, port: Int) {
+    reconnects.put((host, port), newCounter("%s-%s-%s-reconnects" format (systemName, host, port)))
+    topicPartitions.put((host, port), newGauge("%s-%s-%s-topic-partitions" format (systemName, host, port), 0))
   }
 }
