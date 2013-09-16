@@ -24,10 +24,9 @@ import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.MetricsHelper
 
 class SamzaContainerMetrics(
-  val containerName: String = "unnamed-container",
-  implicit val registry: ReadableMetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+  val source: String = "unknown",
+  val registry: ReadableMetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
 
-  val SOURCE = containerName
   val commits = newCounter("commit-calls")
   val windows = newCounter("window-calls")
   val processes = newCounter("process-calls")

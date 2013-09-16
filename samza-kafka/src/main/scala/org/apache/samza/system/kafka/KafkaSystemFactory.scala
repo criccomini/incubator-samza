@@ -83,6 +83,7 @@ class KafkaSystemFactory extends SystemFactory {
     val reconnectIntervalMs = Option(producerConfig.retryBackoffMs)
       .getOrElse(10000)
     val getProducer = () => { new Producer[Object, Object](producerConfig) }
+    val metrics = new KafkaSystemProducerMetrics(systemName, registry)
 
     // Unlike consumer, no need to use encoders here, since they come for free 
     // inside the producer configs. Kafka's producer will handle all of this 
@@ -92,8 +93,8 @@ class KafkaSystemFactory extends SystemFactory {
       systemName,
       batchSize,
       reconnectIntervalMs,
-      registry,
-      getProducer)
+      getProducer,
+      metrics)
   }
 
   def getAdmin(systemName: String, config: Config) = {

@@ -27,23 +27,17 @@ import kafka.producer.KeyedMessage
 import kafka.producer.Producer
 import kafka.producer.ProducerConfig
 import org.apache.samza.config.Config
-import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.util.KafkaUtil
 import org.apache.samza.system.SystemProducer
 import org.apache.samza.system.OutgoingMessageEnvelope
-
-object KafkaSystemProducerMetrics {
-  val metricsGroup = "samza.kafka.producer"
-}
 
 class KafkaSystemProducer(
   systemName: String,
   batchSize: Int,
   reconnectIntervalMs: Long,
-  registry: MetricsRegistry,
-  getProducer: () => Producer[Object, Object]) extends SystemProducer with Logging {
+  getProducer: () => Producer[Object, Object],
+  metrics: KafkaSystemProducerMetrics) extends SystemProducer with Logging {
 
-  val flushReconnectCounter = registry.newCounter(KafkaSystemProducerMetrics.metricsGroup, "Producer-%s-Reconnects" format systemName)
   var sourceBuffers = Map[String, ArrayBuffer[KeyedMessage[Object, Object]]]()
   var producer: Producer[Object, Object] = null
 
@@ -93,7 +87,7 @@ class KafkaSystemProducer(
           warn("Triggering a reconnect for %s because connection failed: %s" format (systemName, e.getMessage))
           debug("Exception while producing to %s." format systemName, e)
 
-          flushReconnectCounter.inc
+          metrics.reconnects.inc
 
           if (producer != null) {
             producer.close

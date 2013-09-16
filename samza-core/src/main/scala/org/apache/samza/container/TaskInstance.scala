@@ -84,7 +84,7 @@ class TaskInstance(
   def registerMetrics {
     debug("Registering metrics for partition: %s." format partition)
 
-    reporters.values.foreach(_.register(metrics.SOURCE, metrics.registry))
+    reporters.values.foreach(_.register(metrics.source, metrics.registry))
   }
 
   def registerCheckpoints {
@@ -124,7 +124,7 @@ class TaskInstance(
   def registerProducers {
     debug("Registering producers for partition: %s." format partition)
 
-    producerMultiplexer.register(metrics.SOURCE)
+    producerMultiplexer.register(metrics.source)
   }
 
   def registerConsumers {
@@ -198,7 +198,7 @@ class TaskInstance(
       metrics.sends.inc
       metrics.messagesSent.inc(collector.envelopes.size)
 
-      collector.envelopes.foreach(envelope => producerMultiplexer.send(metrics.SOURCE, envelope))
+      collector.envelopes.foreach(envelope => producerMultiplexer.send(metrics.source, envelope))
 
       trace("Resetting collector for partition: %s" format partition)
 
@@ -220,7 +220,7 @@ class TaskInstance(
 
       trace("Flushing producers for partition: %s" format partition)
 
-      producerMultiplexer.flush(metrics.SOURCE)
+      producerMultiplexer.flush(metrics.source)
 
       if (checkpointManager != null) {
         trace("Committing checkpoint manager for partition: %s" format partition)

@@ -57,6 +57,7 @@ import org.apache.samza.system.DefaultChooser
 import org.apache.samza.system.SystemConsumers
 import org.apache.samza.system.SystemProducersMetrics
 import org.apache.samza.system.SystemConsumersMetrics
+import org.apache.samza.metrics.MetricsRegistryMap
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -85,9 +86,10 @@ object SamzaContainer extends Logging {
     info("Using partitions: %s" format partitions)
     info("Using configuration: %s" format config)
 
-    val samzaContainerMetrics = new SamzaContainerMetrics(containerName)
-    val systemProducersMetrics = new SystemProducersMetrics(containerName)
-    val systemConsumersMetrics = new SystemConsumersMetrics(containerName)
+    val registry = new MetricsRegistryMap(containerName)
+    val samzaContainerMetrics = new SamzaContainerMetrics(containerName, registry)
+    val systemProducersMetrics = new SystemProducersMetrics(registry)
+    val systemConsumersMetrics = new SystemConsumersMetrics(registry)
 
     val inputStreams = config.getInputStreams
     val inputSystems = inputStreams.map(_.getSystem)
@@ -330,7 +332,7 @@ object SamzaContainer extends Logging {
 
       val collector = new ReadableCollector
 
-      val taskInstanceMetrics = new TaskInstanceMetrics(partition)
+      val taskInstanceMetrics = new TaskInstanceMetrics("Partition-%s" format partition.getPartitionId)
 
       val storeConsumers = changeLogSystemStreams
         .map {
@@ -408,8 +410,8 @@ object SamzaContainer extends Logging {
       config = config,
       consumerMultiplexer = consumerMultiplexer,
       producerMultiplexer = producerMultiplexer,
-      checkpointManager = checkpointManager,
       metrics = samzaContainerMetrics,
+      checkpointManager = checkpointManager,
       reporters = reporters,
       jvm = jvm)
   }
@@ -420,8 +422,8 @@ class SamzaContainer(
   config: Config,
   consumerMultiplexer: SystemConsumers,
   producerMultiplexer: SystemProducers,
+  metrics: SamzaContainerMetrics,
   checkpointManager: CheckpointManager = null,
-  metrics: SamzaContainerMetrics = new SamzaContainerMetrics,
   reporters: Map[String, MetricsReporter] = Map(),
   jvm: JvmMetrics = null) extends Runnable with Logging {
 
@@ -482,7 +484,7 @@ class SamzaContainer(
     info("Starting metrics reporters.")
 
     reporters.values.foreach(reporter => {
-      reporter.register(metrics.SOURCE, metrics.registry)
+      reporter.register(metrics.source, metrics.registry)
       reporter.start
     })
   }

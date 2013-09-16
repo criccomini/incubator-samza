@@ -18,6 +18,7 @@
  */
 
 package org.apache.samza.metrics
+
 import grizzled.slf4j.Logging
 import java.util.concurrent.ConcurrentHashMap
 
@@ -25,13 +26,15 @@ import java.util.concurrent.ConcurrentHashMap
  * A class that holds all metrics registered with it. It can be registered
  * with one or more MetricReporters to flush metrics.
  */
-class MetricsRegistryMap extends ReadableMetricsRegistry with Logging {
+class MetricsRegistryMap(val name: String) extends ReadableMetricsRegistry with Logging {
   var listeners = Set[ReadableMetricsRegistryListener]()
 
   /*
    * groupName -> metricName -> metric
    */
   val metrics = new ConcurrentHashMap[String, ConcurrentHashMap[String, Metric]]
+
+  def this() = this("unknown")
 
   def newCounter(group: String, counter: Counter) = {
     debug("Add new counter %s %s %s." format (group, counter.getName, counter))
@@ -63,6 +66,8 @@ class MetricsRegistryMap extends ReadableMetricsRegistry with Logging {
     metrics.putIfAbsent(group, new ConcurrentHashMap[String, Metric])
     metrics.get(group)
   }
+
+  def getName = name
 
   def getGroups = metrics.keySet()
 

@@ -27,10 +27,9 @@ import org.apache.samza.system.SystemStream
 import org.apache.samza.metrics.Gauge
 
 class TaskInstanceMetrics(
-  val partition: Partition,
-  implicit val registry: ReadableMetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+  val source: String = "unknown",
+  val registry: ReadableMetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
 
-  val SOURCE = "Partition-%s" format partition.getPartitionId
   val commits = newCounter("commit-calls")
   val commitsSkipped = newCounter("commit-skipped")
   val windows = newCounter("window-calls")

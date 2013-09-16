@@ -1,15 +1,11 @@
 package org.apache.samza.system
 
-import org.apache.samza.metrics.ReadableMetricsRegistry
+import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.Counter
 import org.apache.samza.metrics.MetricsHelper
 
-class SystemConsumersMetrics(
-  val containerName: String = "unnamed-container",
-  implicit val registry: ReadableMetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
-
-  val SOURCE = containerName
+class SystemConsumersMetrics(val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
   val choseNull = newCounter("chose-null")
   val choseObject = newCounter("chose-object")
   val systemPolls = scala.collection.mutable.Map[String, Counter]()
