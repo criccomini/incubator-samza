@@ -57,11 +57,13 @@ class KeyValueStorageEngineFactory[K, V] extends StorageEngineFactory[K, V] {
       throw new SamzaException("Must define a message serde when using key value storage.")
     }
 
-    val levelDb = new LevelDbKeyValueStore(storeDir, LevelDbKeyValueStore.options(storageConfig))
+    val levelDbMetrics = new LevelDbKeyValueStoreMetrics(storeName, registry)
+    val levelDb = new LevelDbKeyValueStore(storeDir, LevelDbKeyValueStore.options(storageConfig), levelDbMetrics)
     val maybeLoggedStore = if (changeLogSystemStreamPartition == null) {
       levelDb
     } else {
-      new LoggedStore(levelDb, changeLogSystemStreamPartition, collector)
+      val loggedStoreMetrics = new LoggedStoreMetrics(storeName, registry)
+      new LoggedStore(levelDb, changeLogSystemStreamPartition, collector, loggedStoreMetrics)
     }
     val serialized = new SerializedKeyValueStore[K, V](maybeLoggedStore, keySerde, msgSerde)
     val maybeCachedStore = if (enableCache) {
