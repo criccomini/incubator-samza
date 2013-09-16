@@ -74,9 +74,10 @@ class KeyValueStorageEngineFactory[K, V] extends StorageEngineFactory[K, V] {
       serialized
     }
     val db = maybeCachedStore
+    val keyValueStorageEngineMetrics = new KeyValueStorageEngineMetrics(storeName, registry)
 
     // Decide if we should use raw bytes when restoring
 
-    new KeyValueStorageEngine(db, levelDb, batchSize)
+    new KeyValueStorageEngine(db, levelDb, keyValueStorageEngineMetrics, batchSize)
   }
 }
