@@ -27,7 +27,9 @@ import org.apache.samza.metrics.MetricsHelper
 class SystemConsumersMetrics(val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
   val choseNull = newCounter("chose-null")
   val choseObject = newCounter("chose-object")
-  var registeredSystemNames = Set[String]()
+  val systemPolls = scala.collection.mutable.Map[String, Counter]()
+  val systemStreamPartitionFetchesPerPoll = scala.collection.mutable.Map[String, Counter]()
+  val systemMessagesPerPoll = scala.collection.mutable.Map[String, Counter]()
 
   def setUnprocessedMessages(getValue: () => Int) {
     newGauge("unprocessed-messages", getValue)
@@ -50,11 +52,10 @@ class SystemConsumersMetrics(val registry: MetricsRegistry = new MetricsRegistry
   }
 
   def registerSystem(systemName: String) {
-    if (!systemName.contains(systemName)) {
-      registeredSystemNames += systemName
-      newCounter("%s-polls" format systemName)
-      newCounter("%s-ssp-fetches-per-poll" format systemName)
-      newCounter("%s-messages-per-poll" format systemName)
+    if (!systemPolls.contains(systemName)) {
+      systemPolls += systemName -> newCounter("%s-polls" format systemName)
+      systemStreamPartitionFetchesPerPoll += systemName -> newCounter("%s-ssp-fetches-per-poll" format systemName)
+      systemMessagesPerPoll += systemName -> newCounter("%s-messages-per-poll" format systemName)
     }
   }
 }
