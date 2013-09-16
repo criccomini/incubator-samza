@@ -24,9 +24,8 @@ import grizzled.slf4j.Logging
 
 class SystemProducers(
   producers: Map[String, SystemProducer],
-  serdeManager: SerdeManager) extends Logging {
-
-  // TODO add metrics
+  serdeManager: SerdeManager,
+  metrics: SystemProducersMetrics = new SystemProducersMetrics) extends Logging {
 
   def start {
     debug("Starting producers.")
@@ -43,17 +42,23 @@ class SystemProducers(
   def register(source: String) {
     debug("Registering source: %s" format source)
 
+    metrics.registerSource(source)
+
     producers.values.foreach(_.register(source))
   }
 
   def flush(source: String) {
     debug("Flushing source: %s" format source)
 
+    metrics.sourceFlushes(source).inc
+
     producers.values.foreach(_.flush(source))
   }
 
   def send(source: String, envelope: OutgoingMessageEnvelope) {
     trace("Sending message from source: %s, %s" format (envelope, source))
+
+    metrics.sourceSends(source).inc
 
     producers(envelope.getSystemStream.getSystem).send(source, serdeManager.toBytes(envelope))
   }

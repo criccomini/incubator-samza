@@ -55,6 +55,7 @@ import org.apache.samza.system.SystemProducers
 import org.apache.samza.task.ReadableCollector
 import org.apache.samza.system.DefaultChooser
 import org.apache.samza.system.SystemConsumers
+import org.apache.samza.system.SystemProducersMetrics
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -84,6 +85,7 @@ object SamzaContainer extends Logging {
     info("Using configuration: %s" format config)
 
     val samzaContainerMetrics = new SamzaContainerMetrics(containerName)
+    val systemProducersMetrics = new SystemProducersMetrics(containerName)
 
     val inputStreams = config.getInputStreams
     val inputSystems = inputStreams.map(_.getSystem)
@@ -265,7 +267,8 @@ object SamzaContainer extends Logging {
 
     val producerMultiplexer = new SystemProducers(
       producers = producers,
-      serdeManager = serdeManager)
+      serdeManager = serdeManager,
+      metrics = systemProducersMetrics)
 
     val listeners = config.getLifecycleListeners match {
       case Some(listeners) => {
