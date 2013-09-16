@@ -16,7 +16,7 @@ class SystemProducersMetrics(
   val sourceSends = scala.collection.mutable.Map[String, Counter]()
 
   def registerSource(source: String) {
-    sourceFlushes += source -> newCounter("flushes-%s" format source)
-    sourceSends += source -> newCounter("sends-%s" format source)
+    sourceFlushes += source -> newCounter("%s-flushes" format source)
+    sourceSends += source -> newCounter("%s-sends" format source)
   }
 }

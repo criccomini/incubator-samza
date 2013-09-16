@@ -56,6 +56,7 @@ import org.apache.samza.task.ReadableCollector
 import org.apache.samza.system.DefaultChooser
 import org.apache.samza.system.SystemConsumers
 import org.apache.samza.system.SystemProducersMetrics
+import org.apache.samza.system.SystemConsumersMetrics
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -86,6 +87,7 @@ object SamzaContainer extends Logging {
 
     val samzaContainerMetrics = new SamzaContainerMetrics(containerName)
     val systemProducersMetrics = new SystemProducersMetrics(containerName)
+    val systemConsumersMetrics = new SystemConsumersMetrics(containerName)
 
     val inputStreams = config.getInputStreams
     val inputSystems = inputStreams.map(_.getSystem)
@@ -263,7 +265,8 @@ object SamzaContainer extends Logging {
       // TODO add config values for no new message timeout and max msgs per stream partition
       chooser = chooser,
       consumers = consumers,
-      serdeManager = serdeManager)
+      serdeManager = serdeManager,
+      metrics = systemConsumersMetrics)
 
     val producerMultiplexer = new SystemProducers(
       producers = producers,

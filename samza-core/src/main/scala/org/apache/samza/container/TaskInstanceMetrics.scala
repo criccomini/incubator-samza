@@ -42,6 +42,6 @@ class TaskInstanceMetrics(
   val offsets = scala.collection.mutable.Map[SystemStream, Gauge[String]]()
 
   def addOffsetGauge(systemStream: SystemStream, getValue: () => String) {
-    offsets += systemStream -> newGauge("offset-%s-%s" format (systemStream.getSystem, systemStream.getStream), getValue)
+    offsets += systemStream -> newGauge("%s-%s-offset" format (systemStream.getSystem, systemStream.getStream), getValue)
   }
 }
