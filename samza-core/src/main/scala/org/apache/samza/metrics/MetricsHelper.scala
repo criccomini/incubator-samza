@@ -10,15 +10,22 @@ trait MetricsHelper {
   val group = this.getClass.getName
   val registry: MetricsRegistry
 
-  val newCounter = registry.newCounter(group, _: String)
+  def newCounter(name: String) = {
+    registry.newCounter(group, getPrefix + name)
+  }
 
   def newGauge[T](name: String, value: T) = {
-    registry.newGauge(group, new Gauge(name, value))
+    registry.newGauge(group, new Gauge(getPrefix + name, value))
   }
 
   def newGauge[T](name: String, getValue: () => T) = {
-    registry.newGauge(group, new Gauge(name, getValue()) {
+    registry.newGauge(group, new Gauge(getPrefix + name, getValue()) {
       override def getValue() = getValue()
     })
   }
+
+  /**
+   * Returns a prefix for metric names.
+   */
+  def getPrefix = ""
 }

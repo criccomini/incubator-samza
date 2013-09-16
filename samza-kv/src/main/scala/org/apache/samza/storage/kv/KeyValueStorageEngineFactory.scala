@@ -65,7 +65,8 @@ class KeyValueStorageEngineFactory[K, V] extends StorageEngineFactory[K, V] {
     }
     val serialized = new SerializedKeyValueStore[K, V](maybeLoggedStore, keySerde, msgSerde)
     val maybeCachedStore = if (enableCache) {
-      new CachedStore(serialized, cacheSize, batchSize)
+      val cachedStoreMetrics = new CachedStoreMetrics(storeName, registry)
+      new CachedStore(serialized, cacheSize, batchSize, cachedStoreMetrics)
     } else {
       serialized
     }

@@ -17,25 +17,33 @@
  * under the License.
  */
 
-package org.apache.samza.system.kafka
+package org.apache.samza.storage.kv
 
-import org.apache.samza.metrics.MetricsRegistryMap
-import org.apache.samza.metrics.ReadableMetricsRegistry
-import org.apache.samza.system.SystemStream
-import org.apache.samza.metrics.MetricsHelper
-import org.apache.samza.Partition
-import org.apache.samza.metrics.Gauge
 import org.apache.samza.metrics.MetricsRegistry
+import org.apache.samza.metrics.MetricsRegistryMap
+import org.apache.samza.metrics.Counter
+import org.apache.samza.metrics.MetricsHelper
 
-class KafkaSystemProducerMetrics(val systemName: String = "unknown", val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
-  val reconnects = newCounter("producer-reconnects")
-  val sends = newCounter("producer-sends")
+class CachedStoreMetrics(
+  val storeName: String = "unknown",
+  val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+
+  val gets = newCounter("gets")
+  val ranges = newCounter("ranges")
+  val alls = newCounter("alls")
+  val cacheHits = newCounter("cache-hits")
+  val puts = newCounter("puts")
+  val deletes = newCounter("deletes")
   val flushes = newCounter("flushes")
-  val flushSizes = newCounter("flush-sizes")
+  val flushBatchSize = newCounter("flush-batch-size")
 
-  def setBufferSize(source: String, getValue: () => Int) {
-    newGauge("%s-producer-buffer-size" format source, getValue)
+  def setDirtyCount(getValue: () => Int) {
+    newGauge("dirty-count", getValue)
   }
 
-  override def getPrefix = systemName + "-"
+  def setCacheSize(getValue: () => Int) {
+    newGauge("cache-size", getValue)
+  }
+  
+  override def getPrefix = storeName + "-"
 }

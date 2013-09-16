@@ -44,17 +44,19 @@ class KafkaSystemConsumerMetrics(val systemName: String = "unknown", val registr
 
   def registerTopicAndPartition(tp: TopicAndPartition) = {
     if (!offsets.contains(tp)) {
-      offsets.put(tp, newCounter("%s-%s-%s-offset-change" format (systemName, tp.topic, tp.partition)))
-      bytesRead.put(tp, newCounter("%s-%s-%s-bytes-read" format (systemName, tp.topic, tp.partition)))
-      reads.put(tp, newCounter("%s-%s-%s-reads" format (systemName, tp.topic, tp.partition)))
-      lag.put(tp, newGauge("%s-%s-%s-messages-behind-high-watermark", 0L))
+      offsets.put(tp, newCounter("%s-%s-offset-change" format (tp.topic, tp.partition)))
+      bytesRead.put(tp, newCounter("%s-%s-bytes-read" format (tp.topic, tp.partition)))
+      reads.put(tp, newCounter("%s-%s-reads" format (tp.topic, tp.partition)))
+      lag.put(tp, newGauge("%s-%s-messages-behind-high-watermark" format (tp.topic, tp.partition), 0L))
     }
   }
 
   def registerBrokerProxy(host: String, port: Int) {
-    reconnects.put((host, port), newCounter("%s-%s-%s-reconnects" format (systemName, host, port)))
-    brokerBytesRead.put((host, port), newCounter("%s-%s-%s-bytes-read" format (systemName, host, port)))
-    brokerReads.put((host, port), newCounter("%s-%s-%s-reads" format (systemName, host, port)))
-    topicPartitions.put((host, port), newGauge("%s-%s-%s-topic-partitions" format (systemName, host, port), 0))
+    reconnects.put((host, port), newCounter("%s-%s-reconnects" format (host, port)))
+    brokerBytesRead.put((host, port), newCounter("%s-%s-bytes-read" format (host, port)))
+    brokerReads.put((host, port), newCounter("%s-%s-reads" format (host, port)))
+    topicPartitions.put((host, port), newGauge("%s-%s-topic-partitions" format (host, port), 0))
   }
+
+  override def getPrefix = systemName + "-"
 }
