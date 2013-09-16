@@ -136,6 +136,7 @@ abstract class BrokerProxy(
   }, "BrokerProxy thread pointed at %s:%d for client %s" format (host, port, clientID))
 
   private def fetchMessages(): Unit = {
+    metrics.brokerReads(host, port).inc
     val response: FetchResponse = simpleConsumer.defaultFetch(nextOffsets.filterKeys(messageSink.needsMoreMessages(_)).toList: _*)
     firstCall = false
     firstCallBarrier.countDown()
@@ -178,8 +179,10 @@ abstract class BrokerProxy(
 
         nextOffset = message.nextOffset
 
+        val bytesSize = message.message.payloadSize + message.message.keySize
         metrics.reads(tp).inc
-        metrics.bytesRead(tp).inc(message.message.payloadSize + message.message.keySize)
+        metrics.bytesRead(tp).inc(bytesSize)
+        metrics.brokerBytesRead(host, port).inc(bytesSize)
         metrics.offsets(tp).set(nextOffset)
       }
 

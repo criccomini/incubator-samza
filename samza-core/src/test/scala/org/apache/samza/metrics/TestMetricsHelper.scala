@@ -7,6 +7,6 @@ import org.apache.samza.container.SamzaContainerMetrics
 class TestMetricsHelper {
   @Test
   def testMetricsHelperGroupShouldBePAckageName {
-    assertEquals(classOf[SamzaContainerMetrics].getName, new SamzaContainerMetrics().GROUP)
+    assertEquals(classOf[SamzaContainerMetrics].getName, new SamzaContainerMetrics().group)
   }
 }

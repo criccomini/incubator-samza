@@ -27,12 +27,19 @@ import kafka.common.TopicAndPartition
 import org.apache.samza.metrics.Counter
 import org.apache.samza.metrics.Gauge
 
-class KafkaSystemConsumerMetrics(val systemName: String, val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+class KafkaSystemConsumerMetrics(val systemName: String = "unknown", val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
   val offsets = new ConcurrentHashMap[TopicAndPartition, Counter]
   val bytesRead = new ConcurrentHashMap[TopicAndPartition, Counter]
   val reads = new ConcurrentHashMap[TopicAndPartition, Counter]
   val lag = new ConcurrentHashMap[TopicAndPartition, Gauge[Long]]
+
+  /*
+   * (String, Int) = (host, port) of BrokerProxy.
+   */
+
   val reconnects = new ConcurrentHashMap[(String, Int), Counter]
+  val brokerBytesRead = new ConcurrentHashMap[(String, Int), Counter]
+  val brokerReads = new ConcurrentHashMap[(String, Int), Counter]
   val topicPartitions = new ConcurrentHashMap[(String, Int), Gauge[Int]]
 
   def registerTopicAndPartition(tp: TopicAndPartition) = {
@@ -46,6 +53,8 @@ class KafkaSystemConsumerMetrics(val systemName: String, val registry: MetricsRe
 
   def registerBrokerProxy(host: String, port: Int) {
     reconnects.put((host, port), newCounter("%s-%s-%s-reconnects" format (systemName, host, port)))
+    brokerBytesRead.put((host, port), newCounter("%s-%s-%s-bytes-read" format (systemName, host, port)))
+    brokerReads.put((host, port), newCounter("%s-%s-%s-reads" format (systemName, host, port)))
     topicPartitions.put((host, port), newGauge("%s-%s-%s-topic-partitions" format (systemName, host, port), 0))
   }
 }

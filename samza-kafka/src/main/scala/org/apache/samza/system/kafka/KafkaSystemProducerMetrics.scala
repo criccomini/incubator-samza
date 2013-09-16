@@ -27,7 +27,7 @@ import org.apache.samza.Partition
 import org.apache.samza.metrics.Gauge
 import org.apache.samza.metrics.MetricsRegistry
 
-class KafkaSystemProducerMetrics(val systemName: String, val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+class KafkaSystemProducerMetrics(val systemName: String = "unknown", val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
   val reconnects = newCounter("%s-producer-reconnects" format systemName)
   val sends = newCounter("%s-producer-sends" format systemName)
   val flushes = newCounter("%s-flushes" format systemName)
