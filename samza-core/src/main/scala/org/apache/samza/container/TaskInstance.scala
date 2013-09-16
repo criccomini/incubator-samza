@@ -42,6 +42,7 @@ import org.apache.samza.task.ReadableCollector
 import org.apache.samza.system.SystemConsumers
 import org.apache.samza.system.SystemProducers
 import org.apache.samza.task.ReadableCoordinator
+import org.apache.samza.metrics.Gauge
 
 class TaskInstance(
   task: StreamTask,
@@ -137,7 +138,7 @@ class TaskInstance(
           if (!resetInputStreams.getOrElse(systemStream, false)) {
             offsets += systemStream -> offset
 
-            metrics.offsets(systemStream).set(offset)
+            metrics.addOffsetGauge(systemStream, () => offsets(systemStream))
           } else {
             info("Got offset %s for %s, but ignoring, since stream was configured to reset offsets." format (offset, systemStream))
           }
@@ -171,8 +172,6 @@ class TaskInstance(
     trace("Updating offset map for partition: %s, %s, %s" format (partition, envelope.getSystemStreamPartition, envelope.getOffset))
 
     offsets += envelope.getSystemStreamPartition -> envelope.getOffset
-
-    metrics.offsets(envelope.getSystemStreamPartition.getSystemStream).set(envelope.getOffset)
   }
 
   def window(coordinator: ReadableCoordinator) {

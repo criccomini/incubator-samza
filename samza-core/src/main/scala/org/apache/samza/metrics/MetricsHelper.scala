@@ -19,7 +19,9 @@ trait MetricsHelper {
 
   val newCounter = registry.newCounter(GROUP, _: String)
 
-  def newGauge[T](name: String, value: T) = {
-    registry.newGauge(GROUP, name, value)
+  def newGauge[T](name: String, getValue: () => T) = {
+    registry.newGauge(GROUP, new Gauge(name, getValue()) {
+      override def getValue() = getValue()
+    })
   }
 }

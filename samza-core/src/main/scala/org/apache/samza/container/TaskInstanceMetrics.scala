@@ -40,7 +40,8 @@ class TaskInstanceMetrics(
   val sendsSkipped = newCounter("send-skipped")
   val messagesSent = newCounter("messages-sent")
   val offsets = scala.collection.mutable.Map[SystemStream, Gauge[String]]()
-    .withDefault((systemStream: SystemStream) => {
-      newGauge("offset-%s-%s" format (systemStream.getSystem, systemStream.getStream), "")
-    })
+
+  def addOffsetGauge(systemStream: SystemStream, getValue: () => String) {
+    offsets += systemStream -> newGauge("offset-%s-%s" format (systemStream.getSystem, systemStream.getStream), getValue)
+  }
 }
