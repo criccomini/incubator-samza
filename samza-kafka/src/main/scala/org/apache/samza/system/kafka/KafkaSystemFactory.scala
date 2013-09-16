@@ -41,6 +41,7 @@ import org.apache.samza.system.SystemFactory
 class KafkaSystemFactory extends SystemFactory {
   def getConsumer(systemName: String, config: Config, registry: MetricsRegistry) = {
     val clientId = KafkaUtil.getClientId("samza-consumer", config)
+    val metrics = new KafkaSystemConsumerMetrics(systemName, registry)
 
     // Kind of goofy to need a producer config for consumers, but we need metadata.
     val producerConfig = config.getKafkaSystemProducerConfig(systemName, clientId)
@@ -67,7 +68,7 @@ class KafkaSystemFactory extends SystemFactory {
     new KafkaSystemConsumer(
       systemName = systemName,
       brokerListString = brokerListString,
-      metricsRegistry = registry,
+      metrics = metrics,
       clientId = clientId,
       timeout = timeout,
       bufferSize = bufferSize,

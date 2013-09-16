@@ -45,7 +45,6 @@ abstract class BrokerProxy(
   val port: Int,
   val system: String,
   val clientID: String,
-  val metricsRegistry: MetricsRegistry,
   tpMetrics: TopicAndPartitionMetrics,
   val timeout: Int = Int.MaxValue,
   val bufferSize: Int = 1024000,
