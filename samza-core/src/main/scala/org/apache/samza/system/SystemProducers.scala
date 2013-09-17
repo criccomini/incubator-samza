@@ -50,6 +50,7 @@ class SystemProducers(
   def flush(source: String) {
     debug("Flushing source: %s" format source)
 
+    metrics.flushes.inc
     metrics.sourceFlushes(source).inc
 
     producers.values.foreach(_.flush(source))
@@ -58,6 +59,7 @@ class SystemProducers(
   def send(source: String, envelope: OutgoingMessageEnvelope) {
     trace("Sending message from source: %s, %s" format (envelope, source))
 
+    metrics.sends.inc
     metrics.sourceSends(source).inc
 
     producers(envelope.getSystemStream.getSystem).send(source, serdeManager.toBytes(envelope))
