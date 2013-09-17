@@ -19,8 +19,7 @@
 
 package org.apache.samza.system
 
-import scala.collection.JavaConversions.asScalaBuffer
-import scala.collection.JavaConversions.mapAsJavaMap
+import scala.collection.JavaConversions._
 import scala.collection.mutable.Queue
 
 import org.apache.samza.serializers.SerdeManager
@@ -44,7 +43,7 @@ class SystemConsumers(
   debug("Got max messages per stream: %s" format maxMsgsPerStreamPartition)
   debug("Got no new message timeout: %s" format noNewMessagesTimeout)
 
-  metrics.setUnprocessedMessages(() => fetchMap.values.map(maxMsgsPerStreamPartition - _).sum)
+  metrics.setUnprocessedMessages(() => fetchMap.values.map(maxMsgsPerStreamPartition - _.intValue).sum)
   metrics.setNeededByChooser(() => neededByChooser.size)
   metrics.setTimeout(() => timeout)
   metrics.setMaxMessagesPerStreamPartition(() => maxMsgsPerStreamPartition)
