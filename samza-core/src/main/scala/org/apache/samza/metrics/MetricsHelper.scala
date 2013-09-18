@@ -18,9 +18,9 @@ trait MetricsHelper {
     registry.newGauge(group, new Gauge(getPrefix + name, value))
   }
 
-  def newGauge[T](name: String, getValue: () => T) = {
-    registry.newGauge(group, new Gauge(getPrefix + name, getValue()) {
-      override def getValue() = getValue()
+  def newGauge[T](name: String, value: () => T) = {
+    registry.newGauge(group, new Gauge(getPrefix + name, value()) {
+      override def getValue = value()
     })
   }
 
