@@ -30,15 +30,15 @@ trait MetricsHelper {
   val registry: MetricsRegistry
 
   def newCounter(name: String) = {
-    registry.newCounter(group, getPrefix + name)
+    registry.newCounter(group, (getPrefix + name).toLowerCase)
   }
 
   def newGauge[T](name: String, value: T) = {
-    registry.newGauge(group, new Gauge(getPrefix + name, value))
+    registry.newGauge(group, new Gauge((getPrefix + name).toLowerCase, value))
   }
 
   def newGauge[T](name: String, value: () => T) = {
-    registry.newGauge(group, new Gauge(getPrefix + name, value()) {
+    registry.newGauge(group, new Gauge((getPrefix + name).toLowerCase, value()) {
       override def getValue = value()
     })
   }

@@ -90,7 +90,7 @@ class JvmMetrics(val registry: MetricsRegistry) extends MetricsHelper with Runna
     gcBeans.foreach(gcBean => {
       val c = gcBean.getCollectionCount()
       val t = gcBean.getCollectionTime()
-      val gcInfo = getGcInfo(gcBean.getName.toLowerCase)
+      val gcInfo = getGcInfo(gcBean.getName)
       gcInfo._1.inc(c - gcInfo._1.getCount())
       gcInfo._2.inc(t - gcInfo._2.getCount())
       count += c
