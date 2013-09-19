@@ -17,12 +17,21 @@
  * under the License.
  */
 
-package org.apache.samza.system
+package org.apache.samza.config
 
-import java.util.ArrayDeque
+object StreamChooserConfig {
 
-class DefaultChooser extends MessageChooser {
-  var q = new ArrayDeque[IncomingMessageEnvelope]()
-  def update(envelope: IncomingMessageEnvelope) = q.add(envelope)
-  def choose = q.poll
+  /**
+   * The order in which streams will be prioritized, from high to low. For
+   * example, setting task.chooser.stream.order=system.stream1,system.stream2
+   * would cause the StreamChooser to always prioritize incoming messages from
+   * stream1 over stream2.
+   */
+  val PRIORITIZED_STREAM_ORDER = "task.chooser.stream.order"
+
+  implicit def Config2StreamChooser(config: Config) = new StreamChooserConfig(config)
+}
+
+class StreamChooserConfig(config: Config) extends ScalaMapConfig(config) {
+  def getPrioritizedStreams = getOption(StreamChooserConfig.PRIORITIZED_STREAM_ORDER)
 }

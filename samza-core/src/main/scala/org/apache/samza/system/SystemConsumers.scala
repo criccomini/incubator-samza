@@ -46,12 +46,16 @@ class SystemConsumers(
     debug("Starting consumers.")
 
     consumers.values.foreach(_.start)
+    
+    chooser.start
   }
 
   def stop {
     debug("Stopping consumers.")
 
     consumers.values.foreach(_.stop)
+    
+    chooser.stop
   }
 
   def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) {
@@ -61,6 +65,7 @@ class SystemConsumers(
     fetchMap += systemStreamPartition -> maxMsgsPerStreamPartition
     unprocessedMessages += systemStreamPartition -> Queue[IncomingMessageEnvelope]()
     consumers(systemStreamPartition.getSystem).register(systemStreamPartition, lastReadOffset)
+    chooser.register(systemStreamPartition)
   }
 
   def choose = {
