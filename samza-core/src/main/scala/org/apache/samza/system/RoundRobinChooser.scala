@@ -21,13 +21,43 @@ package org.apache.samza.system
 
 import java.util.ArrayDeque
 import org.apache.samza.config.Config
+import org.apache.samza.SamzaException
 
 /**
- * A chooser that round robins between all system stream partitions.
+ * A chooser that round robins between all system stream partitions. This
+ * chooser makes the assumption that it will only ever receive one envelope
+ * at a time, per SystemStreamPartition. This is part of the contract between
+ * MessageChooser and SystemConsumers. If a second envelope from the a
+ * SystemStreamPartition is given to the RoundRobinChooser prior to
+ * RoundRobinChooser.choose returning the prior one, a SamzaException will be
+ * thrown.
  */
 class RoundRobinChooser extends MessageChooser {
+
+  /**
+   * SystemStreamPartitions that the chooser has received a message for, but
+   * have not yet returned. Envelopes for these SystemStreamPartitions should
+   * be in the queue.
+   */
+  var inflightSystemStreamPartitions = Set[SystemStreamPartition]()
+
+  /**
+   * Queue of potential messages to process. Round robin will always choose
+   * the message at the head of the queue. A queue can be used to implement
+   * round robin here because we only get one envelope per
+   * SystemStreamPartition at a time.
+   */
   var q = new ArrayDeque[IncomingMessageEnvelope]()
-  def update(envelope: IncomingMessageEnvelope) = q.add(envelope)
+
+  def update(envelope: IncomingMessageEnvelope) = {
+    if (inflightSystemStreamPartitions.contains(envelope.getSystemStreamPartition)) {
+      throw new SamzaException("")
+    }
+
+    q.add(envelope)
+    inflightSystemStreamPartitions += envelope.getSystemStreamPartition
+  }
+
   def choose = q.poll
 }
 
