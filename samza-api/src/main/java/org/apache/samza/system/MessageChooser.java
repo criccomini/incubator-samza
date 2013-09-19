@@ -36,6 +36,23 @@ package org.apache.samza.system;
  * entire SamzaContainer by performing a blocking operation, such as
  * Thread.sleep.
  * 
+ * The manner in which !MessageChooser is used is:
+ * 
+ * <ul>
+ * <li>!SystemConsumers buffers messages from all SSPs as they become available.
+ * </li>
+ * <li>If !MessageChooser has no messages for a given SSP, and !SystemConsumers
+ * has a message in its buffer for the SSP, the !MessageChooser will be updated
+ * once with the next message in the buffer.</li>
+ * <li>When !SamzaContainer is ready to process another message, it calls
+ * !SystemConsumers.choose, which in-turn calls !MessageChooser.choose.</li>
+ * </ul>
+ * 
+ * Since the MessageChooser only receives one message at a time per SSP, it can
+ * be used to order messages between different SSPs, but it can't be used to
+ * re-order messages within a single SSP (a buffered sort). This must be done
+ * within a StreamTask.
+ * 
  * The contract between the MessageChooser and the SystemConsumers is:
  * 
  * <ul>
