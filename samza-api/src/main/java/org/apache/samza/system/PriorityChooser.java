@@ -59,18 +59,6 @@ public abstract class PriorityChooser implements MessageChooser {
     return null;
   }
 
-  @Override
-  public void start() {
-  }
-
-  @Override
-  public void stop() {
-  }
-
-  @Override
-  public void register(SystemStreamPartition systemStreamPartition) {
-  }
-
   /**
    * Returns a priority score for the given envelope.
    * 

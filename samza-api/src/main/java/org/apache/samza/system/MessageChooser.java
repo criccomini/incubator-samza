@@ -73,28 +73,6 @@ package org.apache.samza.system;
  */
 public interface MessageChooser {
   /**
-   * Called after all SystemStreamPartitions have been registered. Start is used
-   * to notify the chooser that it will start receiving update and choose calls.
-   */
-  void start();
-
-  /**
-   * Called when the chooser is about to be discarded. No more messages will be
-   * given to the chooser after it is stopped.
-   */
-  void stop();
-
-  /**
-   * Called before start, to let the chooser know that it will be handling
-   * envelopes from the given SystemStreamPartition. Register will only be
-   * called before start.
-   * 
-   * @param systemStreamPartition
-   *          A SystemStreamPartition that envelopes will be coming from.
-   */
-  void register(SystemStreamPartition systemStreamPartition);
-
-  /**
    * Notify the chooser that a new envelope is available for a processing.A
    * MessageChooser will receive, at most, one outstanding envelope per
    * system/stream/partition combination. For example, if update is called for

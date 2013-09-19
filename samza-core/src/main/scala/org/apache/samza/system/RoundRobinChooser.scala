@@ -29,9 +29,6 @@ class RoundRobinChooser extends MessageChooser {
   var q = new ArrayDeque[IncomingMessageEnvelope]()
   def update(envelope: IncomingMessageEnvelope) = q.add(envelope)
   def choose = q.poll
-  def start = Unit
-  def stop = Unit
-  def register(systemStreamPartition: SystemStreamPartition) = Unit
 }
 
 class RoundRobinChooserFactory extends MessageChooserFactory {
