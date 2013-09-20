@@ -42,7 +42,7 @@ class JvmMetrics(val registry: MetricsRegistry) extends MetricsHelper with Runna
   val executor = Executors.newScheduledThreadPool(1, new DaemonThreadFactory)
 
   // jvm metrics
-  val gMemNonHeapUsedM = newGauge("mom-non-heap-used-mb", 0.0F)
+  val gMemNonHeapUsedM = newGauge("mem-non-heap-used-mb", 0.0F)
   val gMemNonHeapCommittedM = newGauge("mem-non-heap-committed-mb", 0.0F)
   val gMemHeapUsedM = newGauge("mem-heap-used-mb", 0.0F)
   val gMemHeapCommittedM = newGauge("mem-heap-committed-mb", 0.0F)
