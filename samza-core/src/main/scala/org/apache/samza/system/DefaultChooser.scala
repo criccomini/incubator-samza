@@ -7,6 +7,7 @@ import org.apache.samza.config.TaskConfig._
 // TODO javadocs for DefaultChooser
 class DefaultChooserFactory extends MessageChooserFactory {
   def getChooser(config: Config): MessageChooser = {
+    // TODO only fully compose in cases where there are bootstrap and prioritized streams.
     val batchSize = config
       .getChooserBatchSize
       .getOrElse("100")
@@ -19,7 +20,7 @@ class DefaultChooserFactory extends MessageChooserFactory {
       .getInputStreams
       .map((_, 0))
       .toMap
-    val prioritizedStreams = defaultPrioritizedStreams ++ config.getPriorityStreams ++ prioritizedBootstrapStreams
+    val prioritizedStreams = defaultPrioritizedStreams ++ prioritizedBootstrapStreams ++ config.getPriorityStreams
     val prioritizedChoosers = prioritizedStreams
       .values
       .toSet
