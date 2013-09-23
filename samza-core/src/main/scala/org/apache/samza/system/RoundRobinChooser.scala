@@ -51,14 +51,25 @@ class RoundRobinChooser extends MessageChooser {
 
   def update(envelope: IncomingMessageEnvelope) = {
     if (inflightSystemStreamPartitions.contains(envelope.getSystemStreamPartition)) {
-      throw new SamzaException("")
+      throw new SamzaException("Received more than one envelope from the same "
+        + "SystemStreamPartition without returning the last. This is a "
+        + "violation of the contract with SystemConsumers, and breaks this "
+        + "RoundRobin implementation.")
     }
 
     q.add(envelope)
     inflightSystemStreamPartitions += envelope.getSystemStreamPartition
   }
 
-  def choose = q.poll
+  def choose = {
+    val envelope = q.poll
+
+    if (envelope != null) {
+      inflightSystemStreamPartitions -= envelope.getSystemStreamPartition
+    }
+
+    envelope
+  }
 }
 
 class RoundRobinChooserFactory extends MessageChooserFactory {
