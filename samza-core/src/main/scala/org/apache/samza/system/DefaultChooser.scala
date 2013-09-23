@@ -20,14 +20,13 @@ class DefaultChooserFactory extends MessageChooserFactory {
       .map((_, 0))
       .toMap
     val prioritizedStreams = defaultPrioritizedStreams ++ config.getPriorityStreams ++ prioritizedBootstrapStreams
-    val base = new RoundRobinChooser
-    val batching = new BatchingChooser(base, batchSize)
     val prioritizedChoosers = prioritizedStreams
       .values
       .toSet
-      .map((_: Int, new BatchingChooser(base, batchSize).asInstanceOf[MessageChooser]))
+      .map((_: Int, new BatchingChooser(new RoundRobinChooser, batchSize).asInstanceOf[MessageChooser]))
       .toMap
     val priority = new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers)
+    // TODO get last offsets
     val bootstrapping = new BootstrappingChooser(Map(), priority)
     bootstrapping
   }
