@@ -32,7 +32,7 @@ import org.apache.samza.SamzaException
  * a tier's MessageChooser as the tie breaker when more than one envelope
  * exists with the same priority.
  */
-class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser]) extends MessageChooser {
+class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser]) extends BaseMessageChooser {
 
   /**
    * A sorted list of MessageChoosers. Sorting is according to their priority, from high to low.

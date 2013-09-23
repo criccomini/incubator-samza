@@ -27,7 +27,7 @@ package org.apache.samza.system
  * This class depends on the contract defined in MessageChooser. Specifically,
  * it only works with one envelope per SystemStreamPartition at a time.
  */
-class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends MessageChooser {
+class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends BaseMessageChooser {
   var preferredSystemStreamPartition: SystemStreamPartition = null
   var preferredEnvelope: IncomingMessageEnvelope = null
   var batchCount = 0

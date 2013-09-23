@@ -4,6 +4,7 @@ import org.apache.samza.config.Config
 import org.apache.samza.config.DefaultChooserConfig._
 import org.apache.samza.config.TaskConfig._
 
+// TODO add logging everywhere
 // TODO javadocs for DefaultChooser
 class DefaultChooserFactory extends MessageChooserFactory {
   def getChooser(config: Config): MessageChooser = {

@@ -9,15 +9,30 @@ package org.apache.samza.system
  * This trait is meant to be mixed in with a MessageChooser.
  */
 class BootstrappingChooser(
-  lastMessageOffsets: Map[SystemStreamPartition, String],
-  wrapped: MessageChooser) extends MessageChooser {
+  /**
+   * A map from SSP to latest offset for each bootstrap stream. If a stream
+   * does not need to be bootstrapped, it should not be included in this map.
+   */
+  latestMessageOffsets: Map[SystemStreamPartition, String],
 
-  var laggingSystemStreamPartitions = lastMessageOffsets.keySet
+  /**
+   * The message chooser that BootstrappingChooser delegates to when it's
+   * updating or choosing envelopes.
+   */
+  wrapped: MessageChooser) extends BaseMessageChooser {
+
+  var laggingSystemStreamPartitions = latestMessageOffsets.keySet
   var updatedSystemStreamPartitions = Set[SystemStreamPartition]()
 
-  // TODO need a way to handle the case where we are caught up to an SSP at 
-  // startup -- no messages will ever be updated, so we need another way to 
-  // remove them.
+  override def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) {
+    val latestOffset = latestMessageOffsets.getOrElse(systemStreamPartition, null)
+
+    // If the last offset read is the same as the latest offset in the SSP, 
+    // then we're already at head for this SSP, so remove it from the lag list.
+    if (lastReadOffset != null && lastReadOffset.equals(latestOffset)) {
+      laggingSystemStreamPartitions -= systemStreamPartition
+    }
+  }
 
   def update(envelope: IncomingMessageEnvelope) {
     wrapped.update(envelope)
@@ -32,7 +47,7 @@ class BootstrappingChooser(
    * BootstrappingChooser simply returns null, and waits for more updates.
    */
   def choose = {
-    if ((laggingSystemStreamPartitions -- updatedSystemStreamPartitions).size == 0) {
+    if (laggingSystemStreamPartitions.size == 0 || (laggingSystemStreamPartitions -- updatedSystemStreamPartitions).size == 0) {
       val envelope = wrapped.choose
 
       if (envelope != null) {
@@ -43,7 +58,7 @@ class BootstrappingChooser(
 
         // The stream is no longer lagging if the offset is null (unsupported), 
         // or if the envelope's offset equals the lastOffset map. 
-        if (offset == null || offset.equals(lastMessageOffsets.getOrElse(systemStreamPartition, null))) {
+        if (offset == null || offset.equals(latestMessageOffsets.getOrElse(systemStreamPartition, null))) {
           laggingSystemStreamPartitions -= systemStreamPartition
         }
       }

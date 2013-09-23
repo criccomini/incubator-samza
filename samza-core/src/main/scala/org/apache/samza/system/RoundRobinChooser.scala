@@ -32,7 +32,7 @@ import org.apache.samza.SamzaException
  * RoundRobinChooser.choose returning the prior one, a SamzaException will be
  * thrown.
  */
-class RoundRobinChooser extends MessageChooser {
+class RoundRobinChooser extends BaseMessageChooser {
 
   /**
    * SystemStreamPartitions that the chooser has received a message for, but
