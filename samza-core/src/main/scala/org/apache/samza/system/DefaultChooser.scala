@@ -28,8 +28,9 @@ class DefaultChooserFactory extends MessageChooserFactory {
       .map((_: Int, new BatchingChooser(new RoundRobinChooser, batchSize).asInstanceOf[MessageChooser]))
       .toMap
     val priority = new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers)
+    // TODO make tie-breaking message chooser injectable so we can have a time-aligned one
     // TODO get last offsets
-    val bootstrapping = new BootstrappingChooser(Map(), priority)
-    bootstrapping
+    val behind = new StreamsBehindHeadChooser(Map(), priority)
+    behind
   }
 }
