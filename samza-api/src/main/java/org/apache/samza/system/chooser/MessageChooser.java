@@ -17,7 +17,10 @@
  * under the License.
  */
 
-package org.apache.samza.system;
+package org.apache.samza.system.chooser;
+
+import org.apache.samza.system.IncomingMessageEnvelope;
+import org.apache.samza.system.SystemStreamPartition;
 
 /**
  * MessageChooser is an interface for programmatic fine-grain control over

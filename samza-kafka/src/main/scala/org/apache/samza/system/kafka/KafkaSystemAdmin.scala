@@ -25,6 +25,7 @@ import org.apache.samza.util.ClientUtilTopicMetadataStore
 import kafka.api.TopicMetadata
 import scala.collection.JavaConversions._
 import org.apache.samza.system.SystemAdmin
+import org.apache.samza.SamzaException
 
 class KafkaSystemAdmin(
   systemName: String,
@@ -48,4 +49,7 @@ class KafkaSystemAdmin(
       .map(pm => new Partition(pm.partitionId))
       .toSet[Partition]
   }
+
+  // TODO implement this
+  def getLastOffsets(streams: java.util.Set[String]) = throw new SamzaException("Need to implement this")
 }

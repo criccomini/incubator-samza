@@ -54,9 +54,9 @@ import org.apache.samza.task.ReadableCoordinator
 import org.apache.samza.system.SystemProducers
 import org.apache.samza.task.ReadableCollector
 import org.apache.samza.system.SystemConsumers
-import org.apache.samza.system.MessageChooser
-import org.apache.samza.system.RoundRobinChooserFactory
-import org.apache.samza.system.MessageChooserFactory
+import org.apache.samza.system.chooser.MessageChooser
+import org.apache.samza.system.chooser.RoundRobinChooserFactory
+import org.apache.samza.system.chooser.MessageChooserFactory
 import org.apache.samza.system.SystemProducersMetrics
 import org.apache.samza.system.SystemConsumersMetrics
 import org.apache.samza.metrics.MetricsRegistryMap

@@ -17,11 +17,13 @@
  * under the License.
  */
 
-package org.apache.samza.system
+package org.apache.samza.system.chooser
 
 import org.junit.Assert._
 import org.junit.Test
 import org.apache.samza.Partition
+import org.apache.samza.system.IncomingMessageEnvelope
+import org.apache.samza.system.SystemStreamPartition
 
 class TestRoundRobinChooser {
   @Test

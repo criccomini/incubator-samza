@@ -17,9 +17,11 @@
  * under the License.
  */
 
-package org.apache.samza.system;
+package org.apache.samza.system.chooser;
 
 import java.util.PriorityQueue;
+import org.apache.samza.system.IncomingMessageEnvelope;
+import org.apache.samza.system.SystemStreamPartition;
 
 /**
  * An abstract class that makes it easy to write message choosers based on a

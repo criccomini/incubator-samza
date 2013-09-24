@@ -4,6 +4,7 @@ import scala.collection.JavaConversions._
 import org.apache.samza.Partition
 import org.junit.Assert._
 import org.junit.Test
+import org.apache.samza.system.chooser.MessageChooser
 
 class TestSystemConsumers {
   @Test

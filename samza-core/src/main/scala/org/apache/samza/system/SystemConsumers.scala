@@ -21,10 +21,9 @@ package org.apache.samza.system
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.Queue
-
 import org.apache.samza.serializers.SerdeManager
-
 import grizzled.slf4j.Logging
+import org.apache.samza.system.chooser.MessageChooser
 
 class SystemConsumers(
   chooser: MessageChooser,

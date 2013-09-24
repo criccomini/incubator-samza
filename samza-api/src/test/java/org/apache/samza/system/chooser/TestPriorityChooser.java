@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.samza.system;
+package org.apache.samza.system.chooser;
 
 import static org.junit.Assert.*;
+import org.apache.samza.system.IncomingMessageEnvelope;
 import org.junit.Test;
 
 public class TestPriorityChooser {

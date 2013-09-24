@@ -17,11 +17,13 @@
  * under the License.
  */
 
-package org.apache.samza.system
+package org.apache.samza.system.chooser
 
 import java.util.ArrayDeque
 import org.apache.samza.config.Config
 import org.apache.samza.SamzaException
+import org.apache.samza.system.SystemStreamPartition
+import org.apache.samza.system.IncomingMessageEnvelope
 
 /**
  * A chooser that round robins between all system stream partitions. This

@@ -17,10 +17,21 @@
  * under the License.
  */
 
-package org.apache.samza.system;
+package org.apache.samza.system.chooser;
 
-import org.apache.samza.config.Config;
+import org.apache.samza.system.SystemStreamPartition;
 
-public interface MessageChooserFactory {
-  MessageChooser getChooser(Config config);
+/**
+ * An abstract MessageChooser that implements start/stop/register for choosers
+ * that don't use them.
+ */
+abstract public class BaseMessageChooser implements MessageChooser {
+  public void start() {
+  }
+
+  public void stop() {
+  }
+
+  public void register(SystemStreamPartition systemStreamPartition, String lastReadOffset) {
+  }
 }
