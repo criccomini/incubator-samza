@@ -25,13 +25,13 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.system.IncomingMessageEnvelope
 
 /**
- * StreamsBehindHeadChooser is a composable MessageChooser that only chooses
+ * BootstrappingChooser is a composable MessageChooser that only chooses
  * an envelope when it's received at least one envelope for each SystemStream.
  * It does this by only allowing wrapped.choose to be called when the wrapped
  * MessageChooser has been updated with at least on envelope for every
- * SystemStream. Thus, the guarantee is that the wrapped chooser will have an
- * envelope from each SystemStream whenever it has to make a choice about
- * which envelope to process next.
+ * SystemStream defined in the latestMessageOffsets map. Thus, the guarantee
+ * is that the wrapped chooser will have an envelope from each SystemStream
+ * whenever it has to make a choice about which envelope to process next.
  *
  * This behavior continues for each SystemStream that has lagging partitions.
  * As a SystemStream catches up to head, it is no longer marked as lagging,
@@ -43,7 +43,7 @@ import org.apache.samza.system.IncomingMessageEnvelope
  * If a SystemStream falls behind after the initial catch-up, this chooser
  * makes no effort to catch the SystemStream back up, again.
  */
-class StreamsBehindHeadChooser(
+class BootstrappingChooser(
   /**
    * A map from SSP to latest offset for each SSP. If a stream does not need
    * to be guaranteed available to the underlying wrapped chooser, it should
@@ -52,7 +52,7 @@ class StreamsBehindHeadChooser(
   latestMessageOffsets: Map[SystemStreamPartition, String],
 
   /**
-   * The message chooser that StreamsBehindHeadChooser delegates to when it's
+   * The message chooser that BootstrappingChooser delegates to when it's
    * updating or choosing envelopes.
    */
   wrapped: MessageChooser) extends BaseMessageChooser {
@@ -92,7 +92,7 @@ class StreamsBehindHeadChooser(
    * If choose is called, and the parent MessageChoser has received an
    * envelope from at least one partition in each lagging SystemStream, then
    * the choose call is forwarded  to the wrapped chooser. Otherwise, the
-   * StreamsBehindHeadChooser simply returns null, and waits for more updates.
+   * BootstrappingChooser simply returns null, and waits for more updates.
    */
   def choose = {
     // If no system streams are behind, then go straight to the wrapped chooser.

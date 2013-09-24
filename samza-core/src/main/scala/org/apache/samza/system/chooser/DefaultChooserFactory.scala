@@ -54,7 +54,7 @@ class DefaultChooserFactory extends MessageChooserFactory {
       .map((_: Int, new BatchingChooser(getTieBreaker(config), batchSize).asInstanceOf[MessageChooser]))
       .toMap
     val priority = new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers)
-    val behind = new StreamsBehindHeadChooser(latestMessageOffsets, priority)
+    val behind = new BootstrappingChooser(latestMessageOffsets, priority)
     behind
   }
 
