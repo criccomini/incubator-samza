@@ -19,10 +19,12 @@
 
 package org.apache.samza.system;
 
+import java.util.Map;
 import java.util.Set;
-
 import org.apache.samza.Partition;
 
 public interface SystemAdmin {
   Set<Partition> getPartitions(String streamName);
+
+  Map<SystemStreamPartition, String> getLastOffsets(Set<String> streams);
 }
