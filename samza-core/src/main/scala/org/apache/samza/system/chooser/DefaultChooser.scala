@@ -204,7 +204,7 @@ class DefaultChooser(
 
 class DefaultChooserFactory extends MessageChooserFactory {
   def getChooser(config: Config): MessageChooser = {
-    val wrappedChooserFactoryClass = config.getWrappedChooserFactory.getOrElse(classOf[RoundRobinChooser].getName)
+    val wrappedChooserFactoryClass = config.getWrappedChooserFactory.getOrElse(classOf[RoundRobinChooserFactory].getName)
     val wrappedChooserFactory = Util.getObj[MessageChooserFactory](wrappedChooserFactoryClass)
     val batchSize = config.getChooserBatchSize
 
