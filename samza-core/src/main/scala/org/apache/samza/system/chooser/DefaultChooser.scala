@@ -19,15 +19,18 @@
 
 package org.apache.samza.system.chooser
 
+import scala.collection.JavaConversions._
+
+import org.apache.samza.SamzaException
 import org.apache.samza.config.Config
 import org.apache.samza.config.DefaultChooserConfig._
-import org.apache.samza.config.TaskConfig._
 import org.apache.samza.config.SystemConfig._
-import org.apache.samza.SamzaException
-import org.apache.samza.util.Util
-import scala.collection.JavaConversions._
+import org.apache.samza.config.TaskConfig._
+import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemFactory
 import org.apache.samza.system.SystemStream
+import org.apache.samza.system.SystemStreamPartition
+import org.apache.samza.util.Util
 
 /**
  * DefaultChooserFactory builds the default MessageChooser for Samza, when one
@@ -122,8 +125,87 @@ import org.apache.samza.system.SystemStream
  * last example, except that it will always start from offset zero, which means
  * that it will always read all messages in the topic from oldest to newest.
  */
+class DefaultChooser(
+  /**
+   * Returns a base MessageChooser that the DefaultChooser should use when it's
+   * composing its MessageChooser classes.
+   *
+   * If there are prioritized streams, then this class is used in cases where
+   * there are multiple messages that are the same priority, and the
+   * BatchingChooser is not preferring a specific SystemStreamPartition.
+   *
+   * If you wish to over-ride the tie breaking strategy, simply configure the
+   * DefaultChooser with a custom task.chooser.wrapped.class. For example, if
+   * you wanted to break ties based on the time field in a message, you could
+   * implement a TimeChooser class, and configure its factory as the wrapped
+   * class.
+   *
+   * In cases where streams are not prioritized, and there's no bootstrapping,
+   * this is the chooser that's used to make envelope picking decisions.
+   */
+  getWrappedChooser: () => MessageChooser = () => new RoundRobinChooser,
+  batchSize: Option[Int] = None,
+  prioritizedStreams: Map[SystemStream, Int] = Map(),
+  latestMessageOffsets: Map[SystemStreamPartition, String] = Map()) extends MessageChooser {
+
+  val wrapped = buildChooser()
+
+  def update(envelope: IncomingMessageEnvelope) {
+    wrapped.update(envelope)
+  }
+
+  def choose = wrapped.choose
+
+  def start = wrapped.start
+
+  def stop = wrapped.stop
+
+  def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) = wrapped.register(systemStreamPartition, lastReadOffset)
+
+  private def buildChooser() = {
+    val useBootstrapping = latestMessageOffsets.size > 0
+    val usePriority = useBootstrapping || prioritizedStreams.size > 0
+
+    val chooser = if (usePriority) {
+      val bootstrapStreams = latestMessageOffsets
+        .keySet
+        .map(systemStreamPartition => (systemStreamPartition.getSystemStream, Int.MaxValue))
+        .toMap
+      val allPrioritizedStreams = bootstrapStreams ++ prioritizedStreams
+      val prioritizedChoosers = allPrioritizedStreams
+        .values
+        .toSet
+        .map((_: Int, maybeBatchingChooser().asInstanceOf[MessageChooser]))
+        .toMap
+      new TieredPriorityChooser(allPrioritizedStreams, prioritizedChoosers, maybeBatchingChooser())
+    } else {
+      maybeBatchingChooser()
+    }
+
+    if (useBootstrapping) {
+      new BootstrappingChooser(chooser, latestMessageOffsets)
+    } else {
+      chooser
+    }
+  }
+
+  /**
+   * A helper method to build either a batched or non-batched chooser,
+   * depending on config.
+   */
+  private def maybeBatchingChooser() = {
+    if (batchSize.isDefined) {
+      new BatchingChooser(getWrappedChooser(), batchSize.get)
+    } else {
+      getWrappedChooser()
+    }
+  }
+}
+
 class DefaultChooserFactory extends MessageChooserFactory {
   def getChooser(config: Config): MessageChooser = {
+    val wrappedChooserFactoryClass = config.getWrappedChooserFactory.getOrElse(classOf[RoundRobinChooser].getName)
+    val wrappedChooserFactory = Util.getObj[MessageChooserFactory](wrappedChooserFactoryClass)
     val batchSize = config.getChooserBatchSize
 
     // Normal streams default to priority 0.
@@ -142,57 +224,22 @@ class DefaultChooserFactory extends MessageChooserFactory {
     val prioritizedStreams = config.getPriorityStreams
 
     // Only wire in what we need.
-    val useBatching = batchSize.isDefined
     val useBootstrapping = prioritizedBootstrapStreams.size > 0
     val usePriority = useBootstrapping || prioritizedStreams.size > 0
+    val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
 
-    // A helper method to build either a batched or non-batched chooser, depending on config.
-    val maybeBatchingChooser = () => {
-      if (useBatching) {
-        new BatchingChooser(getWrappedChooser(config), batchSize.get.toInt)
-      } else {
-        getWrappedChooser(config)
-      }
-    }
-
-    val chooser = if (usePriority) {
-      val allPrioritizedStreams = defaultPrioritizedStreams ++ prioritizedBootstrapStreams ++ prioritizedStreams
-      val prioritizedChoosers = allPrioritizedStreams
-        .values
-        .toSet
-        .map((_: Int, maybeBatchingChooser().asInstanceOf[MessageChooser]))
-        .toMap
-      new TieredPriorityChooser(allPrioritizedStreams, prioritizedChoosers)
+    val priorities = if (usePriority) {
+      defaultPrioritizedStreams ++ prioritizedBootstrapStreams ++ prioritizedStreams
     } else {
-      maybeBatchingChooser()
+      Map[SystemStream, Int]()
     }
 
-    if (useBootstrapping) {
-      val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
-
-      new BootstrappingChooser(chooser, latestMessageOffsets)
-    } else {
-      chooser
-    }
+    new DefaultChooser(
+      () => wrappedChooserFactory.getChooser(config),
+      if (batchSize.isDefined) Some(batchSize.get.toInt) else None,
+      priorities,
+      latestMessageOffsets)
   }
-
-  /**
-   * Returns a base MessageChooser that the DefaultChooserFactory should use
-   * when it's composing its MessageChooser classes.
-   *
-   * If there are prioritized streams, then this class is used in cases where
-   * there are multiple messages that are the same priority, and the
-   * BatchingChooser is not preferring a specific SystemStreamPartition.
-   *
-   * If you wish to over-ride the tie breaking strategy, simply extend the
-   * DefaultChooserFactory, and override this method. For example, if you
-   * wanted to break ties based on the time field in a message, you could
-   * implement a TimeChooser class, and return it here.
-   *
-   * In cases where streams are not prioritized, and there's no bootstrapping,
-   * this is the chooser that's used to make envelope picking decisions.
-   */
-  protected def getWrappedChooser(config: Config): MessageChooser = new RoundRobinChooser
 
   /**
    * Given a set of SystemStreams, returns a map of SystemStreamPartition to

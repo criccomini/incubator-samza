@@ -23,6 +23,7 @@ import scala.collection.immutable.TreeMap
 import org.apache.samza.SamzaException
 import org.apache.samza.system.SystemStream
 import org.apache.samza.system.IncomingMessageEnvelope
+import org.apache.samza.system.SystemStreamPartition
 
 /**
  * TieredPriorityChooser groups messages into priority tiers. Each priority
@@ -53,7 +54,7 @@ import org.apache.samza.system.IncomingMessageEnvelope
  * a tier's MessageChooser as the tie breaker when more than one envelope
  * exists with the same priority.
  */
-class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser]) extends BaseMessageChooser {
+class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser], default: MessageChooser = null) extends MessageChooser {
 
   /**
    * A sorted list of MessageChoosers. Sorting is according to their priority,
@@ -75,7 +76,7 @@ class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[In
 
   def update(envelope: IncomingMessageEnvelope) {
     val systemStream = envelope.getSystemStreamPartition.getSystemStream
-    val chooser = prioritizedStreams.getOrElse(systemStream, throw new SamzaException("Can't update message since no priority defined for system stream: %s" format systemStream))
+    val chooser = prioritizedStreams.getOrElse(systemStream, Option(default).getOrElse(throw new SamzaException("No default chooser defined, and no priority assigned to stream. Can't prioritize: %s" format envelope.getSystemStreamPartition)))
     chooser.update(envelope)
   }
 
@@ -94,6 +95,34 @@ class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[In
       envelope = iter.next.choose
     }
 
-    envelope
+    if (envelope == null && default != null) {
+      default.choose
+    } else {
+      envelope
+    }
+  }
+
+  def start = {
+    if (default != null) {
+      default.start
+    }
+
+    choosers.values.foreach(_.start)
+  }
+
+  def stop = {
+    if (default != null) {
+      default.stop
+    }
+
+    choosers.values.foreach(_.stop)
+  }
+
+  def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) = {
+    if (default != null) {
+      default.register(systemStreamPartition, lastReadOffset)
+    }
+
+    choosers.values.foreach(_.register(systemStreamPartition, lastReadOffset))
   }
 }

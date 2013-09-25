@@ -49,7 +49,7 @@ import org.apache.samza.system.IncomingMessageEnvelope
  * This class depends on the contract defined in MessageChooser. Specifically,
  * it only works with one envelope per SystemStreamPartition at a time.
  */
-class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends BaseMessageChooser {
+class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends MessageChooser {
   var preferredSystemStreamPartition: SystemStreamPartition = null
   var preferredEnvelope: IncomingMessageEnvelope = null
   var batchCount = 0
@@ -110,4 +110,10 @@ class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends Bas
     batchCount = 0
     preferredSystemStreamPartition = null
   }
+
+  def start = wrapped.start
+
+  def stop = wrapped.stop
+
+  def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) = wrapped.register(systemStreamPartition, lastReadOffset)
 }

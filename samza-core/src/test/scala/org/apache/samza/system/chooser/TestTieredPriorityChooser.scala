@@ -25,12 +25,67 @@ import org.apache.samza.system.IncomingMessageEnvelope
 import scala.collection.immutable.Queue
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.Partition
+import org.apache.samza.SamzaException
 
 class TestTieredPriorityChooser {
   val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
   val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
   val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
   val envelope4 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), "123", null, 4);
+
+  @Test
+  def testChooserShouldStartStopAndRegister {
+    val mock0 = new MockMessageChooser
+    val mock1 = new MockMessageChooser
+    val chooser = new TieredPriorityChooser(
+      Map(envelope1.getSystemStreamPartition -> 1),
+      Map(1 -> mock1),
+      mock0)
+
+    chooser.register(envelope1.getSystemStreamPartition, "foo")
+    chooser.start
+    assertEquals("foo", mock1.registers(envelope1.getSystemStreamPartition))
+    assertEquals(1, mock0.starts)
+    assertEquals(1, mock1.starts)
+    chooser.stop
+    assertEquals(1, mock0.stops)
+    assertEquals(1, mock1.stops)
+  }
+
+  @Test
+  def testChooserShouldFallBackToDefault {
+    val mock = new MockMessageChooser
+    val chooser = new TieredPriorityChooser(
+      Map(),
+      Map(),
+      mock)
+
+    chooser.register(envelope1.getSystemStreamPartition, null)
+    chooser.start
+    assertEquals(null, chooser.choose)
+    chooser.update(envelope1)
+    assertEquals(envelope1, chooser.choose)
+    assertEquals(null, chooser.choose)
+  }
+
+  @Test
+  def testChooserShouldFailWithNoDefault {
+    val mock = new MockMessageChooser
+    val chooser = new TieredPriorityChooser(
+      Map(),
+      Map())
+
+    chooser.register(envelope1.getSystemStreamPartition, null)
+    chooser.start
+    assertEquals(null, chooser.choose)
+
+    try {
+      chooser.update(envelope1)
+      fail("Should have failed due to missing default chooser.")
+    } catch {
+      case e: SamzaException => // Expected.
+    }
+  }
 
   @Test
   def testChooserWithSingleStream {
@@ -40,8 +95,9 @@ class TestTieredPriorityChooser {
       Map(0 -> mock))
 
     chooser.register(envelope1.getSystemStreamPartition, null)
-    assertEquals(null, chooser.choose)
+    chooser.start
 
+    assertEquals(null, chooser.choose)
     chooser.update(envelope1)
     chooser.update(envelope4)
     assertEquals(envelope1, chooser.choose)
@@ -64,8 +120,9 @@ class TestTieredPriorityChooser {
 
     chooser.register(envelope2.getSystemStreamPartition, null)
     chooser.register(envelope3.getSystemStreamPartition, null)
-    assertEquals(null, chooser.choose)
+    chooser.start
 
+    assertEquals(null, chooser.choose)
     chooser.update(envelope2)
     chooser.update(envelope3)
     assertEquals(envelope2, chooser.choose)
@@ -90,8 +147,9 @@ class TestTieredPriorityChooser {
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, null)
-    assertEquals(null, chooser.choose)
+    chooser.start
 
+    assertEquals(null, chooser.choose)
     chooser.update(envelope1)
     chooser.update(envelope4)
     assertEquals(envelope1, chooser.choose)
@@ -131,8 +189,9 @@ class TestTieredPriorityChooser {
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, null)
-    assertEquals(null, chooser.choose)
+    chooser.start
 
+    assertEquals(null, chooser.choose)
     chooser.update(envelope1)
     chooser.update(envelope4)
     assertEquals(envelope1, chooser.choose)

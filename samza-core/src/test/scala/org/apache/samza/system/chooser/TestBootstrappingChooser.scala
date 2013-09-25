@@ -37,10 +37,15 @@ class TestBootstrappingChooser {
     val mock = new MockMessageChooser
     val chooser = new BootstrappingChooser(mock)
 
-    chooser.register(envelope1.getSystemStreamPartition, null)
+    chooser.register(envelope1.getSystemStreamPartition, "foo")
+    chooser.start
+    assertEquals(1, mock.starts)
+    assertEquals("foo", mock.registers(envelope1.getSystemStreamPartition))
     chooser.update(envelope1)
     assertEquals(envelope1, chooser.choose)
     assertEquals(null, chooser.choose)
+    chooser.stop
+    assertEquals(1, mock.stops)
   }
 
   @Test
@@ -54,6 +59,7 @@ class TestBootstrappingChooser {
     // to be chosen.
     chooser.register(envelope1.getSystemStreamPartition, "123")
     chooser.register(envelope2.getSystemStreamPartition, "321")
+    chooser.start
     chooser.update(envelope2)
     assertEquals(envelope2, chooser.choose)
     assertEquals(null, chooser.choose)
@@ -70,6 +76,7 @@ class TestBootstrappingChooser {
     // to be chosen.
     chooser.register(envelope1.getSystemStreamPartition, "1")
     chooser.register(envelope2.getSystemStreamPartition, null)
+    chooser.start
     chooser.update(envelope2)
     // Choose should not return anything since bootstrapper is blocking 
     // wrapped.choose until it gets an update from envelope1's SSP.
@@ -109,6 +116,7 @@ class TestBootstrappingChooser {
     chooser.register(envelope1.getSystemStreamPartition, "1")
     chooser.register(envelope2.getSystemStreamPartition, "1")
     chooser.register(envelope3.getSystemStreamPartition, "1")
+    chooser.start
     chooser.update(envelope1)
     assertEquals(null, chooser.choose)
     chooser.update(envelope3)

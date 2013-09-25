@@ -33,6 +33,11 @@ class TestRoundRobinChooser {
     val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(1)), null, null, 2);
     val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
 
+    chooser.register(envelope1.getSystemStreamPartition, null)
+    chooser.register(envelope2.getSystemStreamPartition, "")
+    chooser.register(envelope3.getSystemStreamPartition, "123")
+    chooser.start
+
     assertEquals(null, chooser.choose)
 
     // Test one message.

@@ -55,7 +55,7 @@ class BootstrappingChooser(
    * to be guaranteed available to the underlying wrapped chooser, it should
    * not be included in this map.
    */
-  var latestMessageOffsets: Map[SystemStreamPartition, String] = Map()) extends BaseMessageChooser {
+  var latestMessageOffsets: Map[SystemStreamPartition, String] = Map()) extends MessageChooser {
 
   /**
    * The number of lagging partitions for each SystemStream that's behind.
@@ -76,10 +76,16 @@ class BootstrappingChooser(
    */
   var updatedSystemStreams = scala.collection.mutable.Map[SystemStream, Int]().withDefaultValue(0)
 
+  def start = wrapped.start
+
+  def stop = wrapped.stop
+
   override def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) {
     // If the last offset read is the same as the latest offset in the SSP, 
     // then we're already at head for this SSP, so remove it from the lag list.
     checkOffset(systemStreamPartition, lastReadOffset)
+
+    wrapped.register(systemStreamPartition, lastReadOffset)
   }
 
   def update(envelope: IncomingMessageEnvelope) {

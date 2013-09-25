@@ -35,6 +35,13 @@ class TestBatchingChooser {
     val mock = new MockMessageChooser
     val chooser = new BatchingChooser(mock, 2)
 
+    chooser.register(envelope1.getSystemStreamPartition, null)
+    chooser.register(envelope2.getSystemStreamPartition, "")
+    chooser.start
+    // Make sure start and register are working.
+    assertEquals(1, mock.starts)
+    assertEquals(null, mock.registers(envelope1.getSystemStreamPartition))
+    assertEquals("", mock.registers(envelope2.getSystemStreamPartition))
     assertEquals(null, chooser.choose)
     chooser.update(envelope1)
     assertEquals(envelope1, mock.getEnvelopes.head)
@@ -66,23 +73,7 @@ class TestBatchingChooser {
     assertEquals(1, mock.getEnvelopes.size)
     assertEquals(envelope2, mock.getEnvelopes.head)
     assertEquals(envelope1, chooser.choose)
+    chooser.stop
+    assertEquals(1, mock.stops)
   }
-}
-
-class MockMessageChooser extends BaseMessageChooser {
-  var envelopes = scala.collection.mutable.Queue[IncomingMessageEnvelope]()
-
-  def update(envelope: IncomingMessageEnvelope) {
-    envelopes += envelope
-  }
-
-  def choose = {
-    try {
-      envelopes.dequeue
-    } catch {
-      case e: NoSuchElementException => null
-    }
-  }
-
-  def getEnvelopes = envelopes
 }
