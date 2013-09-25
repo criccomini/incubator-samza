@@ -24,11 +24,16 @@ import org.junit.Test
 import org.apache.samza.Partition
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemStreamPartition
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
+import java.util.Arrays
 
-class TestRoundRobinChooser {
+@RunWith(value = classOf[Parameterized])
+class TestRoundRobinChooser(getChooser: () => MessageChooser) {
   @Test
   def testRoundRobinChooser {
-    val chooser = new RoundRobinChooser
+    val chooser = getChooser()
     val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
     val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(1)), null, null, 2);
     val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
@@ -79,4 +84,12 @@ class TestRoundRobinChooser {
     assertEquals(envelope3, chooser.choose)
     assertEquals(null, chooser.choose)
   }
+}
+
+object TestRoundRobinChooser {
+  // Test both RoundRobinChooser and DefaultChooser here. DefaultChooser with 
+  // no batching, prioritization, or bootstrapping should default to just a 
+  // plain vanilla round robin chooser.
+  @Parameters
+  def parameters: java.util.Collection[Array[() => MessageChooser]] = Arrays.asList(Array(() => new RoundRobinChooser), Array(() => new DefaultChooser))
 }
