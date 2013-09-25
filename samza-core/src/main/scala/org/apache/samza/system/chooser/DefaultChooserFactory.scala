@@ -123,9 +123,6 @@ import org.apache.samza.system.SystemStream
  * that it will always read all messages in the topic from oldest to newest.
  */
 class DefaultChooserFactory extends MessageChooserFactory {
-
-  // TODO can we make a DefaultChooser(batching: Boolean = false, prioritizer = false, bootstrapper=false), or something, to make this more testable?
-
   def getChooser(config: Config): MessageChooser = {
     val batchSize = config.getChooserBatchSize
 

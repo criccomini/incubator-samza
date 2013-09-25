@@ -158,5 +158,10 @@ class TestTieredPriorityChooser {
     assertEquals(envelope1, chooser.choose)
     assertEquals(envelope2, chooser.choose)
     assertEquals(null, chooser.choose)
+
+    // Just the low priority stream.
+    chooser.update(envelope2)
+    assertEquals(envelope2, chooser.choose)
+    assertEquals(null, chooser.choose)
   }
 }
