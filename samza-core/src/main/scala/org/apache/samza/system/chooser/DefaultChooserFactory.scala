@@ -106,14 +106,21 @@ import org.apache.samza.system.SystemStream
  *   task.chooser.bootstrap.kafka.profiles=true
  *   task.chooser.prioriites.kafka.mystream=1
  *
- * This configuration will read all messages from kafka.profiels, up to head.
- * It will then prefer messages from profiles over mystream, and prefer
- * messages from mystream over any other stream. In cases where there is more
- * than one envelope available with the same priority (e.g. two envelopes from
- * different partitions in the profiles stream), RoundRobinChooser will be used
- * to break the tie. Once the tie is broken, up to 100 messages will be read
- * from the envelope's SystemStreamPartition, before RoundRobinChooser is
- * consulted againt to break the next tie.
+ * This configuration will read all messages from kafka.profiles from the last
+ * checkpointed offset, up to head. It will then prefer messages from profiles
+ * over mystream, and prefer messages from mystream over any other stream. In
+ * cases where there is more than one envelope available with the same priority
+ * (e.g. two envelopes from different partitions in the profiles stream),
+ * RoundRobinChooser will be used to break the tie. Once the tie is broken, up
+ * to 100 messages will be read from the envelope's SystemStreamPartition,
+ * before RoundRobinChooser is consulted again to break the next tie.
+ *
+ *   task.chooser.bootstrap.kafka.profiles=true
+ *   systems.kafka.streams.profiles.samza.reset.offset=true
+ *
+ * This configuration will bootstrap the profiles stream the same way as the
+ * last example, except that it will always start from offset zero, which means
+ * that it will always read all messages in the topic from oldest to newest.
  */
 class DefaultChooserFactory extends MessageChooserFactory {
   def getChooser(config: Config): MessageChooser = {

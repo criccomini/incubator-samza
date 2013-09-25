@@ -31,8 +31,7 @@ class TestBatchingChooser {
   def testChooserShouldHandleBothBatchSizeOverrunAndNoEnvelopeAvailable {
     val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
     val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
-    val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
-    val envelope4 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 4);
+    val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 3);
     val mock = new MockMessageChooser
     val chooser = new BatchingChooser(mock, 2)
 
@@ -44,11 +43,11 @@ class TestBatchingChooser {
     chooser.update(envelope2)
     assertEquals(envelope2, mock.getEnvelopes.head)
     // This envelope should be batched, and therefore cached in the BatchingChooser.
-    chooser.update(envelope4)
+    chooser.update(envelope3)
     assertEquals(1, mock.getEnvelopes.size)
     assertEquals(envelope2, mock.getEnvelopes.head)
-    // Preferred envelope4 over envelope2, since envelope4 was in the same SSP.
-    assertEquals(envelope4, chooser.choose)
+    // Preferred envelope3 over envelope2, since envelope3 was in the same SSP.
+    assertEquals(envelope3, chooser.choose)
     // Since batch size is 2, we should have reset batch size, and should fall back to the mock now.
     chooser.update(envelope1)
     assertEquals(2, mock.getEnvelopes.size)

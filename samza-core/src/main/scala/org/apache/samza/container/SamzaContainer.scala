@@ -55,11 +55,11 @@ import org.apache.samza.system.SystemProducers
 import org.apache.samza.task.ReadableCollector
 import org.apache.samza.system.SystemConsumers
 import org.apache.samza.system.chooser.MessageChooser
-import org.apache.samza.system.chooser.RoundRobinChooserFactory
 import org.apache.samza.system.chooser.MessageChooserFactory
 import org.apache.samza.system.SystemProducersMetrics
 import org.apache.samza.system.SystemConsumersMetrics
 import org.apache.samza.metrics.MetricsRegistryMap
+import org.apache.samza.system.chooser.DefaultChooserFactory
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -237,7 +237,7 @@ object SamzaContainer extends Logging {
 
     info("Setting up message chooser.")
 
-    val chooserFactoryClassName = config.getMessageChooserClass.getOrElse(classOf[RoundRobinChooserFactory].getName)
+    val chooserFactoryClassName = config.getMessageChooserClass.getOrElse(classOf[DefaultChooserFactory].getName)
 
     val chooser = Util
       .getObj[MessageChooserFactory](chooserFactoryClassName)
