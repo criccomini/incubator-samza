@@ -56,7 +56,8 @@ import org.apache.samza.system.IncomingMessageEnvelope
 class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser]) extends BaseMessageChooser {
 
   /**
-   * A sorted list of MessageChoosers. Sorting is according to their priority, from high to low.
+   * A sorted list of MessageChoosers. Sorting is according to their priority,
+   * from high to low.
    */
   val prioritizedChoosers = choosers
     .keys
@@ -65,7 +66,8 @@ class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[In
     .map(choosers(_))
 
   /**
-   * A map from a SystemStream to the MessageChooser that should be used for it.
+   * A map from a SystemStream to the MessageChooser that should be used for
+   * the SystemStream.
    */
   val prioritizedStreams = priorities
     .map(systemStreamPriority => (systemStreamPriority._1, choosers.getOrElse(systemStreamPriority._2, throw new SamzaException("Unable to setup priority chooser. No chooser found for priority: %s" format systemStreamPriority._2))))
