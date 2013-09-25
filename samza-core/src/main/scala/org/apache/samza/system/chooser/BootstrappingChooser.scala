@@ -45,17 +45,17 @@ import org.apache.samza.system.IncomingMessageEnvelope
  */
 class BootstrappingChooser(
   /**
+   * The message chooser that BootstrappingChooser delegates to when it's
+   * updating or choosing envelopes.
+   */
+  wrapped: MessageChooser,
+
+  /**
    * A map from SSP to latest offset for each SSP. If a stream does not need
    * to be guaranteed available to the underlying wrapped chooser, it should
    * not be included in this map.
    */
-  latestMessageOffsets: Map[SystemStreamPartition, String],
-
-  /**
-   * The message chooser that BootstrappingChooser delegates to when it's
-   * updating or choosing envelopes.
-   */
-  wrapped: MessageChooser) extends BaseMessageChooser {
+  var latestMessageOffsets: Map[SystemStreamPartition, String] = Map()) extends BaseMessageChooser {
 
   /**
    * The number of lagging partitions for each SystemStream that's behind.
@@ -71,8 +71,8 @@ class BootstrappingChooser(
   var systemStreamLagSize = systemStreamLagCounts.size
 
   /**
-   * The number of partitions that the underlying wrapped chooser has been
-   * updated with, grouped by SystemStream.
+   * The number of lagging partitions that the underlying wrapped chooser has
+   * been updated with, grouped by SystemStream.
    */
   var updatedSystemStreams = scala.collection.mutable.Map[SystemStream, Int]().withDefaultValue(0)
 
@@ -85,7 +85,10 @@ class BootstrappingChooser(
   def update(envelope: IncomingMessageEnvelope) {
     wrapped.update(envelope)
 
-    updatedSystemStreams(envelope.getSystemStreamPartition.getSystemStream) += 1
+    // If this is an SSP that is still lagging, update the count for the stream.
+    if (latestMessageOffsets.contains(envelope.getSystemStreamPartition)) {
+      updatedSystemStreams(envelope.getSystemStreamPartition.getSystemStream) += 1
+    }
   }
 
   /**
@@ -105,7 +108,9 @@ class BootstrappingChooser(
         val systemStreamPartition = envelope.getSystemStreamPartition
         val offset = envelope.getOffset
 
-        updatedSystemStreams(systemStreamPartition.getSystemStream) -= 1
+        if (latestMessageOffsets.contains(systemStreamPartition)) {
+          updatedSystemStreams(systemStreamPartition.getSystemStream) -= 1
+        }
 
         checkOffset(systemStreamPartition, offset)
       }
@@ -118,13 +123,19 @@ class BootstrappingChooser(
 
   private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String) {
     val latestOffset = latestMessageOffsets.getOrElse(systemStreamPartition, null)
+    val systemStream = systemStreamPartition.getSystemStream
 
-    // The SSP is no longer lagging if the offset is null (unsupported), or if 
-    // the envelope's offset equals the lastOffset map. 
-    if (offset != null && offset.equals(latestOffset) && systemStreamLagCounts(systemStreamPartition).decrementAndGet == 0) {
-      // If the lag count is 0, then no partition for this stream is lagging 
-      // (the stream has been fully caught up).
-      systemStreamLagSize -= 1
+    // The SSP is no longer lagging if the envelope's offset equals the 
+    // lastOffset map. 
+    if (offset != null && offset.equals(latestOffset)) {
+      latestMessageOffsets -= systemStreamPartition
+
+      if (systemStreamLagCounts(systemStream).decrementAndGet == 0) {
+        // If the lag count is 0, then no partition for this stream is lagging 
+        // (the stream has been fully caught up).
+        systemStreamLagSize -= 1
+        systemStreamLagCounts -= systemStream
+      }
     }
   }
 

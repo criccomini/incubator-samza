@@ -170,7 +170,7 @@ class DefaultChooserFactory extends MessageChooserFactory {
     if (useBootstrapping) {
       val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
 
-      new BootstrappingChooser(latestMessageOffsets, chooser)
+      new BootstrappingChooser(chooser, latestMessageOffsets)
     } else {
       chooser
     }
