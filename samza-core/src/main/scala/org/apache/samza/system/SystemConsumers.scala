@@ -28,7 +28,7 @@ import org.apache.samza.system.chooser.MessageChooser
 class SystemConsumers(
   chooser: MessageChooser,
   consumers: Map[String, SystemConsumer],
-  serdeManager: SerdeManager,
+  serdeManager: SerdeManager = new SerdeManager,
   metrics: SystemConsumersMetrics = new SystemConsumersMetrics,
   maxMsgsPerStreamPartition: Int = 1000,
   noNewMessagesTimeout: Long = 10) extends Logging {
@@ -51,6 +51,10 @@ class SystemConsumers(
   def start {
     debug("Starting consumers.")
 
+    consumers
+      .keySet
+      .foreach(metrics.registerSystem)
+
     consumers.values.foreach(_.start)
 
     chooser.start
@@ -72,8 +76,6 @@ class SystemConsumers(
     unprocessedMessages += systemStreamPartition -> Queue[IncomingMessageEnvelope]()
     consumers(systemStreamPartition.getSystem).register(systemStreamPartition, lastReadOffset)
     chooser.register(systemStreamPartition, lastReadOffset)
-
-    metrics.registerSystem(systemStreamPartition.getSystem)
   }
 
   def choose = {

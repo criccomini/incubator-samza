@@ -63,7 +63,7 @@ class BootstrappingChooser(
   var systemStreamLagCounts = latestMessageOffsets
     .keySet
     .groupBy(_.getSystemStream)
-    .mapValues(partitions => new AtomicInteger(partitions.size))
+    .mapValues(partitions => partitions.size)
 
   /**
    * The total number of SystemStreams that are lagging.
@@ -135,8 +135,9 @@ class BootstrappingChooser(
     // lastOffset map. 
     if (offset != null && offset.equals(latestOffset)) {
       latestMessageOffsets -= systemStreamPartition
+      systemStreamLagCounts += systemStream -> (systemStreamLagCounts(systemStream) - 1)
 
-      if (systemStreamLagCounts(systemStream).decrementAndGet == 0) {
+      if (systemStreamLagCounts(systemStream) == 0) {
         // If the lag count is 0, then no partition for this stream is lagging 
         // (the stream has been fully caught up).
         systemStreamLagSize -= 1

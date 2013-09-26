@@ -25,8 +25,13 @@ import org.apache.samza.system.IncomingMessageEnvelope
 import scala.collection.immutable.Queue
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.Partition
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
+import java.util.Arrays
 
-class TestBootstrappingChooser {
+@RunWith(value = classOf[Parameterized])
+class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStreamPartition, String]) => MessageChooser) {
   val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
   val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
   val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
@@ -35,7 +40,7 @@ class TestBootstrappingChooser {
   @Test
   def testChooserShouldIgnoreStreamsThatArentInOffsetMap {
     val mock = new MockMessageChooser
-    val chooser = new BootstrappingChooser(mock)
+    val chooser = getChooser(mock, Map())
 
     chooser.register(envelope1.getSystemStreamPartition, "foo")
     chooser.start
@@ -51,7 +56,7 @@ class TestBootstrappingChooser {
   @Test
   def testChooserShouldEliminateCaughtUpStreamsOnRegister {
     val mock = new MockMessageChooser
-    val chooser = new BootstrappingChooser(mock, Map(envelope1.getSystemStreamPartition -> "123"))
+    val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition -> "123"))
 
     // Even though envelope1's SSP is registered as a bootstrap stream, since 
     // 123=123, it should be marked as "caught up" and treated like a normal 
@@ -68,7 +73,7 @@ class TestBootstrappingChooser {
   @Test
   def testChooserShouldEliminateCaughtUpStreamsAfterRegister {
     val mock = new MockMessageChooser
-    val chooser = new BootstrappingChooser(mock, Map(envelope1.getSystemStreamPartition -> "123"))
+    val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition -> "123"))
 
     // Even though envelope1's SSP is registered as a bootstrap stream, since 
     // 123=123, it should be marked as "caught up" and treated like a normal 
@@ -109,7 +114,7 @@ class TestBootstrappingChooser {
   @Test
   def testChooserShouldWorkWithTwoBootstrapStreams {
     val mock = new MockMessageChooser
-    val chooser = new BootstrappingChooser(mock, Map(
+    val chooser = getChooser(mock, Map(
       envelope1.getSystemStreamPartition -> "123",
       envelope2.getSystemStreamPartition -> "321"))
 
@@ -158,4 +163,14 @@ class TestBootstrappingChooser {
     assertEquals(null, chooser.choose)
     // Fin.
   }
+}
+
+object TestBootstrappingChooser {
+  // Test both BatchingChooser and DefaultChooser here. DefaultChooser with 
+  // just batch size defined should behave just like plain vanilla batching 
+  // chooser.
+  @Parameters
+  def parameters: java.util.Collection[Array[(MessageChooser, Map[SystemStreamPartition, String]) => MessageChooser]] = Arrays.asList(
+    Array((wrapped: MessageChooser, latestMessageOffsets: Map[SystemStreamPartition, String]) => new BootstrappingChooser(wrapped, latestMessageOffsets)),
+    Array((wrapped: MessageChooser, latestMessageOffsets: Map[SystemStreamPartition, String]) => new DefaultChooser(wrapped, bootstrapStreamOffsets = latestMessageOffsets)))
 }

@@ -211,25 +211,13 @@ class DefaultChooser(
     }
 
     val chooser = if (usePriority) {
-      // Default all bootstrap streams to Int.MaxValue so they get prioritized 
-      // above everything else, so they're processed first.
-      val bootstrapStreams = bootstrapStreamOffsets
-        .keySet
-        .map(systemStreamPartition => (systemStreamPartition.getSystemStream, Int.MaxValue))
-        .toMap
-
       // Wrap prioritized choosers in batcher, if batching is configured, else 
       // a no-op.
       val maybeBatchedPrioritizedChoosers = prioritizedChoosers
         .map(priorityAndChooser => (priorityAndChooser._1, maybeBatchingChooser(priorityAndChooser._2)))
         .toMap
 
-      // Ordering is important here. Overrides Int.MaxValue default for 
-      // bootstrap streams with explicitly configured values, in cases where 
-      // users have defined a bootstrap stream's priority in config.
-      val allPrioritizedStreams = bootstrapStreams ++ prioritizedStreams
-
-      new TieredPriorityChooser(allPrioritizedStreams, maybeBatchedPrioritizedChoosers, maybeBatchedDefault)
+      new TieredPriorityChooser(prioritizedStreams, maybeBatchedPrioritizedChoosers, maybeBatchedDefault)
     } else {
       maybeBatchedDefault
     }
@@ -284,6 +272,9 @@ class DefaultChooserFactory extends MessageChooserFactory {
     val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
 
     val priorities = if (usePriority) {
+      // Ordering is important here. Overrides Int.MaxValue default for 
+      // bootstrap streams with explicitly configured values, in cases where 
+      // users have defined a bootstrap stream's priority in config.
       defaultPrioritizedStreams ++ prioritizedBootstrapStreams ++ prioritizedStreams
     } else {
       Map[SystemStream, Int]()
