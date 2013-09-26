@@ -25,15 +25,20 @@ import org.apache.samza.system.IncomingMessageEnvelope
 import scala.collection.immutable.Queue
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.Partition
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
+import java.util.Arrays
 
-class TestBatchingChooser {
+@RunWith(value = classOf[Parameterized])
+class TestBatchingChooser(getChooser: (MessageChooser, Int) => MessageChooser) {
   @Test
   def testChooserShouldHandleBothBatchSizeOverrunAndNoEnvelopeAvailable {
     val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
     val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
     val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 3);
     val mock = new MockMessageChooser
-    val chooser = new BatchingChooser(mock, 2)
+    val chooser = getChooser(mock, 2)
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, "")
@@ -76,4 +81,14 @@ class TestBatchingChooser {
     chooser.stop
     assertEquals(1, mock.stops)
   }
+}
+
+object TestBatchingChooser {
+  // Test both BatchingChooser and DefaultChooser here. DefaultChooser with 
+  // just batch size defined should behave just like plain vanilla batching 
+  // chooser.
+  @Parameters
+  def parameters: java.util.Collection[Array[(MessageChooser, Int) => MessageChooser]] = Arrays.asList(
+    Array((wrapped: MessageChooser, batchSize: Int) => new BatchingChooser(wrapped, batchSize)),
+    Array((wrapped: MessageChooser, batchSize: Int) => new DefaultChooser(wrapped, Some(batchSize))))
 }

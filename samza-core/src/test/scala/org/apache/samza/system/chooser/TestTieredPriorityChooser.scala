@@ -26,8 +26,14 @@ import scala.collection.immutable.Queue
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.Partition
 import org.apache.samza.SamzaException
+import org.junit.runner.RunWith
+import org.junit.runners.Parameterized
+import org.junit.runners.Parameterized.Parameters
+import java.util.Arrays
+import org.apache.samza.system.SystemStream
 
-class TestTieredPriorityChooser {
+@RunWith(value = classOf[Parameterized])
+class TestTieredPriorityChooser(getChooser: (Map[SystemStream, Int], Map[Int, MessageChooser], MessageChooser) => MessageChooser) {
   val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
   val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
   val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
@@ -37,7 +43,7 @@ class TestTieredPriorityChooser {
   def testChooserShouldStartStopAndRegister {
     val mock0 = new MockMessageChooser
     val mock1 = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
+    val chooser = getChooser(
       Map(envelope1.getSystemStreamPartition -> 1),
       Map(1 -> mock1),
       mock0)
@@ -55,7 +61,7 @@ class TestTieredPriorityChooser {
   @Test
   def testChooserShouldFallBackToDefault {
     val mock = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
+    val chooser = getChooser(
       Map(),
       Map(),
       mock)
@@ -71,16 +77,18 @@ class TestTieredPriorityChooser {
   @Test
   def testChooserShouldFailWithNoDefault {
     val mock = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
-      Map(),
-      Map())
+    val chooser = getChooser(
+      Map(envelope1.getSystemStreamPartition.getSystemStream -> 0),
+      Map(0 -> mock),
+      null)
 
-    chooser.register(envelope1.getSystemStreamPartition, null)
+    // The SSP for envelope2 is not defined as a priority stream.
+    chooser.register(envelope2.getSystemStreamPartition, null)
     chooser.start
     assertEquals(null, chooser.choose)
 
     try {
-      chooser.update(envelope1)
+      chooser.update(envelope2)
       fail("Should have failed due to missing default chooser.")
     } catch {
       case e: SamzaException => // Expected.
@@ -90,9 +98,10 @@ class TestTieredPriorityChooser {
   @Test
   def testChooserWithSingleStream {
     val mock = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
+    val chooser = getChooser(
       Map(envelope1.getSystemStreamPartition.getSystemStream -> 0),
-      Map(0 -> mock))
+      Map(0 -> mock),
+      new MockMessageChooser)
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.start
@@ -114,9 +123,10 @@ class TestTieredPriorityChooser {
   @Test
   def testChooserWithSingleStreamWithTwoPartitions {
     val mock = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
+    val chooser = getChooser(
       Map(envelope2.getSystemStreamPartition.getSystemStream -> 0),
-      Map(0 -> mock))
+      Map(0 -> mock),
+      new MockMessageChooser)
 
     chooser.register(envelope2.getSystemStreamPartition, null)
     chooser.register(envelope3.getSystemStreamPartition, null)
@@ -139,11 +149,12 @@ class TestTieredPriorityChooser {
   @Test
   def testChooserWithTwoStreamsOfEqualPriority {
     val mock = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
+    val chooser = getChooser(
       Map(
         envelope1.getSystemStreamPartition.getSystemStream -> 0,
         envelope2.getSystemStreamPartition.getSystemStream -> 0),
-      Map(0 -> mock))
+      Map(0 -> mock),
+      new MockMessageChooser)
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, null)
@@ -179,13 +190,14 @@ class TestTieredPriorityChooser {
   def testChooserWithTwoStreamsOfDifferentPriority {
     val mock0 = new MockMessageChooser
     val mock1 = new MockMessageChooser
-    val chooser = new TieredPriorityChooser(
+    val chooser = getChooser(
       Map(
         envelope1.getSystemStreamPartition.getSystemStream -> 1,
         envelope2.getSystemStreamPartition.getSystemStream -> 0),
       Map(
         0 -> mock0,
-        1 -> mock1))
+        1 -> mock1),
+      new MockMessageChooser)
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, null)
@@ -223,4 +235,14 @@ class TestTieredPriorityChooser {
     assertEquals(envelope2, chooser.choose)
     assertEquals(null, chooser.choose)
   }
+}
+
+object TestTieredPriorityChooser {
+  // Test both PriorityChooser and DefaultChooser here. DefaultChooser with 
+  // just priorities defined should behave just like plain vanilla priority 
+  // chooser.
+  @Parameters
+  def parameters: java.util.Collection[Array[(Map[SystemStream, Int], Map[Int, MessageChooser], MessageChooser) => MessageChooser]] = Arrays.asList(
+    Array((priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser], default: MessageChooser) => new TieredPriorityChooser(priorities, choosers, default)),
+    Array((priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser], default: MessageChooser) => new DefaultChooser(default, None, priorities, choosers)))
 }

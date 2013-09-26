@@ -54,7 +54,29 @@ import org.apache.samza.system.SystemStreamPartition
  * a tier's MessageChooser as the tie breaker when more than one envelope
  * exists with the same priority.
  */
-class TieredPriorityChooser(priorities: Map[SystemStream, Int], choosers: Map[Int, MessageChooser], default: MessageChooser = null) extends MessageChooser {
+class TieredPriorityChooser(
+  /**
+   * Map from stream to priority tier.
+   */
+  priorities: Map[SystemStream, Int],
+
+  /**
+   * Map from priority tier to chooser.
+   */
+  choosers: Map[Int, MessageChooser],
+
+  /**
+   * Default chooser to use if no priority is defined for an incoming
+   * envelope's SystemStream. If null, an exception is thrown when an unknown
+   * SystemStream is seen.
+   */
+  default: MessageChooser = null) extends MessageChooser {
+
+  // Do a sanity check.
+  priorities.values.toSet.foreach((priority: Int) =>
+    if (!choosers.contains(priority)) {
+      throw new SamzaException("Missing message chooser for priority: %s" format priority)
+    })
 
   /**
    * A sorted list of MessageChoosers. Sorting is according to their priority,
