@@ -23,8 +23,8 @@ import scala.collection.JavaConversions._
 
 import org.apache.samza.SamzaException
 import org.apache.samza.config.Config
-import org.apache.samza.config.DefaultChooserConfig._
 import org.apache.samza.config.SystemConfig._
+import org.apache.samza.config.WrappedChooserConfig._
 import org.apache.samza.config.TaskConfig._
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemFactory
@@ -32,11 +32,80 @@ import org.apache.samza.system.SystemStream
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.Util
 
+object WrappedChooser {
+  def apply(chooserFactory: MessageChooserFactory, config: Config) = {
+    val batchSize = config.getChooserBatchSize match {
+      case Some(batchSize) => Some(batchSize.toInt)
+      case _ => None
+    }
+
+    // Normal streams default to priority 0.
+    val defaultPrioritizedStreams = config
+      .getInputStreams
+      .map((_, 0))
+      .toMap
+
+    // Bootstrap streams default to Int.MaxValue priority.
+    val prioritizedBootstrapStreams = config
+      .getBootstrapStreams
+      .map((_, Int.MaxValue))
+      .toMap
+
+    // Explicitly prioritized streams are set to whatever they were configured to.
+    val prioritizedStreams = config.getPriorityStreams
+
+    // Only wire in what we need.
+    val useBootstrapping = prioritizedBootstrapStreams.size > 0
+    val usePriority = useBootstrapping || prioritizedStreams.size > 0
+    val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
+
+    val priorities = if (usePriority) {
+      // Ordering is important here. Overrides Int.MaxValue default for 
+      // bootstrap streams with explicitly configured values, in cases where 
+      // users have defined a bootstrap stream's priority in config.
+      defaultPrioritizedStreams ++ prioritizedBootstrapStreams ++ prioritizedStreams
+    } else {
+      Map[SystemStream, Int]()
+    }
+
+    val prioritizedChoosers = priorities
+      .values
+      .toSet
+      .map((_: Int, chooserFactory.getChooser(config)))
+      .toMap
+
+    new WrappedChooser(
+      chooserFactory.getChooser(config),
+      batchSize,
+      priorities,
+      prioritizedChoosers,
+      latestMessageOffsets)
+  }
+
+  /**
+   * Given a set of SystemStreams, returns a map of SystemStreamPartition to
+   * last offset in each partition.
+   */
+  private def buildLatestOffsets(bootstrapStreams: Set[SystemStream], config: Config) = {
+    val streamsPerSystem = bootstrapStreams.groupBy(_.getSystem())
+
+    streamsPerSystem.flatMap {
+      case (systemName, streams) =>
+        val systemFactoryClassName = config
+          .getSystemFactory(systemName)
+          .getOrElse(throw new SamzaException("Trying to fetch system factory for system %s, which isn't defined in config." format systemName))
+        val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
+        val systemAdmin = systemFactory.getAdmin(systemName, config)
+
+        systemAdmin.getLastOffsets(streams.map(_.getStream))
+    }
+  }
+}
+
 /**
- * DefaultChooserFactory builds the default MessageChooser for Samza, when one
- * is not defined using "task.chooser.class".
+ * WrappedChooser adds additional functionality to an existing MessageChooser.
  *
- * The chooser that this factory builds supports the following behaviors:
+ * The following behaviors are currently supported:
  *
  * 1. Batching.
  * 2. Prioritized streams.
@@ -57,7 +126,7 @@ import org.apache.samza.util.Util
  *
  *   task.chooser.bootstrap.<system>.<stream>
  *
- * When batching is activated, the DefaultChooserFactory will allow the
+ * When batching is activated, the WrappedChooserFactory will allow the
  * initial strategy to be executed once (by default, this is RoundRobin). It
  * will then keep picking the SystemStreamPartition that the RoundRobin
  * chooser selected, up to the batch size, provided that there are messages
@@ -76,7 +145,7 @@ import org.apache.samza.util.Util
  * When a stream is defined as a bootstrap stream, it is prioritized with a
  * default priority of Int.MaxValue. This priority can be overridden using the
  * same priority configuration defined above (task.chooser.priorites.*). The
- * DefaultChooserFactory guarantees that the wrapped MessageChooser will have
+ * WrappedChooserFactory guarantees that the wrapped MessageChooser will have
  * at least one envelope from each bootstrap stream whenever the wrapped
  * MessageChooser must make a decision about which envelope to process next.
  * If a stream is defined as a bootstrap stream, and is prioritized higher
@@ -125,7 +194,7 @@ import org.apache.samza.util.Util
  * last example, except that it will always start from offset zero, which means
  * that it will always read all messages in the topic from oldest to newest.
  */
-class DefaultChooser(
+class WrappedChooser(
   /**
    * The wrapped chooser serves two purposes. In cases where bootstrapping or
    * prioritization is enabled, wrapped chooser serves as the default for
@@ -135,7 +204,7 @@ class DefaultChooser(
    * wrapped chooser is used as the strategy to determine which
    * SystemStreamPartition to batch next.
    *
-   * When nothing is enabled, DefaultChooser just acts as a pass through for
+   * When nothing is enabled, WrappedChooser just acts as a pass through for
    * the wrapped chooser.
    */
   wrappedChooser: MessageChooser = new RoundRobinChooser,
@@ -202,8 +271,8 @@ class DefaultChooser(
       maybeBatchingChooser(wrappedChooser)
     } else if (!usePriority) {
       // Null wrapped chooser without a priority chooser is not allowed 
-      // because DefaultChooser needs an underlying message chooser.
-      throw new SamzaException("A null chooser was given to the DefaultChooser.")
+      // because WrappedChooser needs an underlying message chooser.
+      throw new SamzaException("A null chooser was given to the WrappedChooser.")
     } else {
       // Default for priority chooser is null, which means fail if a System
       // Stream with an undefined priority arrives.
@@ -238,78 +307,6 @@ class DefaultChooser(
       new BatchingChooser(chooser, batchSize.get)
     } else {
       chooser
-    }
-  }
-}
-
-class DefaultChooserFactory extends MessageChooserFactory {
-  def getChooser(config: Config): MessageChooser = {
-    val wrappedChooserFactoryClass = config.getWrappedChooserFactory.getOrElse(classOf[RoundRobinChooserFactory].getName)
-    val wrappedChooserFactory = Util.getObj[MessageChooserFactory](wrappedChooserFactoryClass)
-    val batchSize = config.getChooserBatchSize match {
-      case Some(batchSize) => Some(batchSize.toInt)
-      case _ => None
-    }
-
-    // Normal streams default to priority 0.
-    val defaultPrioritizedStreams = config
-      .getInputStreams
-      .map((_, 0))
-      .toMap
-
-    // Bootstrap streams default to Int.MaxValue priority.
-    val prioritizedBootstrapStreams = config
-      .getBootstrapStreams
-      .map((_, Int.MaxValue))
-      .toMap
-
-    // Explicitly prioritized streams are set to whatever they were configured to.
-    val prioritizedStreams = config.getPriorityStreams
-
-    // Only wire in what we need.
-    val useBootstrapping = prioritizedBootstrapStreams.size > 0
-    val usePriority = useBootstrapping || prioritizedStreams.size > 0
-    val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
-
-    val priorities = if (usePriority) {
-      // Ordering is important here. Overrides Int.MaxValue default for 
-      // bootstrap streams with explicitly configured values, in cases where 
-      // users have defined a bootstrap stream's priority in config.
-      defaultPrioritizedStreams ++ prioritizedBootstrapStreams ++ prioritizedStreams
-    } else {
-      Map[SystemStream, Int]()
-    }
-
-    val prioritizedChoosers = priorities
-      .values
-      .toSet
-      .map((_: Int, wrappedChooserFactory.getChooser(config)))
-      .toMap
-
-    new DefaultChooser(
-      wrappedChooserFactory.getChooser(config),
-      batchSize,
-      priorities,
-      prioritizedChoosers,
-      latestMessageOffsets)
-  }
-
-  /**
-   * Given a set of SystemStreams, returns a map of SystemStreamPartition to
-   * last offset in each partition.
-   */
-  private def buildLatestOffsets(bootstrapStreams: Set[SystemStream], config: Config) = {
-    val streamsPerSystem = bootstrapStreams.groupBy(_.getSystem())
-
-    streamsPerSystem.flatMap {
-      case (systemName, streams) =>
-        val systemFactoryClassName = config
-          .getSystemFactory(systemName)
-          .getOrElse(throw new SamzaException("Trying to fetch system factory for system %s, which isn't defined in config." format systemName))
-        val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
-        val systemAdmin = systemFactory.getAdmin(systemName, config)
-
-        systemAdmin.getLastOffsets(streams.map(_.getStream))
     }
   }
 }

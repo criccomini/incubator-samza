@@ -91,5 +91,5 @@ object TestRoundRobinChooser {
   // no batching, prioritization, or bootstrapping should default to just a 
   // plain vanilla round robin chooser.
   @Parameters
-  def parameters: java.util.Collection[Array[() => MessageChooser]] = Arrays.asList(Array(() => new RoundRobinChooser), Array(() => new DefaultChooser))
+  def parameters: java.util.Collection[Array[() => MessageChooser]] = Arrays.asList(Array(() => new RoundRobinChooser), Array(() => new WrappedChooser))
 }

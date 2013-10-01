@@ -90,5 +90,5 @@ object TestBatchingChooser {
   @Parameters
   def parameters: java.util.Collection[Array[(MessageChooser, Int) => MessageChooser]] = Arrays.asList(
     Array((wrapped: MessageChooser, batchSize: Int) => new BatchingChooser(wrapped, batchSize)),
-    Array((wrapped: MessageChooser, batchSize: Int) => new DefaultChooser(wrapped, Some(batchSize))))
+    Array((wrapped: MessageChooser, batchSize: Int) => new WrappedChooser(wrapped, Some(batchSize))))
 }

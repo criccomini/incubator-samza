@@ -172,5 +172,5 @@ object TestBootstrappingChooser {
   @Parameters
   def parameters: java.util.Collection[Array[(MessageChooser, Map[SystemStreamPartition, String]) => MessageChooser]] = Arrays.asList(
     Array((wrapped: MessageChooser, latestMessageOffsets: Map[SystemStreamPartition, String]) => new BootstrappingChooser(wrapped, latestMessageOffsets)),
-    Array((wrapped: MessageChooser, latestMessageOffsets: Map[SystemStreamPartition, String]) => new DefaultChooser(wrapped, bootstrapStreamOffsets = latestMessageOffsets)))
+    Array((wrapped: MessageChooser, latestMessageOffsets: Map[SystemStreamPartition, String]) => new WrappedChooser(wrapped, bootstrapStreamOffsets = latestMessageOffsets)))
 }
