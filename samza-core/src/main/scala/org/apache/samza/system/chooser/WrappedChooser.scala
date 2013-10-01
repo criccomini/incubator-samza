@@ -250,63 +250,42 @@ class WrappedChooser(
    */
   bootstrapStreamOffsets: Map[SystemStreamPartition, String] = Map()) extends MessageChooser {
 
-  val fullyComposedChooser = buildChooser()
-
-  def update(envelope: IncomingMessageEnvelope) {
-    fullyComposedChooser.update(envelope)
-  }
-
-  def choose = fullyComposedChooser.choose
-
-  def start = fullyComposedChooser.start
-
-  def stop = fullyComposedChooser.stop
-
-  def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) = fullyComposedChooser.register(systemStreamPartition, lastReadOffset)
-
-  private def buildChooser() = {
+  val chooser = {
+    val useBatching = batchSize.isDefined
     val useBootstrapping = bootstrapStreamOffsets.size > 0
     val usePriority = useBootstrapping || prioritizedStreams.size > 0
-    val maybeBatchedDefault = if (wrappedChooser != null) {
-      maybeBatchingChooser(wrappedChooser)
-    } else if (!usePriority) {
+    val maybePrioritized = if (usePriority) {
+      new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers, wrappedChooser)
+    } else if (wrappedChooser == null) {
       // Null wrapped chooser without a priority chooser is not allowed 
       // because WrappedChooser needs an underlying message chooser.
-      throw new SamzaException("A null chooser was given to the WrappedChooser.")
+      throw new SamzaException("A null chooser was given to the WrappedChooser. This is not allowed unless you are using prioritized/bootstrap streams, which you're not.")
     } else {
-      // Default for priority chooser is null, which means fail if a System
-      // Stream with an undefined priority arrives.
-      null
+      wrappedChooser
     }
 
-    val chooser = if (usePriority) {
-      // Wrap prioritized choosers in batcher, if batching is configured, else 
-      // a no-op.
-      val maybeBatchedPrioritizedChoosers = prioritizedChoosers
-        .map(priorityAndChooser => (priorityAndChooser._1, maybeBatchingChooser(priorityAndChooser._2)))
-        .toMap
-
-      new TieredPriorityChooser(prioritizedStreams, maybeBatchedPrioritizedChoosers, maybeBatchedDefault)
+    val maybeBatching = if (useBatching) {
+      new BatchingChooser(maybePrioritized, batchSize.get)
     } else {
-      maybeBatchedDefault
+      maybePrioritized
     }
 
     if (useBootstrapping) {
-      new BootstrappingChooser(chooser, bootstrapStreamOffsets)
+      new BootstrappingChooser(maybeBatching, bootstrapStreamOffsets)
     } else {
-      chooser
+      maybeBatching
     }
   }
 
-  /**
-   * A helper method to build either a batched or non-batched chooser,
-   * depending on config.
-   */
-  private def maybeBatchingChooser(chooser: MessageChooser) = {
-    if (batchSize.isDefined) {
-      new BatchingChooser(chooser, batchSize.get)
-    } else {
-      chooser
-    }
+  def update(envelope: IncomingMessageEnvelope) {
+    chooser.update(envelope)
   }
+
+  def choose = chooser.choose
+
+  def start = chooser.start
+
+  def stop = chooser.stop
+
+  def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) = chooser.register(systemStreamPartition, lastReadOffset)
 }

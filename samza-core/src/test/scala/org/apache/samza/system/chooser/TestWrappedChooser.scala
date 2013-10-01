@@ -106,6 +106,7 @@ class TestWrappedChooser {
     chooser.update(envelope7)
     chooser.update(envelope2)
     assertEquals(envelope2, chooser.choose)
+
     // Now envelope2's partition has passed the batchSize, so we should get 7 next.
     chooser.update(envelope2)
     assertEquals(envelope7, chooser.choose)
