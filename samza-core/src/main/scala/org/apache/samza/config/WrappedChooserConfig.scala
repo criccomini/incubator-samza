@@ -24,7 +24,7 @@ import TaskConfig._
 
 object WrappedChooserConfig {
   val BOOTSTRAP_PREFIX = "task.chooser.bootstrap.%s.%s"
-  val PRIORITY_PREFIX = "task.chooser.prioriites.%s.%s"
+  val PRIORITY_PREFIX = "task.chooser.priorities.%s.%s"
   val BATCH_SIZE = "task.chooser.batch.size"
 
   implicit def Config2WrappedChooser(config: Config) = new WrappedChooserConfig(config)

@@ -20,7 +20,6 @@
 package org.apache.samza.system.chooser
 
 import scala.collection.JavaConversions._
-
 import org.apache.samza.SamzaException
 import org.apache.samza.config.Config
 import org.apache.samza.config.SystemConfig._
@@ -31,9 +30,10 @@ import org.apache.samza.system.SystemFactory
 import org.apache.samza.system.SystemStream
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.Util
+import org.apache.samza.system.SystemAdmin
 
 object WrappedChooser {
-  def apply(chooserFactory: MessageChooserFactory, config: Config) = {
+  def apply(systemAdmins: Map[String, SystemAdmin], chooserFactory: MessageChooserFactory, config: Config) = {
     val batchSize = config.getChooserBatchSize match {
       case Some(batchSize) => Some(batchSize.toInt)
       case _ => None
@@ -57,7 +57,20 @@ object WrappedChooser {
     // Only wire in what we need.
     val useBootstrapping = prioritizedBootstrapStreams.size > 0
     val usePriority = useBootstrapping || prioritizedStreams.size > 0
-    val latestMessageOffsets = buildLatestOffsets(prioritizedBootstrapStreams.keySet, config)
+
+    // Build a map from SSP -> lastReadOffset for each bootstrap stream.
+    val latestMessageOffsets = prioritizedBootstrapStreams
+      .keySet
+      // Group streams by system (system -> [streams])
+      .groupBy(_.getSystem())
+      // Get the SystemAdmin for each system, and get all lastReadOffsets for 
+      // each stream. Flatten into a simple SSP -> lastReadOffset map.
+      .flatMap {
+        case (systemName, streams) =>
+          systemAdmins
+            .getOrElse(systemName, throw new SamzaException("Trying to fetch system factory for system %s, which isn't defined in config." format systemName))
+            .getLastOffsets(streams.map(_.getStream))
+      }
 
     val priorities = if (usePriority) {
       // Ordering is important here. Overrides Int.MaxValue default for 
@@ -80,25 +93,6 @@ object WrappedChooser {
       priorities,
       prioritizedChoosers,
       latestMessageOffsets)
-  }
-
-  /**
-   * Given a set of SystemStreams, returns a map of SystemStreamPartition to
-   * last offset in each partition.
-   */
-  private def buildLatestOffsets(bootstrapStreams: Set[SystemStream], config: Config) = {
-    val streamsPerSystem = bootstrapStreams.groupBy(_.getSystem())
-
-    streamsPerSystem.flatMap {
-      case (systemName, streams) =>
-        val systemFactoryClassName = config
-          .getSystemFactory(systemName)
-          .getOrElse(throw new SamzaException("Trying to fetch system factory for system %s, which isn't defined in config." format systemName))
-        val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
-        val systemAdmin = systemFactory.getAdmin(systemName, config)
-
-        systemAdmin.getLastOffsets(streams.map(_.getStream))
-    }
   }
 }
 

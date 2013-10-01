@@ -124,6 +124,10 @@ object SamzaContainer extends Logging {
       (systemName, Util.getObj[SystemFactory](systemFactoryClassName))
     }).toMap
 
+    val systemAdmins = systemNames
+      .map(systemName => (systemName, systemFactories(systemName).getAdmin(systemName, config)))
+      .toMap
+
     info("Got system factories: %s" format systemFactories.keys)
 
     val consumers = inputSystems
@@ -242,7 +246,7 @@ object SamzaContainer extends Logging {
 
     val chooserFactory = Util.getObj[MessageChooserFactory](chooserFactoryClassName)
 
-    val chooser = WrappedChooser(chooserFactory, config)
+    val chooser = WrappedChooser(systemAdmins, chooserFactory, config)
 
     info("Setting up metrics reporters.")
 
