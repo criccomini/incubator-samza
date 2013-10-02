@@ -71,12 +71,16 @@ class KafkaSystemAdmin(
     var done = false
     var consumer: SimpleConsumer = null
 
+    debug("Fetching offsets for: %s" format streams)
+
     while (!done) {
       try {
         val metadata = TopicMetadataCache.getTopicMetadata(
           streams.toSet,
           systemName,
           getTopicMetadata)
+
+        debug("Got metadata for streams: %s" format metadata)
 
         // Break topic metadata topic/partitions into per-broker map.
         val brokersToTopicPartitions = metadata
@@ -98,6 +102,8 @@ class KafkaSystemAdmin(
           // Convert to a Map[Broker, Seq[TopicAndPartition]]
           .mapValues(_.map(_._2))
 
+        debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
+
         // Get the latest offsets for each topic and partition.
         for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
           val partitionOffsetInfo = topicsAndPartitions
@@ -107,10 +113,20 @@ class KafkaSystemAdmin(
           val brokerOffsets = consumer
             .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
             .partitionErrorAndOffsets
+            .map(partitionAndOffset => {
+              if (partitionAndOffset._2.offsets.head <= 0) {
+                debug("Filtering out empty topic partition: %s" format partitionAndOffset)
+              }
+
+              partitionAndOffset
+            })
             .filter(_._2.offsets.head > 0)
             // Kafka returns 1 greater than the offset of the last message in 
             // the topic, so subtract one to fetch the last message.
             .mapValues(_.offsets.head - 1)
+
+          debug("Got offsets: %s" format brokerOffsets)
+          debug("Shutting down consumer for %s:%s." format (broker.host, broker.port))
 
           consumer.close
 
@@ -133,6 +149,8 @@ class KafkaSystemAdmin(
           debug(e)
       }
     }
+
+    info("Got latest offsets for streams: %s, %s" format (streams, offsets))
 
     offsets
   }

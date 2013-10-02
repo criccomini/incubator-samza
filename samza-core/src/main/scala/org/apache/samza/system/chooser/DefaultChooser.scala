@@ -108,7 +108,7 @@ object DefaultChooser {
  * By default, this chooser will not do any of this. It will simply default to
  * a RoundRobinChooser.
  *
- * To activate batching, you define must define:
+ * To activate batching, you must define:
  *
  *   task.consumer.batch.size
  *
