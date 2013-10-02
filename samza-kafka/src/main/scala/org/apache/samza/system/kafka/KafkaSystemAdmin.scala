@@ -69,6 +69,7 @@ class KafkaSystemAdmin(
   def getLastOffsets(streams: java.util.Set[String]) = {
     var offsets = Map[SystemStreamPartition, String]()
     var done = false
+    var consumer: SimpleConsumer = null
 
     while (!done) {
       try {
@@ -102,7 +103,7 @@ class KafkaSystemAdmin(
           val partitionOffsetInfo = topicsAndPartitions
             .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(OffsetRequest.LatestTime, 1)))
             .toMap
-          val consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
+          consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
           val brokerOffsets = consumer
             .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
             .partitionErrorAndOffsets
@@ -120,6 +121,12 @@ class KafkaSystemAdmin(
 
         done = true
       } catch {
+        case e: InterruptedException =>
+          info("Interrupted while fetching last offsets, so forwarding.")
+          if (consumer != null) {
+            consumer.close
+          }
+          throw e
         case e: Exception =>
           // Retry.
           warn("Unable to fetch last offsets for streams due to: %s, %s. Retrying. Turn on debugging to get a full stack trace." format (e.getMessage, streams))
