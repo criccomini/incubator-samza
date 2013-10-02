@@ -26,7 +26,7 @@ import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.Partition
 
-class TestWrappedChooser {
+class TestDefaultChooser {
   val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
   val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
   val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream2", new Partition(0)), null, null, 3);
@@ -36,11 +36,11 @@ class TestWrappedChooser {
   val envelope7 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 7);
 
   @Test
-  def testWrappedChooserWithBatchingPrioritizationAndBootstrapping {
+  def testDefaultChooserWithBatchingPrioritizationAndBootstrapping {
     val mock0 = new MockMessageChooser
     val mock1 = new MockMessageChooser
     val mock2 = new MockMessageChooser
-    val chooser = new WrappedChooser(
+    val chooser = new DefaultChooser(
       mock0,
       Some(2),
       Map(

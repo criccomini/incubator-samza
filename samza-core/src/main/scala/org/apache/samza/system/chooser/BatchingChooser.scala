@@ -23,7 +23,7 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.system.IncomingMessageEnvelope
 
 /**
- * BatchingChooser provides a patching functionality on top of an existing
+ * BatchingChooser provides a batching functionality on top of an existing
  * MessageChooser. This is useful in cases where batching leads to better
  * performance.
  *

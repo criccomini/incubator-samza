@@ -59,7 +59,7 @@ import org.apache.samza.system.chooser.MessageChooserFactory
 import org.apache.samza.system.SystemProducersMetrics
 import org.apache.samza.system.SystemConsumersMetrics
 import org.apache.samza.metrics.MetricsRegistryMap
-import org.apache.samza.system.chooser.WrappedChooser
+import org.apache.samza.system.chooser.DefaultChooser
 import org.apache.samza.system.chooser.RoundRobinChooserFactory
 
 object SamzaContainer extends Logging {
@@ -246,7 +246,7 @@ object SamzaContainer extends Logging {
 
     val chooserFactory = Util.getObj[MessageChooserFactory](chooserFactoryClassName)
 
-    val chooser = WrappedChooser(systemAdmins, chooserFactory, config)
+    val chooser = DefaultChooser(systemAdmins, chooserFactory, config)
 
     info("Setting up metrics reporters.")
 

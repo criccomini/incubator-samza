@@ -28,7 +28,7 @@ import org.apache.samza.system.IncomingMessageEnvelope
  * BootstrappingChooser is a composable MessageChooser that only chooses
  * an envelope when it's received at least one envelope for each SystemStream.
  * It does this by only allowing wrapped.choose to be called when the wrapped
- * MessageChooser has been updated with at least on envelope for every
+ * MessageChooser has been updated with at least one envelope for every
  * SystemStream defined in the latestMessageOffsets map. Thus, the guarantee
  * is that the wrapped chooser will have an envelope from each SystemStream
  * whenever it has to make a choice about which envelope to process next.

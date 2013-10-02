@@ -23,7 +23,7 @@ import scala.collection.JavaConversions._
 import org.apache.samza.SamzaException
 import org.apache.samza.config.Config
 import org.apache.samza.config.SystemConfig._
-import org.apache.samza.config.WrappedChooserConfig._
+import org.apache.samza.config.DefaultChooserConfig._
 import org.apache.samza.config.TaskConfig._
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemFactory
@@ -32,7 +32,7 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.Util
 import org.apache.samza.system.SystemAdmin
 
-object WrappedChooser {
+object DefaultChooser {
   def apply(systemAdmins: Map[String, SystemAdmin], chooserFactory: MessageChooserFactory, config: Config) = {
     val batchSize = config.getChooserBatchSize match {
       case Some(batchSize) => Some(batchSize.toInt)
@@ -87,7 +87,7 @@ object WrappedChooser {
       .map((_: Int, chooserFactory.getChooser(config)))
       .toMap
 
-    new WrappedChooser(
+    new DefaultChooser(
       chooserFactory.getChooser(config),
       batchSize,
       priorities,
@@ -97,7 +97,7 @@ object WrappedChooser {
 }
 
 /**
- * WrappedChooser adds additional functionality to an existing MessageChooser.
+ * DefaultChooser adds additional functionality to an existing MessageChooser.
  *
  * The following behaviors are currently supported:
  *
@@ -110,17 +110,17 @@ object WrappedChooser {
  *
  * To activate batching, you define must define:
  *
- *   task.chooser.batch.size
+ *   task.consumer.batch.size
  *
  * To define a priority for a stream, you must define:
  *
- *   task.chooser.prioriites.<system>.<stream>
+ *   systems.<system>.streams.<stream>.samza.priority
  *
  * To declare a bootstrap stream, you must define:
  *
- *   task.chooser.bootstrap.<system>.<stream>
+ *   systems.<system>.streams.<stream>.samza.bootstrap
  *
- * When batching is activated, the WrappedChooserFactory will allow the
+ * When batching is activated, the DefaultChooserFactory will allow the
  * initial strategy to be executed once (by default, this is RoundRobin). It
  * will then keep picking the SystemStreamPartition that the RoundRobin
  * chooser selected, up to the batch size, provided that there are messages
@@ -139,7 +139,7 @@ object WrappedChooser {
  * When a stream is defined as a bootstrap stream, it is prioritized with a
  * default priority of Int.MaxValue. This priority can be overridden using the
  * same priority configuration defined above (task.chooser.priorites.*). The
- * WrappedChooserFactory guarantees that the wrapped MessageChooser will have
+ * DefaultChooserFactory guarantees that the wrapped MessageChooser will have
  * at least one envelope from each bootstrap stream whenever the wrapped
  * MessageChooser must make a decision about which envelope to process next.
  * If a stream is defined as a bootstrap stream, and is prioritized higher
@@ -150,27 +150,27 @@ object WrappedChooser {
  *
  * Valid configurations include:
  *
- *   task.chooser.batch.size=100
+ *   task.consumer.batch.size=100
  *
  * This configuration will just batch up to 100 messages from each
  * SystemStreamPartition. It will use a RoundRobinChooser whenever it needs to
  * find the next SystemStreamPartition to batch.
  *
- *   task.chooser.prioriites.kafka.mystream=1
+ *   systems.kafka.streams.mystream.samza.priority=1
  *
  * This configuration will prefer messages from kafka.mystream over any other
  * input streams (since other input streams will default to priority 0).
  *
- *   task.chooser.bootstrap.kafka.profiles=true
+ *   systems.kafka.streams.profiles.samza.bootstrap=true
  *
  * This configuration will process all messages from kafka.profiles up to the
  * current head of the profiles stream before any other messages are processed.
  * From then on, the profiles stream will be preferred over any other stream in
  * cases where incoming envelopes are ready to be processed from it.
  *
- *   task.chooser.batch.size=100
- *   task.chooser.bootstrap.kafka.profiles=true
- *   task.chooser.prioriites.kafka.mystream=1
+ *   task.consumer.batch.size=100
+ *   systems.kafka.streams.profiles.samza.bootstrap=true
+ *   systems.kafka.streams.mystream.samza.priority=1
  *
  * This configuration will read all messages from kafka.profiles from the last
  * checkpointed offset, up to head. It will then prefer messages from profiles
@@ -181,14 +181,14 @@ object WrappedChooser {
  * to 100 messages will be read from the envelope's SystemStreamPartition,
  * before RoundRobinChooser is consulted again to break the next tie.
  *
- *   task.chooser.bootstrap.kafka.profiles=true
+ *   systems.kafka.streams.profiles.samza.bootstrap=true
  *   systems.kafka.streams.profiles.samza.reset.offset=true
  *
  * This configuration will bootstrap the profiles stream the same way as the
  * last example, except that it will always start from offset zero, which means
  * that it will always read all messages in the topic from oldest to newest.
  */
-class WrappedChooser(
+class DefaultChooser(
   /**
    * The wrapped chooser serves two purposes. In cases where bootstrapping or
    * prioritization is enabled, wrapped chooser serves as the default for
@@ -198,10 +198,10 @@ class WrappedChooser(
    * wrapped chooser is used as the strategy to determine which
    * SystemStreamPartition to batch next.
    *
-   * When nothing is enabled, WrappedChooser just acts as a pass through for
+   * When nothing is enabled, DefaultChooser just acts as a pass through for
    * the wrapped chooser.
    */
-  wrappedChooser: MessageChooser = new RoundRobinChooser,
+  DefaultChooser: MessageChooser = new RoundRobinChooser,
 
   /**
    * If defined, enables batching, and defines a max message size for a given
@@ -249,13 +249,13 @@ class WrappedChooser(
     val useBootstrapping = bootstrapStreamOffsets.size > 0
     val usePriority = useBootstrapping || prioritizedStreams.size > 0
     val maybePrioritized = if (usePriority) {
-      new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers, wrappedChooser)
-    } else if (wrappedChooser == null) {
+      new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers, DefaultChooser)
+    } else if (DefaultChooser == null) {
       // Null wrapped chooser without a priority chooser is not allowed 
-      // because WrappedChooser needs an underlying message chooser.
-      throw new SamzaException("A null chooser was given to the WrappedChooser. This is not allowed unless you are using prioritized/bootstrap streams, which you're not.")
+      // because DefaultChooser needs an underlying message chooser.
+      throw new SamzaException("A null chooser was given to the DefaultChooser. This is not allowed unless you are using prioritized/bootstrap streams, which you're not.")
     } else {
-      wrappedChooser
+      DefaultChooser
     }
 
     val maybeBatching = if (useBatching) {

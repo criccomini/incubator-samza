@@ -22,28 +22,28 @@ package org.apache.samza.config
 import org.apache.samza.system.SystemStream
 import TaskConfig._
 
-object WrappedChooserConfig {
-  val BOOTSTRAP_PREFIX = "task.chooser.bootstrap.%s.%s"
-  val PRIORITY_PREFIX = "task.chooser.priorities.%s.%s"
-  val BATCH_SIZE = "task.chooser.batch.size"
+object DefaultChooserConfig {
+  val BOOTSTRAP = StreamConfig.STREAM_PREFIX + "samza.bootstrap"
+  val PRIORITY = StreamConfig.STREAM_PREFIX + "samza.priority"
+  val BATCH_SIZE = "task.consumer.batch.size"
 
-  implicit def Config2WrappedChooser(config: Config) = new WrappedChooserConfig(config)
+  implicit def Config2DefaultChooser(config: Config) = new DefaultChooserConfig(config)
 }
 
-class WrappedChooserConfig(config: Config) extends ScalaMapConfig(config) {
-  import WrappedChooserConfig._
+class DefaultChooserConfig(config: Config) extends ScalaMapConfig(config) {
+  import DefaultChooserConfig._
 
   def getChooserBatchSize = getOption(BATCH_SIZE)
 
   def getBootstrapStreams = config
     .getInputStreams
-    .map(systemStream => (systemStream, getOrElse(BOOTSTRAP_PREFIX format (systemStream.getSystem, systemStream.getStream), "false").equals("true")))
+    .map(systemStream => (systemStream, getOrElse(BOOTSTRAP format (systemStream.getSystem, systemStream.getStream), "false").equals("true")))
     .filter(_._2.equals("true"))
     .map(_._1)
 
   def getPriorityStreams = config
     .getInputStreams
-    .map(systemStream => (systemStream, getOrElse(PRIORITY_PREFIX format (systemStream.getSystem, systemStream.getStream), "-1").toInt))
+    .map(systemStream => (systemStream, getOrElse(PRIORITY format (systemStream.getSystem, systemStream.getStream), "-1").toInt))
     .filter(_._2 >= 0)
     .toMap
 }

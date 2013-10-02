@@ -59,7 +59,7 @@ If a job is consuming messages from more than one system/stream/partition combin
 
 This behavior can be overridden by implementing a custom MessageChooser. To write a custom MessageChooser, take a look at the Javadocs, and then configure your task with the "task.chooser.class" configuration, which should point to your MessageChooserFactory.
 
-Out of the box, Samza ships with a RoundRobinChooser, which is the default, and a StreamChooser, which lets you favor certain streams over others. Samza also provides a helper class called PriorityChooser which lets you choose which message to process next based on a priority score.
+Out of the box, Samza ships with a RoundRobinChooser, which is the default, and a StreamChooser, which lets you favor certain streams over others.
 
 #### Example
 
@@ -67,9 +67,6 @@ You can use the StreamChooser by adding the following configuration to your job.
 
 ```
 task.chooser.class=org.apache.samza.system.StreamChooserFactory
-task.chooser.stream.order=kafka.higher-priority-stream,kafka.lower-priority-stream
 ```
-
-This configuration would always favor messages from the high priority stream over the low priority stream in cases where messages from both streams are available.
 
 ## [Checkpointing &raquo;](checkpointing.html)

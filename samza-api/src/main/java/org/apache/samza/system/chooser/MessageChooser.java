@@ -27,7 +27,7 @@ import org.apache.samza.system.SystemStreamPartition;
  * stream consumption.
  * 
  * Consider the case of a Samza task is consuming multiple streams where some
- * streams may be from lived systems that have stricter SLA requirements and
+ * streams may be from live systems that have stricter SLA requirements and
  * must always be prioritized over other streams that may be from batch systems.
  * MessageChooser allows developers to inject message prioritization logic into
  * the SamzaContainer.
@@ -95,7 +95,7 @@ public interface MessageChooser {
    * @param systemStreamPartition
    *          A SystemStreamPartition that envelopes will be coming from.
    * @param lastReadOffset
-   *          The last offset successfully checkpointd for this
+   *          The last offset successfully checkpointed for this
    *          systemStreamPartition.
    */
   void register(SystemStreamPartition systemStreamPartition, String lastReadOffset);
