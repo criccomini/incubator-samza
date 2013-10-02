@@ -37,6 +37,7 @@ import kafka.api.OffsetRequest
 import kafka.api.FetchRequestBuilder
 import org.apache.samza.system.SystemStreamPartition
 import kafka.common.ErrorMapping
+import grizzled.slf4j.Logging
 
 class KafkaSystemAdmin(
   systemName: String,
@@ -44,7 +45,7 @@ class KafkaSystemAdmin(
   brokerListString: String,
   timeout: Int = Int.MaxValue,
   bufferSize: Int = 1024000,
-  clientId: String = UUID.randomUUID.toString) extends SystemAdmin {
+  clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
 
   val rand = new Random
 
@@ -133,8 +134,9 @@ class KafkaSystemAdmin(
         done = true
       } catch {
         case e: Exception =>
-        // Retry.
-        // TODO add logging here.
+          // Retry.
+          warn("Unable to fetch last offsets for streams due to: %s, %s. Retrying. Turn on debugging to get a full stack trace." format (e.getMessage, streams))
+          debug(e)
       }
     }
 

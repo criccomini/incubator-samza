@@ -194,6 +194,7 @@ object TestStatefulTask {
     Utils.rm(server2.config.logDirs)
     Utils.rm(server3.config.logDirs)
     zkClient.close
+    zookeeper.shutdown
   }
 }
 
