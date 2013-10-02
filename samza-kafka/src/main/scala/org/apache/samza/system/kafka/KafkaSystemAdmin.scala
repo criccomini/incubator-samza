@@ -49,12 +49,12 @@ class KafkaSystemAdmin(
 
   val rand = new Random
 
-  def getPartitions(streamName: String): java.util.Set[Partition] = {
-    val getTopicMetadata = (topics: Set[String]) => {
-      new ClientUtilTopicMetadataStore(brokerListString, clientId)
-        .getTopicInfo(topics)
-    }
+  private def getTopicMetadata(topics: Set[String]) = {
+    new ClientUtilTopicMetadataStore(brokerListString, clientId)
+      .getTopicInfo(topics)
+  }
 
+  def getPartitions(streamName: String): java.util.Set[Partition] = {
     val metadata = TopicMetadataCache.getTopicMetadata(
       Set(streamName),
       systemName,
@@ -72,27 +72,14 @@ class KafkaSystemAdmin(
 
     while (!done) {
       try {
-        // Get brokers.
-        val brokers = ClientUtils
-          .parseBrokerList(brokerListString)
-          .toArray
-
-        // Grab a broker at random, and send a topic metadata request for all topics.
-        val broker = brokers(rand.nextInt(brokers.size))
-        var correlationId = 0
-        val topicMetadataRequest = TopicMetadataRequest(
-          TopicMetadataRequest.CurrentVersion,
-          correlationId,
-          clientId,
-          streams.toSeq)
-        val consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
-        val topicMetadataResponse = consumer.send(topicMetadataRequest)
-
-        consumer.close
+        val metadata = TopicMetadataCache.getTopicMetadata(
+          streams.toSet,
+          systemName,
+          getTopicMetadata)
 
         // Break topic metadata topic/partitions into per-broker map.
-        val brokersToTopicPartitions = topicMetadataResponse
-          .topicsMetadata
+        val brokersToTopicPartitions = metadata
+          .values
           // Convert the topic metadata to a Seq[(Broker, TopicAndPartition)] 
           .flatMap(topicMetadata => topicMetadata
             .partitionsMetadata
