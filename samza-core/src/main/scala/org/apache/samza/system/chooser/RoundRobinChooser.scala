@@ -24,6 +24,17 @@ import org.apache.samza.config.Config
 import org.apache.samza.SamzaException
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.system.IncomingMessageEnvelope
+import org.apache.samza.metrics.MetricsRegistry
+import org.apache.samza.metrics.ReadableMetricsRegistry
+
+import org.apache.samza.metrics.MetricsRegistryMap
+import org.apache.samza.metrics.MetricsHelper
+
+class RoundRobinChooserMetrics(val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+  def setBufferedMessages(getValue: () => Int) {
+    newGauge("buffered-messages", getValue)
+  }
+}
 
 /**
  * A chooser that round robins between all system stream partitions. This
@@ -34,7 +45,7 @@ import org.apache.samza.system.IncomingMessageEnvelope
  * RoundRobinChooser.choose returning the prior one, a SamzaException will be
  * thrown.
  */
-class RoundRobinChooser extends BaseMessageChooser {
+class RoundRobinChooser(metrics: RoundRobinChooserMetrics = new RoundRobinChooserMetrics) extends BaseMessageChooser {
 
   /**
    * SystemStreamPartitions that the chooser has received a message for, but
@@ -50,6 +61,10 @@ class RoundRobinChooser extends BaseMessageChooser {
    * SystemStreamPartition at a time.
    */
   var q = new ArrayDeque[IncomingMessageEnvelope]()
+
+  override def start {
+    metrics.setBufferedMessages(() => q.size)
+  }
 
   def update(envelope: IncomingMessageEnvelope) = {
     if (inflightSystemStreamPartitions.contains(envelope.getSystemStreamPartition)) {
@@ -75,5 +90,5 @@ class RoundRobinChooser extends BaseMessageChooser {
 }
 
 class RoundRobinChooserFactory extends MessageChooserFactory {
-  def getChooser(config: Config) = new RoundRobinChooser
+  def getChooser(config: Config, registry: MetricsRegistry) = new RoundRobinChooser(new RoundRobinChooserMetrics(registry))
 }

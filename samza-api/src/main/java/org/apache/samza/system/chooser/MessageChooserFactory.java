@@ -20,7 +20,8 @@
 package org.apache.samza.system.chooser;
 
 import org.apache.samza.config.Config;
+import org.apache.samza.metrics.MetricsRegistry;
 
 public interface MessageChooserFactory {
-  MessageChooser getChooser(Config config);
+  MessageChooser getChooser(Config config, MetricsRegistry registry);
 }

@@ -31,9 +31,10 @@ import org.apache.samza.system.SystemStream
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.Util
 import org.apache.samza.system.SystemAdmin
+import org.apache.samza.metrics.MetricsRegistry
 
 object DefaultChooser {
-  def apply(systemAdmins: Map[String, SystemAdmin], chooserFactory: MessageChooserFactory, config: Config) = {
+  def apply(systemAdmins: Map[String, SystemAdmin], chooserFactory: MessageChooserFactory, config: Config, registry: MetricsRegistry) = {
     val batchSize = config.getChooserBatchSize match {
       case Some(batchSize) => Some(batchSize.toInt)
       case _ => None
@@ -84,11 +85,11 @@ object DefaultChooser {
     val prioritizedChoosers = priorities
       .values
       .toSet
-      .map((_: Int, chooserFactory.getChooser(config)))
+      .map((_: Int, chooserFactory.getChooser(config, registry)))
       .toMap
 
     new DefaultChooser(
-      chooserFactory.getChooser(config),
+      chooserFactory.getChooser(config, registry),
       batchSize,
       priorities,
       prioritizedChoosers,
