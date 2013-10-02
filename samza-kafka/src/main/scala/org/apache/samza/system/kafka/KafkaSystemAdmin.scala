@@ -26,12 +26,27 @@ import kafka.api.TopicMetadata
 import scala.collection.JavaConversions._
 import org.apache.samza.system.SystemAdmin
 import org.apache.samza.SamzaException
+import kafka.consumer.SimpleConsumer
+import kafka.utils.Utils
+import kafka.client.ClientUtils
+import java.util.Random
+import kafka.api.TopicMetadataRequest
+import kafka.common.TopicAndPartition
+import kafka.api.PartitionOffsetRequestInfo
+import kafka.api.OffsetRequest
+import kafka.api.FetchRequestBuilder
+import org.apache.samza.system.SystemStreamPartition
+import kafka.common.ErrorMapping
 
 class KafkaSystemAdmin(
   systemName: String,
   // TODO whenever Kafka decides to make the Set[Broker] class public, let's switch to Set[Broker] here.
   brokerListString: String,
+  timeout: Int = Int.MaxValue,
+  bufferSize: Int = 1024000,
   clientId: String = UUID.randomUUID.toString) extends SystemAdmin {
+
+  val rand = new Random
 
   def getPartitions(streamName: String): java.util.Set[Partition] = {
     val getTopicMetadata = (topics: Set[String]) => {
@@ -50,6 +65,79 @@ class KafkaSystemAdmin(
       .toSet[Partition]
   }
 
-  // TODO implement this
-  def getLastOffsets(streams: java.util.Set[String]) = throw new SamzaException("Need to implement this")
+  def getLastOffsets(streams: java.util.Set[String]) = {
+    var offsets = Map[SystemStreamPartition, String]()
+    var done = false
+
+    while (!done) {
+      try {
+        // Get brokers.
+        val brokers = ClientUtils
+          .parseBrokerList(brokerListString)
+          .toArray
+
+        // Grab a broker at random, and send a topic metadata request for all topics.
+        val broker = brokers(rand.nextInt(brokers.size))
+        var correlationId = 0
+        val topicMetadataRequest = TopicMetadataRequest(
+          TopicMetadataRequest.CurrentVersion,
+          correlationId,
+          clientId,
+          streams.toSeq)
+        val consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
+        val topicMetadataResponse = consumer.send(topicMetadataRequest)
+
+        consumer.close
+
+        // Break topic metadata topic/partitions into per-broker map.
+        val brokersToTopicPartitions = topicMetadataResponse
+          .topicsMetadata
+          // Convert the topic metadata to a Seq[(Broker, TopicAndPartition)] 
+          .flatMap(topicMetadata => topicMetadata
+            .partitionsMetadata
+            // Convert Seq[PartitionMetadata] to Seq[(Broker, TopicAndPartition)]
+            .map(partitionMetadata => {
+              ErrorMapping.maybeThrowException(partitionMetadata.errorCode)
+              val topicAndPartition = new TopicAndPartition(topicMetadata.topic, partitionMetadata.partitionId)
+              val leader = partitionMetadata
+                .leader
+                .getOrElse(throw new SamzaException("Need leaders for all partitions when fetching offsets. No leader available for TopicAndPartition: %s" format topicAndPartition))
+              (leader, topicAndPartition)
+            }))
+          // Convert to a Map[Broker, Seq[(Broker, TopicAndPartition)]]
+          .groupBy(_._1)
+          // Convert to a Map[Broker, Seq[TopicAndPartition]]
+          .mapValues(_.map(_._2))
+
+        // Get the latest offsets for each topic and partition.
+        for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
+          val partitionOffsetInfo = topicsAndPartitions
+            .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(OffsetRequest.LatestTime, 1)))
+            .toMap
+          val consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
+          val brokerOffsets = consumer
+            .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
+            .partitionErrorAndOffsets
+            .filter(_._2.offsets.head > 0)
+            // Kafka returns 1 greater than the offset of the last message in 
+            // the topic, so subtract one to fetch the last message.
+            .mapValues(_.offsets.head - 1)
+
+          consumer.close
+
+          for ((topicAndPartition, offset) <- brokerOffsets) {
+            offsets += new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition)) -> offset.toString
+          }
+        }
+
+        done = true
+      } catch {
+        case e: Exception =>
+        // Retry.
+        // TODO add logging here.
+      }
+    }
+
+    offsets
+  }
 }
