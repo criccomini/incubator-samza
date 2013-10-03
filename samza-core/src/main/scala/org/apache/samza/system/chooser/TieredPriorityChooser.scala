@@ -24,6 +24,7 @@ import org.apache.samza.SamzaException
 import org.apache.samza.system.SystemStream
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemStreamPartition
+import grizzled.slf4j.Logging
 
 /**
  * TieredPriorityChooser groups messages into priority tiers. Each priority
@@ -70,7 +71,7 @@ class TieredPriorityChooser(
    * envelope's SystemStream. If null, an exception is thrown when an unknown
    * SystemStream is seen.
    */
-  default: MessageChooser = null) extends MessageChooser {
+  default: MessageChooser = null) extends MessageChooser with Logging {
 
   // Do a sanity check.
   priorities.values.toSet.foreach((priority: Int) =>
@@ -98,7 +99,21 @@ class TieredPriorityChooser(
 
   def update(envelope: IncomingMessageEnvelope) {
     val systemStream = envelope.getSystemStreamPartition.getSystemStream
-    val chooser = prioritizedStreams.getOrElse(systemStream, Option(default).getOrElse(throw new SamzaException("No default chooser defined, and no priority assigned to stream. Can't prioritize: %s" format envelope.getSystemStreamPartition)))
+    val chooser = prioritizedStreams.get(systemStream) match {
+      case Some(chooser) =>
+        trace("Got prioritized chooser for stream: %s" format systemStream)
+
+        chooser
+      case _ =>
+        trace("Trying default chooser because no priority is defined stream: %s" format systemStream)
+
+        if (default != null) {
+          default
+        } else {
+          throw new SamzaException("No default chooser defined, and no priority assigned to stream. Can't prioritize: %s" format envelope.getSystemStreamPartition)
+        }
+    }
+
     chooser.update(envelope)
   }
 
@@ -109,7 +124,6 @@ class TieredPriorityChooser(
    * from any MessageChoosers.
    */
   def choose = {
-    // TODO is there an idiomatic way to do this in Scala?
     var envelope: IncomingMessageEnvelope = null
     val iter = prioritizedChoosers.iterator
 
@@ -118,14 +132,20 @@ class TieredPriorityChooser(
     }
 
     if (envelope == null && default != null) {
+      trace("Got no prioritized envelope, so checking default chooser.")
       default.choose
     } else {
+      trace("Got prioritized envelope: %s" format envelope)
       envelope
     }
   }
 
   def start = {
+    info("Starting priority chooser with priorities: %s" format priorities)
+
     if (default != null) {
+      info("Priority chooser has a default chooser: %s" format default)
+
       default.start
     }
 

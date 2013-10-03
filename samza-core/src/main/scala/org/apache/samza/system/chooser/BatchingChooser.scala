@@ -21,6 +21,10 @@ package org.apache.samza.system.chooser
 
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.system.IncomingMessageEnvelope
+import org.apache.samza.metrics.MetricsHelper
+import org.apache.samza.metrics.MetricsRegistryMap
+import org.apache.samza.metrics.MetricsRegistry
+import grizzled.slf4j.Logging
 
 /**
  * BatchingChooser provides a batching functionality on top of an existing
@@ -49,7 +53,11 @@ import org.apache.samza.system.IncomingMessageEnvelope
  * This class depends on the contract defined in MessageChooser. Specifically,
  * it only works with one envelope per SystemStreamPartition at a time.
  */
-class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends MessageChooser {
+class BatchingChooser(
+  wrapped: MessageChooser,
+  batchSize: Int = 100,
+  metrics: BatchingChooserMetrics = new BatchingChooserMetrics) extends MessageChooser with Logging {
+
   var preferredSystemStreamPartition: SystemStreamPartition = null
   var preferredEnvelope: IncomingMessageEnvelope = null
   var batchCount = 0
@@ -59,8 +67,12 @@ class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends Mes
     // can bypass the wrapped chooser, and forcibly return it when choose is 
     // called.
     if (envelope.getSystemStreamPartition.equals(preferredSystemStreamPartition)) {
+      debug("Bypassing wrapped.update to cache preferred envelope: %s" format preferredEnvelope)
+
       preferredEnvelope = envelope
     } else {
+      trace("No preferred envelope, so updating wrapped chooser.")
+
       wrapped.update(envelope)
     }
   }
@@ -89,6 +101,8 @@ class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends Mes
       preferredEnvelope = null
       batchCount += 1
 
+      trace("Have preferred envelope: %s" format envelope)
+
       // If we've hit our batching threshold, reset the batch to give other 
       // SSPs a chance to get picked by the wrapped chooser.
       if (batchCount >= batchSize) {
@@ -100,6 +114,8 @@ class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends Mes
   }
 
   private def setPreferredSystemStreamPartition(envelope: IncomingMessageEnvelope) {
+    debug("Setting preferred system stream partition to: %s" format envelope.getSystemStreamPartition)
+
     // Set batch count to 1 since the envelope we're returning is the 
     // first one in the batch.
     batchCount = 1
@@ -107,13 +123,27 @@ class BatchingChooser(wrapped: MessageChooser, batchSize: Int = 100) extends Mes
   }
 
   private def resetBatch() {
+    debug("Resetting batch due to max batch size limit of: %s" format batchSize)
+    metrics.batches.inc
     batchCount = 0
     preferredSystemStreamPartition = null
   }
 
-  def start = wrapped.start
+  def start = {
+    debug("Starting batching chooser with batch size of: %s" format batchSize)
+    metrics.setBatchedEnvelopes(() => batchCount)
+    wrapped.start
+  }
 
   def stop = wrapped.stop
 
   def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) = wrapped.register(systemStreamPartition, lastReadOffset)
+}
+
+class BatchingChooserMetrics(val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+  val batches = newCounter("batch-resets")
+
+  def setBatchedEnvelopes(getValue: () => Int) {
+    newGauge("batched-envelopes", getValue)
+  }
 }

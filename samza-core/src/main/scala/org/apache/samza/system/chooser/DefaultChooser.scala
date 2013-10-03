@@ -32,13 +32,17 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.Util
 import org.apache.samza.system.SystemAdmin
 import org.apache.samza.metrics.MetricsRegistry
+import org.apache.samza.metrics.MetricsRegistryMap
+import grizzled.slf4j.Logging
 
-object DefaultChooser {
+object DefaultChooser extends Logging {
   def apply(systemAdmins: Map[String, SystemAdmin], chooserFactory: MessageChooserFactory, config: Config, registry: MetricsRegistry) = {
     val batchSize = config.getChooserBatchSize match {
       case Some(batchSize) => Some(batchSize.toInt)
       case _ => None
     }
+
+    debug("Got batch size: %s" format batchSize)
 
     // Normal streams default to priority 0.
     val defaultPrioritizedStreams = config
@@ -46,14 +50,20 @@ object DefaultChooser {
       .map((_, 0))
       .toMap
 
+    debug("Got default priority streams: %s" format defaultPrioritizedStreams)
+
     // Bootstrap streams default to Int.MaxValue priority.
     val prioritizedBootstrapStreams = config
       .getBootstrapStreams
       .map((_, Int.MaxValue))
       .toMap
 
+    debug("Got bootstrap priority streams: %s" format prioritizedBootstrapStreams)
+
     // Explicitly prioritized streams are set to whatever they were configured to.
     val prioritizedStreams = config.getPriorityStreams
+
+    debug("Got prioritized streams: %s" format prioritizedStreams)
 
     // Only wire in what we need.
     val useBootstrapping = prioritizedBootstrapStreams.size > 0
@@ -73,6 +83,8 @@ object DefaultChooser {
             .getLastOffsets(streams.map(_.getStream))
       }
 
+    debug("Got bootstrap offsets: %s" format latestMessageOffsets)
+
     val priorities = if (usePriority) {
       // Ordering is important here. Overrides Int.MaxValue default for 
       // bootstrap streams with explicitly configured values, in cases where 
@@ -81,6 +93,8 @@ object DefaultChooser {
     } else {
       Map[SystemStream, Int]()
     }
+
+    debug("Got fully prioritized stream list: %s" format priorities)
 
     val prioritizedChoosers = priorities
       .values
@@ -93,7 +107,8 @@ object DefaultChooser {
       batchSize,
       priorities,
       prioritizedChoosers,
-      latestMessageOffsets)
+      latestMessageOffsets,
+      registry)
   }
 }
 
@@ -243,12 +258,20 @@ class DefaultChooser(
    * Using bootstrap streams automatically enables stream prioritization.
    * Bootstrap streams default to a priority of Int.MaxValue.
    */
-  bootstrapStreamOffsets: Map[SystemStreamPartition, String] = Map()) extends MessageChooser {
+  bootstrapStreamOffsets: Map[SystemStreamPartition, String] = Map(),
+
+  /**
+   * Metrics registry to be used when wiring up wrapped choosers.
+   */
+  registry: MetricsRegistry = new MetricsRegistryMap) extends MessageChooser with Logging {
 
   val chooser = {
     val useBatching = batchSize.isDefined
     val useBootstrapping = bootstrapStreamOffsets.size > 0
     val usePriority = useBootstrapping || prioritizedStreams.size > 0
+
+    info("Building default chooser with: useBatching=%s, useBootstrapping=%s, usePriority=%s" format (useBatching, useBootstrapping, usePriority))
+
     val maybePrioritized = if (usePriority) {
       new TieredPriorityChooser(prioritizedStreams, prioritizedChoosers, DefaultChooser)
     } else if (DefaultChooser == null) {
@@ -260,13 +283,13 @@ class DefaultChooser(
     }
 
     val maybeBatching = if (useBatching) {
-      new BatchingChooser(maybePrioritized, batchSize.get)
+      new BatchingChooser(maybePrioritized, batchSize.get, new BatchingChooserMetrics(registry))
     } else {
       maybePrioritized
     }
 
     if (useBootstrapping) {
-      new BootstrappingChooser(maybeBatching, bootstrapStreamOffsets)
+      new BootstrappingChooser(maybeBatching, bootstrapStreamOffsets, new BootstrappingChooserMetrics(registry))
     } else {
       maybeBatching
     }

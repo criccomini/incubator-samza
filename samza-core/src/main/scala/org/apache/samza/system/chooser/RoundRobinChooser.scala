@@ -30,12 +30,6 @@ import org.apache.samza.metrics.ReadableMetricsRegistry
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.MetricsHelper
 
-class RoundRobinChooserMetrics(val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
-  def setBufferedMessages(getValue: () => Int) {
-    newGauge("buffered-messages", getValue)
-  }
-}
-
 /**
  * A chooser that round robins between all system stream partitions. This
  * chooser makes the assumption that it will only ever receive one envelope
@@ -86,6 +80,13 @@ class RoundRobinChooser(metrics: RoundRobinChooserMetrics = new RoundRobinChoose
     }
 
     envelope
+  }
+}
+
+
+class RoundRobinChooserMetrics(val registry: MetricsRegistry = new MetricsRegistryMap) extends MetricsHelper {
+  def setBufferedMessages(getValue: () => Int) {
+    newGauge("buffered-messages", getValue)
   }
 }
 
