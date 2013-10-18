@@ -96,16 +96,24 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
   val partitions = Util.getMaxInputStreamPartitions(config)
   var taskFailures = Map[Int, TaskFailure]()
   var tooManyFailedContainers = false
+  var containerManager: NMClientImpl = null
 
   override def shouldShutdown = state.completedTasks == state.taskCount || tooManyFailedContainers
 
   override def onInit() {
     state.neededContainers = state.taskCount
     state.unclaimedTasks = (0 until state.taskCount).toSet
+    containerManager = new NMClientImpl()
+    containerManager.init(conf)
+    containerManager.start
 
     info("Requesting %s containers" format state.taskCount)
 
     requestContainers(config.getContainerMaxMemoryMb.getOrElse(DEFAULT_CONTAINER_MEM), config.getContainerMaxCpuCores.getOrElse(DEFAULT_CPU_CORES), state.neededContainers)
+  }
+  
+  override def onShutdown {
+    containerManager.stop
   }
 
   override def onContainerAllocated(container: Container) {
@@ -279,7 +287,6 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
     // connect to container manager (based on similar code in the ContainerLauncher in Hadoop MapReduce)
     val contToken = container.getContainerToken
     val address = container.getNodeId.getHost + ":" + container.getNodeId.getPort
-    val containerManager = new NMClientImpl()
 
     // set the local package so that the containers and app master are provisioned with it
     val packageResource = Records.newRecord(classOf[LocalResource])
