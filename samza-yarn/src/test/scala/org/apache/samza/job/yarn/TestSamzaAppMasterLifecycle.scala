@@ -67,17 +67,12 @@ class TestSamzaAppMasterLifecycle {
       appTrackingUrl: String) {
       this.status = appStatus
     }
-//    override def addContainerRequest(req: ContainerRequest) {}
-//    override def removeContainerRequest(req: ContainerRequest) {}
     override def releaseAssignedContainer(containerId: ContainerId) {}
-//    override def getClusterAvailableResources(): Resource = null
     override def getClusterNodeCount() = 1
 
     override def init(config: Configuration) {}
     override def start() {}
     override def stop() {}
-//    override def register(listener: ServiceStateChangeListener) {}
-//    override def unregister(listener: ServiceStateChangeListener) {}
     override def getName(): String = ""
     override def getConfig() = null
     override def getStartTime() = 0L

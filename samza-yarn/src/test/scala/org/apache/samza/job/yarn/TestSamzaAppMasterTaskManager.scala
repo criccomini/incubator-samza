@@ -68,12 +68,8 @@ object TestSamzaAppMasterTaskManager {
     override def setResource(resource: Resource) {}
     override def getPriority(): Priority = null
     override def setPriority(priority: Priority) {}
-    //    override def getState(): ContainerState = null
-    //    override def setState(state: ContainerState) {}
     override def getContainerToken(): Token = null
     override def setContainerToken(containerToken: Token) {}
-    //    override def getContainerStatus(): ContainerStatus = null
-    //    override def setContainerStatus(containerStatus: ContainerStatus) {}
     override def compareTo(c: Container): Int = containerId.compareTo(c.getId)
   }
 
@@ -98,18 +94,13 @@ object TestSamzaAppMasterTaskManager {
     override def unregisterApplicationMaster(appStatus: FinalApplicationStatus, appMessage: String, appTrackingUrl: String) = null
     override def addContainerRequest(req: ContainerRequest) { requests ::= req }
     override def removeContainerRequest(req: ContainerRequest) {}
-    //    override def releaseAssignedContainer(containerId: ContainerId) { release ::= containerId }
-    //    override def getClusterAvailableResources(): Resource = null
     override def getClusterNodeCount() = 1
 
     override def init(config: Configuration) {}
     override def start() {}
     override def stop() {}
-    //    override def register(listener: ServiceStateChangeListener) {}
-    //    override def unregister(listener: ServiceStateChangeListener) {}
     override def getName(): String = ""
     override def getConfig() = null
-    //    override def getServiceState() = null
     override def getStartTime() = 0L
   }
 
