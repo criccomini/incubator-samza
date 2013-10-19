@@ -111,9 +111,11 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
 
     requestContainers(config.getContainerMaxMemoryMb.getOrElse(DEFAULT_CONTAINER_MEM), config.getContainerMaxCpuCores.getOrElse(DEFAULT_CPU_CORES), state.neededContainers)
   }
-  
+
   override def onShutdown {
-    containerManager.stop
+    if (containerManager != null) {
+      containerManager.stop
+    }
   }
 
   override def onContainerAllocated(container: Container) {
