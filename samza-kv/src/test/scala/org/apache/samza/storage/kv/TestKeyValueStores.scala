@@ -208,7 +208,11 @@ class TestKeyValueStores(cache: Boolean) {
     // that's no longer in the cache.
     store.flush
   }
-  
+
+  /**
+   * A little test that tries to simulate a few common patterns:
+   * read-modify-write, and do-some-stuff-then-delete (windowing).
+   */
   @Test
   def testRandomReadWriteRemove() {
     // Make test deterministic by seeding the random number generator.
@@ -216,25 +220,27 @@ class TestKeyValueStores(cache: Boolean) {
     val keys = letters
       .map(b(_))
       .toArray
-    var expected = Map[String, String]()
+
+    // Map from letter to key byte array used for letter, and expected value.
+    // We have to go through some acrobatics here since Java's byte array uses 
+    // object identity for .equals. Two byte arrays can have identical byte 
+    // elements, but not be equal.
+    var expected = Map[String, (Array[Byte], String)]()
 
     (0 until 100).foreach(loop => {
-      System.err.println("---")
       (0 until 30).foreach(i => {
         val idx = rand.nextInt(keys.length)
         val randomValue = letters(rand.nextInt(keys.length))
         val key = keys(idx)
         val currentVal = store.get(key)
         store.put(key, b(randomValue))
-        System.err.println("put: " + letters(idx))
-        expected += letters(idx) -> randomValue
+        expected += letters(idx) -> (key, randomValue)
       })
 
       for ((k, v) <- expected) {
-        System.err.println("check: " + k + " = " + v)
-        val bytes = store.get(b(k))
+        val bytes = store.get(v._1)
         assertNotNull(bytes)
-        assertEquals(v, new String(bytes, "UTF-8"))
+        assertEquals(v._2, new String(bytes, "UTF-8"))
       }
 
       val iterator = store.all

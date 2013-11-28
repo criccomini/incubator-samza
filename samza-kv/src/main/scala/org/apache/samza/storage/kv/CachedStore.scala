@@ -127,7 +127,6 @@ class CachedStore[K, V](
     // broken. See SAMZA-80 for details.
     val oldDirtyList = this.dirty
     this.dirty = new mutable.DoubleLinkedList(key, oldDirtyList)
-//    this.dirty = new mutable.DoubleLinkedList(key, this.dirty)
     oldDirtyList.prev = this.dirty
 
     // add the key to the cache (but don't allocate a new cache entry if we already have one)
