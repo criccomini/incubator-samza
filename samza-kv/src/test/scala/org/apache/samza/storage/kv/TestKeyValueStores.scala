@@ -65,8 +65,11 @@ class TestKeyValueStores(typeOfStore: String) {
       serde = true
       cache = true
       new CachedStore(serializedStore, CacheSize, BatchSize)
-    } else
+    } else {
       leveldb
+    }
+
+    store = new NullSafeKeyValueStore(store)
   }
 
   @After
