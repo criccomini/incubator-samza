@@ -193,8 +193,13 @@ project(":samza-test_$scalaVersion") {
   }
 
   test {
-    // Bump up the heap so we can start ZooKeeper and Kafka brokers.
+    // Bump up the heap so we can start ZooKeeper and Kafka brokers. Also 
+    // required for TestSamzaContainerPerformance when a high thread count 
+    // with a lot of inputs is used.
     maxHeapSize = "4096m"
+
+    // Forward all samza.* system properties to test subprocesses. This is 
+    // useful for configuring TestSamzaContainerPerformance from the CLI.
     systemProperties = System.properties.findAll { it.key.startsWith("samza") }
   }
 }
