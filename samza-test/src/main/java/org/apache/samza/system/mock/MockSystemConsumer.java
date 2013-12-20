@@ -43,8 +43,6 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
         }
       }
 
-      System.err.println("SSPs for thread " + i + ":" + threadSsps);
-
       // Start thread.
       Thread thread = new Thread(new MockSystemConsumerRunnable(threadSsps));
       thread.setDaemon(true);
@@ -72,7 +70,6 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
     super.register(systemStreamPartition, lastReadOffset);
     ssps.add(systemStreamPartition);
     setIsAtHead(systemStreamPartition, true);
-    System.err.println("Register SSP: " + systemStreamPartition);
   }
 
   public class MockSystemConsumerRunnable implements Runnable {

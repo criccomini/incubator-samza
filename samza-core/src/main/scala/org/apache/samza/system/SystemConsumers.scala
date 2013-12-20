@@ -31,12 +31,15 @@ class SystemConsumers(
   serdeManager: SerdeManager = new SerdeManager,
   metrics: SystemConsumersMetrics = new SystemConsumersMetrics,
   maxMsgsPerStreamPartition: Int = 1000,
+  fetchThreshold: Float = 0f,
   noNewMessagesTimeout: Long = 10) extends Logging {
 
   var unprocessedMessages = Map[SystemStreamPartition, Queue[IncomingMessageEnvelope]]()
   var neededByChooser = Set[SystemStreamPartition]()
   var fetchMap = Map[SystemStreamPartition, java.lang.Integer]()
+  var systemStreamPartitionsToFetch = Map[String, Map[SystemStreamPartition, java.lang.Integer]]()
   var timeout = noNewMessagesTimeout
+  val depletedQueueSizeThreshold = (maxMsgsPerStreamPartition * (1 - fetchThreshold)).toInt
 
   debug("Got stream consumers: %s" format consumers)
   debug("Got max messages per stream: %s" format maxMsgsPerStreamPartition)
@@ -72,7 +75,7 @@ class SystemConsumers(
     debug("Registering stream: %s, %s" format (systemStreamPartition, lastReadOffset))
 
     neededByChooser += systemStreamPartition
-    fetchMap += systemStreamPartition -> maxMsgsPerStreamPartition
+    incFetchMap(systemStreamPartition, maxMsgsPerStreamPartition)
     unprocessedMessages += systemStreamPartition -> Queue[IncomingMessageEnvelope]()
     consumers(systemStreamPartition.getSystem).register(systemStreamPartition, lastReadOffset)
     chooser.register(systemStreamPartition, lastReadOffset)
@@ -115,7 +118,7 @@ class SystemConsumers(
       // If we have messages for a stream that the chooser needs, then update.
       if (fetchMap(systemStreamPartition).intValue < maxMsgsPerStreamPartition) {
         chooser.update(unprocessedMessages(systemStreamPartition).dequeue)
-        fetchMap += systemStreamPartition -> (fetchMap(systemStreamPartition).intValue + 1)
+        incFetchMap(systemStreamPartition)
         neededByChooser -= systemStreamPartition
       })
   }
@@ -129,7 +132,7 @@ class SystemConsumers(
 
     debug("Filtering for system: %s, %s" format (systemName, fetchMap))
 
-    val systemFetchMap = fetchMap.filterKeys(_.getSystem.equals(systemName))
+    val systemFetchMap = systemStreamPartitionsToFetch(systemName)
 
     debug("Fetching: %s" format systemFetchMap)
 
@@ -147,7 +150,7 @@ class SystemConsumers(
 
       debug("Got message for: %s, %s" format (systemStreamPartition, envelope))
 
-      fetchMap += systemStreamPartition -> (fetchMap(systemStreamPartition).intValue - 1)
+      incFetchMap(systemStreamPartition, -1)
 
       debug("Updated fetch map for: %s, %s" format (systemStreamPartition, fetchMap))
 
@@ -155,5 +158,20 @@ class SystemConsumers(
 
       debug("Updated unprocessed messages for: %s, %s" format (systemStreamPartition, unprocessedMessages))
     })
+  }
+
+  private def incFetchMap(systemStreamPartition: SystemStreamPartition, amount: Int = 1) {
+    val fetchSize = fetchMap.getOrElse(systemStreamPartition, new Integer(0)) + amount
+    val systemName = systemStreamPartition.getSystem
+    var systemFetchMap = systemStreamPartitionsToFetch.getOrElse(systemName, Map())
+
+    if (fetchSize >= depletedQueueSizeThreshold) {
+      systemFetchMap += systemStreamPartition -> fetchSize
+    } else {
+      systemFetchMap -= systemStreamPartition
+    }
+
+    fetchMap += systemStreamPartition -> fetchSize
+    systemStreamPartitionsToFetch += systemName -> systemFetchMap
   }
 }

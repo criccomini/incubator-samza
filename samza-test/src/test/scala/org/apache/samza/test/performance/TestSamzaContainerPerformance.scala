@@ -59,7 +59,7 @@ class TestPerformanceTask extends StreamTask {
       System.err.println("Processed %s messages in %s seconds." format (messagesProcessed, seconds))
     }
 
-    if (messagesProcessed >= 1000000) {
+    if (messagesProcessed >= 100000) {
       coordinator.shutdown
     }
   }
