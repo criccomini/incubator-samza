@@ -28,13 +28,13 @@ import grizzled.slf4j.Logging
  * The test can be configured with the following system properties:
  *
  * <pre>
- * mock.consumer.thread.count
- * mock.messages.per.batch
- * mock.input.streams
- * mock.partitions.per.stream
- * mock.broker.sleep.ms
- * task.log.interval
- * task.max.messages
+ * samza.mock.consumer.thread.count
+ * samza.mock.messages.per.batch
+ * samza.mock.input.streams
+ * samza.mock.partitions.per.stream
+ * samza.mock.broker.sleep.ms
+ * samza.task.log.interval
+ * samza.task.max.messages
  * <pre>
  *
  * For example, you might specify wish to process 10000 messages simulated 
@@ -42,11 +42,11 @@ import grizzled.slf4j.Logging
  *
  * <pre>
  * ./gradlew :samza-test:test \
- *   -Dtest.single=TestSamzaContainerPerformance \
- *   -Pmock.input.streams=2 \
- *   -Pmock.consumer.thread.count=1 \
- *   -Ptask.log.interval=1000 \
- *   -Ptask.max.messages=10000
+ *   -Dsamza.test.single=TestSamzaContainerPerformance \
+ *   -Psamza.mock.input.streams=2 \
+ *   -Psamza.mock.consumer.thread.count=1 \
+ *   -Psamza.task.log.interval=1000 \
+ *   -Psamza.task.max.messages=10000
  * <pre>
  */
 class TestSamzaContainerPerformance extends Logging{
