@@ -11,13 +11,43 @@ import org.apache.samza.system.SystemStreamPartition;
 import org.apache.samza.util.BlockingEnvelopeMap;
 import org.apache.samza.util.Clock;
 
+/**
+ * MockSystemConsumer is a class that simulates a multi-threaded consumer that
+ * uses BlockingEnvelopeMap. The primary use for this class is to do performance
+ * testing.
+ * 
+ * This class works by starting up (threadCount) threads. Each thread adds
+ * (messagesPerBatch) to the BlockingEnvelopeMap, then sleeps for
+ * (brokerSleepMs). The sleep is important to simulate network latency when
+ * executing a fetch against a remote streaming system (i.e. Kafka).
+ */
 public class MockSystemConsumer extends BlockingEnvelopeMap {
   private final int messagesPerBatch;
   private final int threadCount;
+  private final int brokerSleepMs;
+
+  /**
+   * The SystemStreamPartitions that this consumer is in charge of.
+   */
   private final Set<SystemStreamPartition> ssps;
+
+  /**
+   * The consumer threads that are putting IncomingMessageEnvelopes into
+   * BlockingEnvelopeMap.
+   */
   private List<Thread> threads;
 
-  public MockSystemConsumer(int messagesPerBatch, int threadCount) {
+  /**
+   * 
+   * @param messagesPerBatch
+   *          The number of messages to add to the BlockingEnvelopeMap before
+   *          sleeping.
+   * @param threadCount
+   *          How many threads to run.
+   * @param brokerSleepMs
+   *          How long each thread should sleep between batch writes.
+   */
+  public MockSystemConsumer(int messagesPerBatch, int threadCount, int brokerSleepMs) {
     super(new MetricsRegistryMap("test-container-performance"), new Clock() {
       @Override
       public long currentTimeMillis() {
@@ -27,16 +57,21 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
 
     this.messagesPerBatch = messagesPerBatch;
     this.threadCount = threadCount;
+    this.brokerSleepMs = brokerSleepMs;
     this.ssps = new HashSet<SystemStreamPartition>();
     this.threads = new ArrayList<Thread>(threadCount);
   }
 
+  /**
+   * Assign SystemStreamPartitions to all of the threads, and start them up to
+   * begin simulating consuming messages.
+   */
   @Override
   public void start() {
     for (int i = 0; i < threadCount; ++i) {
-      // Assign SystemStreamPartitions for this thread.
       Set<SystemStreamPartition> threadSsps = new HashSet<SystemStreamPartition>();
 
+      // Assign SystemStreamPartitions for this thread.
       for (SystemStreamPartition ssp : ssps) {
         if (Math.abs(ssp.hashCode()) % threadCount == i) {
           threadSsps.add(ssp);
@@ -51,6 +86,9 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
     }
   }
 
+  /**
+   * Kill all the threads, and shutdown.
+   */
   @Override
   public void stop() {
     for (Thread thread : threads) {
@@ -72,6 +110,11 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
     setIsAtHead(systemStreamPartition, true);
   }
 
+  /**
+   * The worker thread for MockSystemConsumer that simulates reading messages
+   * from a remote streaming system (i.e. Kafka), and writing them to the
+   * BlockingEnvelopeMap.
+   */
   public class MockSystemConsumerRunnable implements Runnable {
     private final Set<SystemStreamPartition> ssps;
 
@@ -93,8 +136,9 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
           }
 
           // Simulate a broker fetch request's network latency.
-          Thread.sleep(1);
+          Thread.sleep(brokerSleepMs);
 
+          // Add messages to the BlockingEnvelopeMap.
           for (SystemStreamPartition ssp : sspsToFetch) {
             for (int i = 0; i < messagesPerBatch; ++i) {
               add(ssp, new IncomingMessageEnvelope(ssp, "0", "key", "value"));

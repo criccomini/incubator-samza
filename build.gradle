@@ -189,10 +189,12 @@ project(":samza-test_$scalaVersion") {
     testCompile files("../samza-kafka/lib/kafka_$scalaVersion-" + kafkaVersion + "-test.jar")
     testCompile "com.101tec:zkclient:$zkClientVersion"
     testCompile project(":samza-kafka_$scalaVersion")
+    testRuntime "org.slf4j:slf4j-simple:1.6.2"
   }
 
   test {
     // Bump up the heap so we can start ZooKeeper and Kafka brokers.
     maxHeapSize = "4096m"
+    systemProperties = System.properties.findAll { it.key.startsWith("samza") }
   }
 }
