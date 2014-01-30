@@ -1,0 +1,29 @@
+project.apply from: file("gradle/dependency-versions-scala-" + project.scalaVersion + ".gradle")
+
+subprojects {
+  apply plugin: 'maven-publish'
+
+  publishing {
+    publications {
+      mavenJava(MavenPublication) {
+        from components.java
+
+        if(project.name == 'samza-shell') {
+          artifact shellTarGz {
+            name "samza-shell"
+            classifier "dist"
+          }
+        }
+      }
+    }
+  }
+  
+  plugins.withType(ScalaPlugin) {
+    project.ext.crossCompile = { String targetProjectPath, String conf = 'compile' ->
+      project.dependencies {
+        println "Configuring dependency: '${targetProjectPath}_$scalaVersion'"
+        "$conf" project("${targetProjectPath}_$scalaVersion")
+      }
+    }
+  }
+}

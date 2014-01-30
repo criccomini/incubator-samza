@@ -1,0 +1,10 @@
+apply plugin: 'scala'
+
+dependencies {
+  compile project(':samza-api')
+  crossCompile ":samza-core"
+  compile "org.scala-lang:scala-library:$scalaLibVersion"
+  compile "org.clapper:grizzled-slf4j_$scalaVersion:$grizzledVersion"
+  compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+  testCompile "junit:junit:$junitVersion"
+}

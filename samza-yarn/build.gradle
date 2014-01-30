@@ -1,0 +1,43 @@
+apply plugin: 'scala'
+
+dependencies {
+  compile project(':samza-api')
+  crossCompile ":samza-core"
+  
+  compile "org.scala-lang:scala-library:$scalaLibVersion"
+  compile "org.scala-lang:scala-compiler:$scalaLibVersion"
+  compile "org.clapper:grizzled-slf4j_$scalaVersion:$grizzledVersion"
+  compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+  compile "commons-httpclient:commons-httpclient:$commonsHttpClientVersion"
+  compile "org.eclipse.jetty:jetty-webapp:$jettyVersion"
+  compile("org.apache.hadoop:hadoop-yarn-api:$yarnVersion") {
+ exclude module: 'slf4j-log4j12'
+  }
+  compile("org.apache.hadoop:hadoop-yarn-common:$yarnVersion") {
+ exclude module: 'slf4j-log4j12'
+  }
+  compile("org.apache.hadoop:hadoop-yarn-client:$yarnVersion") {
+ exclude module: 'slf4j-log4j12'
+  }
+  compile("org.apache.hadoop:hadoop-common:$yarnVersion") {
+ exclude module: 'slf4j-log4j12'
+ exclude module: 'servlet-api'
+ exclude module: 'jetty'
+ exclude module: 'jetty-util'
+  }
+  compile("org.scalatra:scalatra_$scalaVersion:$scalatraVersion") {
+ exclude module: 'scala-compiler'
+ exclude module: 'slf4j-api'
+  }
+  compile("org.scalatra:scalatra-scalate_$scalaVersion:$scalatraVersion") {
+ exclude module: 'scala-compiler'
+ exclude module: 'slf4j-api'
+  }
+  testCompile "junit:junit:$junitVersion"
+}
+
+repositories {
+  maven {
+ url "http://repo.typesafe.com/typesafe/releases"
+  }
+}

@@ -1,0 +1,40 @@
+apply plugin: 'scala'
+
+dependencies {
+  compile project(':samza-api')
+  
+  crossCompile ":samza-core"
+  crossCompile ":samza-serializers"
+  
+  compile "org.scala-lang:scala-library:$scalaLibVersion"
+  
+  compile "org.clapper:grizzled-slf4j_$scalaVersion:$grizzledVersion"
+  compile "com.101tec:zkclient:$zkClientVersion"
+  compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+  // these can all go away when kafka is in maven
+  compile "kafka:kafka_$scalaVersion:$kafkaVersion"
+    
+  compile "com.yammer.metrics:metrics-core:$metricsVersion"
+  compile "com.yammer.metrics:metrics-annotation:$metricsVersion"
+  // end these can all go away when kafka is in maven
+  testCompile "junit:junit:$junitVersion"
+  testCompile "org.mockito:mockito-all:$mockitoVersion"
+  // these can all go away when kafka is in maven
+  testCompile "kafka:kafka-test_$scalaVersion:$kafkaVersion"
+  // end these can all go away when kafka is in maven
+
+  // Logging in tests is good.
+  testRuntime "org.slf4j:slf4j-simple:1.6.2"
+}
+
+task foo << {
+  configurations.scala2_10Compile.each { 
+    println "-------------"
+    println it.name + "\n"
+  }
+}
+
+test {
+  // Bump up the heap so we can start ZooKeeper and Kafka brokers.
+  maxHeapSize = "1024m"
+}

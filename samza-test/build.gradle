@@ -1,0 +1,31 @@
+apply plugin: 'scala'
+
+dependencies {
+  compile project(':samza-api')
+  crossCompile ":samza-kv"
+  crossCompile ":samza-core"
+  
+  compile "org.scala-lang:scala-library:$scalaLibVersion"
+  compile "org.clapper:grizzled-slf4j_$scalaVersion:$grizzledVersion"
+  compile "net.sf.jopt-simple:jopt-simple:$joptSimpleVersion"
+  compile "javax.mail:mail:1.4"
+  compile "junit:junit:$junitVersion"
+  
+  compile "kafka:kafka_$scalaVersion:$kafkaVersion"
+  testCompile "kafka:kafka-test_$scalaVersion:$kafkaVersion"
+  
+  testCompile "com.101tec:zkclient:$zkClientVersion"
+  crossCompile ":samza-kafka", "testCompile"
+  testRuntime "org.slf4j:slf4j-simple:1.6.2"
+}
+
+test {
+  // Bump up the heap so we can start ZooKeeper and Kafka brokers. Also 
+  // required for TestSamzaContainerPerformance when a high thread count 
+  // with a lot of inputs is used.
+  maxHeapSize = "4096m"
+
+  // Forward all samza.* system properties to test subprocesses. This is 
+  // useful for configuring TestSamzaContainerPerformance from the CLI.
+  systemProperties = System.properties.findAll { it.key.startsWith("samza") }
+}

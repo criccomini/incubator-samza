@@ -1,7 +1,9 @@
 include 'samza-api', 'samza-core', 'samza-kafka', 'samza-kv', 'samza-serializers', 'samza-shell', 'samza-yarn', 'samza-test'
 
-rootProject.children.each {
-  if (it.name != 'samza-api' && it.name != 'samza-shell') {
-    it.name = it.name + "_" + scalaVersion
+if(!hasProperty('overrideBuildEnvironment')) {
+  rootProject.children.each {
+    if (it.name != 'samza-api' && it.name != 'samza-shell') {
+      it.name = it.name + "_" + scalaVersion
+    }
   }
 }
