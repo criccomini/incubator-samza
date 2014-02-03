@@ -43,21 +43,3 @@ subprojects {
     }
   }
 }
-
-project(':samza-api') {
-  apply plugin: 'java'
-
-  dependencies {
-    testCompile "junit:junit:$junitVersion"
-  }
-}
-
-project(":samza-shell") {
-  apply plugin: 'java'
-
-  task shellTarGz(type: Tar) { 
-    compression = Compression.GZIP 
-    classifier = 'dist'
-    from 'src/main/bash'
-  }
-}
