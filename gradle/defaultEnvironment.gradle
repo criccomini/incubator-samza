@@ -21,7 +21,6 @@ subprojects {
   plugins.withType(ScalaPlugin) {
     project.ext.crossCompile = { String targetProjectPath, String conf = 'compile' ->
       project.dependencies {
-        println "Configuring dependency: '${targetProjectPath}_$scalaVersion'"
         "$conf" project("${targetProjectPath}_$scalaVersion")
       }
     }
