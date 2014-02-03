@@ -1,0 +1,7 @@
+apply plugin: 'java'
+
+task shellTarGz(type: Tar) {
+  compression = Compression.GZIP
+  classifier = 'dist'
+  from 'src/main/bash'
+}
