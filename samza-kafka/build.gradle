@@ -27,13 +27,6 @@ dependencies {
   testRuntime "org.slf4j:slf4j-simple:1.6.2"
 }
 
-task foo << {
-  configurations.scala2_10Compile.each { 
-    println "-------------"
-    println it.name + "\n"
-  }
-}
-
 test {
   // Bump up the heap so we can start ZooKeeper and Kafka brokers.
   maxHeapSize = "1024m"
