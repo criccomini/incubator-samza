@@ -47,6 +47,11 @@ public class SinglePartitionSystemAdmin implements SystemAdmin {
   }
 
   @Override
+  public Map<SystemStreamPartition, String> getEarliestOffsets(Set<String> streams) {
+    throw new SamzaException("Method unsupported for single partition admin.");
+  }
+
+  @Override
   public Map<SystemStreamPartition, String> getLastOffsets(Set<String> streams) {
     throw new SamzaException("Method unsupported for single partition admin.");
   }

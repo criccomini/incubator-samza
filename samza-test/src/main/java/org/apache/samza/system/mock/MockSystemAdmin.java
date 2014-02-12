@@ -50,6 +50,11 @@ public class MockSystemAdmin implements SystemAdmin {
   }
 
   @Override
+  public Map<SystemStreamPartition, String> getEarliestOffsets(Set<String> streams) {
+    throw new RuntimeException("MockSystemAdmin doesn't implement this method.");
+  }
+
+  @Override
   public Map<SystemStreamPartition, String> getLastOffsets(Set<String> streams) {
     throw new RuntimeException("MockSystemAdmin doesn't implement this method.");
   }

@@ -29,6 +29,8 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.system.SystemStreamPartitionIterator
 import org.apache.samza.task.MessageCollector
 import org.apache.samza.util.Util
+import org.apache.samza.system.SystemAdmin
+import org.apache.samza.SamzaException
 
 object TaskStorageManager {
   def getStoreDir(storeBaseDir: File, storeName: String) = {
@@ -48,6 +50,7 @@ class TaskStorageManager(
   taskStores: Map[String, StorageEngine] = Map(),
   storeConsumers: Map[String, SystemConsumer] = Map(),
   changeLogSystemStreams: Map[String, SystemStream] = Map(),
+  changeLogOffsets: Map[String, String] = Map(),
   storeBaseDir: File = new File(System.getProperty("user.dir"), "state")) extends Logging {
 
   def apply(storageEngineName: String) = taskStores(storageEngineName)
@@ -77,11 +80,16 @@ class TaskStorageManager(
 
     for ((storeName, systemStream) <- changeLogSystemStreams) {
       val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
-      val consumer = storeConsumers(storeName)
+      val consumer = storeConsumers.getOrElse(storeName, throw new SamzaException("Unable to find a store consumer for store %s." format storeName))
 
-      debug("Registering consumer for system stream partition %s." format systemStreamPartition)
+      changeLogOffsets.get(storeName) match {
+        case Some(offset) =>
+          debug("Registering consumer for system stream partition %s with offset %s." format (systemStreamPartition, offset))
 
-      consumer.register(systemStreamPartition, null)
+          consumer.register(systemStreamPartition, offset)
+        case _ =>
+          debug("Skipping consumer setup for changelog %s, since no offset was available to consume from." format systemStreamPartition)
+      }
     }
 
     storeConsumers.values.foreach(_.start)
@@ -91,7 +99,11 @@ class TaskStorageManager(
     debug("Restoring stores.")
 
     for ((storeName, store) <- taskStores) {
-      if (changeLogSystemStreams.contains(storeName)) {
+      if (!changeLogSystemStreams.contains(storeName)) {
+        info("Skipping changelog restoration for store %s because it is not configured to use a changelog." format storeName)
+      } else if (!changeLogOffsets.contains(storeName)) {
+        info("Skipping changelog restoration for store %s because no offset was available to begin reading from the changelog." format storeName)
+      } else {
         val systemStream = changeLogSystemStreams(storeName)
         val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
         val systemConsumer = storeConsumers(storeName)

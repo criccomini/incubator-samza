@@ -66,12 +66,22 @@ class KafkaSystemAdmin(
       .toSet[Partition]
   }
 
+  def getEarliestOffsets(streams: java.util.Set[String]) = {
+    debug("Fetching earliest offsets for: %s" format streams)
+
+    getOffsets(streams, OffsetRequest.EarliestTime)
+  }
+
   def getLastOffsets(streams: java.util.Set[String]) = {
+    debug("Fetching latest offsets for: %s" format streams)
+
+    getOffsets(streams, OffsetRequest.LatestTime)
+  }
+
+  private def getOffsets(streams: java.util.Set[String], earliestOrLatest: Long) = {
     var offsets = Map[SystemStreamPartition, String]()
     var done = false
     var consumer: SimpleConsumer = null
-
-    debug("Fetching offsets for: %s" format streams)
 
     while (!done) {
       try {
@@ -107,23 +117,29 @@ class KafkaSystemAdmin(
         // Get the latest offsets for each topic and partition.
         for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
           val partitionOffsetInfo = topicsAndPartitions
-            .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(OffsetRequest.LatestTime, 1)))
+            .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(earliestOrLatest, 1)))
             .toMap
+
           consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
+
           val brokerOffsets = consumer
             .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
             .partitionErrorAndOffsets
-            .map(partitionAndOffset => {
-              if (partitionAndOffset._2.offsets.head <= 0) {
-                debug("Filtering out empty topic partition: %s" format partitionAndOffset)
-              }
-
-              partitionAndOffset
-            })
-            .filter(_._2.offsets.head > 0)
             // Kafka returns 1 greater than the offset of the last message in 
-            // the topic, so subtract one to fetch the last message.
+            // the topic, so subtract one to fetch the last message offset.
             .mapValues(_.offsets.head - 1)
+            // If we asked for last offset, and we got the next offset is 0, 
+            // then the topic is empty, and there is no last offset, so don't 
+            // return an offset for this topic and partition.
+            .flatMap {
+              case (partition, offset) =>
+                if (earliestOrLatest == OffsetRequest.LatestTime && offset <= 0) {
+                  debug("Filtering out empty topic partition: %s" format partition)
+                  None
+                } else {
+                  Some((partition, offset))
+                }
+            }
 
           debug("Got offsets: %s" format brokerOffsets)
           debug("Shutting down consumer for %s:%s." format (broker.host, broker.port))
@@ -150,7 +166,7 @@ class KafkaSystemAdmin(
       }
     }
 
-    info("Got latest offsets for streams: %s, %s" format (streams, offsets))
+    info("Got offsets for streams: %s, %s" format (streams, offsets))
 
     offsets
   }

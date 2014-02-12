@@ -26,5 +26,7 @@ import org.apache.samza.Partition;
 public interface SystemAdmin {
   Set<Partition> getPartitions(String streamName);
 
+  Map<SystemStreamPartition, String> getEarliestOffsets(Set<String> streams);
+
   Map<SystemStreamPartition, String> getLastOffsets(Set<String> streams);
 }

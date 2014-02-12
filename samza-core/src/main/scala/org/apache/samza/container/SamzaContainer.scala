@@ -59,6 +59,7 @@ import org.apache.samza.system.SystemConsumersMetrics
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.system.chooser.DefaultChooser
 import org.apache.samza.system.chooser.RoundRobinChooserFactory
+import scala.collection.JavaConversions._
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -222,6 +223,21 @@ object SamzaContainer extends Logging {
 
     info("Got change log system streams: %s" format changeLogSystemStreams)
 
+    val changeLogOffsets = changeLogSystemStreams
+      .values
+      .groupBy(_.getSystem)
+      .flatMap {
+        case (systemName, systemStreams) =>
+          val systemAdmin = systemAdmins.getOrElse(systemName, throw new SamzaException("Unable to find system configuration for changelog stream %s." format systemName))
+          val streamNames = systemStreams
+            .map(_.getStream)
+            .iterator
+            .toSet
+          systemAdmin.getEarliestOffsets(streamNames)
+      }
+
+    info("Got change log offsets: %s" format changeLogOffsets)
+
     val serdeManager = new SerdeManager(
       serdes = serdes,
       systemKeySerdes = systemKeySerdes,
@@ -334,7 +350,7 @@ object SamzaContainer extends Logging {
     val partitions = inputStreams.map(_.getPartition).toSet
 
     val taskInstances = partitions.map(partition => {
-      debug("Setting up task instance: %s" format partition)
+      info("Setting up task instance for partition %s." format partition)
 
       val task = Util.getObj[StreamTask](taskClassName)
 
@@ -384,11 +400,27 @@ object SamzaContainer extends Logging {
 
       info("Got task stores: %s" format taskStores)
 
+      val changelogOffsetsForPartition = changeLogSystemStreams
+        // flatMap to filter out all changelog streams that have no offset (haven't been created yet)
+        .flatMap {
+          case (storeName, systemStream) =>
+            changeLogOffsets.get(new SystemStreamPartition(systemStream, partition)) match {
+              case Some(offset) => Some((storeName, offset))
+              case _ =>
+                info("Skipping store restoration for store %s with changelog stream %s because we couldn't get an offset to start reading from. If the change log doesn't yet exist, this is fine. If you expected the change log to exist, this will result in data loss." format (storeName, systemStream))
+                None
+            }
+        }
+        .toMap
+
+      info("Got task instance change log offsets: %s" format changelogOffsetsForPartition)
+
       val storageManager = new TaskStorageManager(
         partition = partition,
         taskStores = taskStores,
         storeConsumers = storeConsumers,
         changeLogSystemStreams = changeLogSystemStreams,
+        changeLogOffsets = changelogOffsetsForPartition,
         storeBaseDir = storeBaseDir)
 
       val inputStreamsForThisPartition = inputStreams.filter(_.getPartition.equals(partition)).map(_.getSystemStream)
