@@ -22,13 +22,13 @@ package org.apache.samza.system.kafka
 
 import org.junit._
 import org.junit.Assert._
-import org.mockito.{Matchers, Mockito}
+import org.mockito.{ Matchers, Mockito }
 import scala.collection.JavaConversions._
 import kafka.consumer.SimpleConsumer
 import org.mockito.Mockito._
 import org.mockito.Matchers._
 import kafka.api._
-import kafka.message.{MessageSet, Message, MessageAndOffset, ByteBufferMessageSet}
+import kafka.message.{ MessageSet, Message, MessageAndOffset, ByteBufferMessageSet }
 import kafka.common.TopicAndPartition
 import kafka.api.PartitionOffsetsResponse
 import java.nio.ByteBuffer
@@ -38,7 +38,6 @@ import kafka.common.ErrorMapping
 import org.mockito.stubbing.Answer
 import org.mockito.invocation.InvocationOnMock
 import java.util.concurrent.CountDownLatch
-
 
 class TestBrokerProxy extends Logging {
   val tp2 = new TopicAndPartition("Redbird", 2013)
@@ -194,10 +193,10 @@ class TestBrokerProxy extends Logging {
     }
   }
 
-  @Test def brokerProxyCorrectlyHandlesOffsetOutOfRange():Unit = {
+  @Test def brokerProxyCorrectlyHandlesOffsetOutOfRange(): Unit = {
     // Need to wait for the thread to do some work before ending the test
     val countdownLatch = new CountDownLatch(1)
-    var failString:String = null
+    var failString: String = null
 
     val mockMessageSink = mock(classOf[MessageSink])
     when(mockMessageSink.needsMoreMessages(any())).thenReturn(true)
@@ -208,20 +207,21 @@ class TestBrokerProxy extends Logging {
 
     val mockOffsetGetter = mock(classOf[GetOffset])
     // This will be used by the simple consumer below, and this is the response that simple consumer needs
-    when(mockOffsetGetter.getNextOffset(any(classOf[DefaultFetchSimpleConsumer]), Matchers.eq(tp), Matchers.eq(Option(null)))).thenReturn(1492l)
+    when(mockOffsetGetter.getNextOffsetUsingLastCheckpointedOffset(any(classOf[TopicAndPartitionConsumer]), Matchers.eq(Option(null)))).thenReturn(0l)
+    when(mockOffsetGetter.getNextOffsetUsingAutoOffsetReset(any(classOf[TopicAndPartitionConsumer]), any())).thenReturn(1492l)
 
     var callsToCreateSimpleConsumer = 0
     val mockSimpleConsumer = mock(classOf[DefaultFetchSimpleConsumer])
 
     // Create an answer that first indicates offset out of range on first invocation and on second
     // verifies that the parameters have been updated to what we expect them to be
-    val answer = new Answer[FetchResponse](){
+    val answer = new Answer[FetchResponse]() {
       var invocationCount = 0
       def answer(invocation: InvocationOnMock): FetchResponse = {
         val arguments = invocation.getArguments()(0).asInstanceOf[List[Object]](0).asInstanceOf[(String, Long)]
 
-        if(invocationCount == 0) {
-          if(arguments != (tp, 0)) {
+        if (invocationCount == 0) {
+          if (arguments != (tp, 0)) {
             failString = "First invocation did not have the right arguments: " + arguments
             countdownLatch.countDown()
           }
@@ -238,7 +238,7 @@ class TestBrokerProxy extends Logging {
           invocationCount += 1
           mfr
         } else {
-          if(arguments != (tp, 1492)) {
+          if (arguments != (tp, 1492)) {
             failString = "On second invocation, arguments were not correct: " + arguments
           }
           countdownLatch.countDown()
@@ -247,7 +247,7 @@ class TestBrokerProxy extends Logging {
         }
       }
     }
-    
+
     when(mockSimpleConsumer.defaultFetch(any())).thenAnswer(answer)
 
     // So now we have a fetch response that will fail.  Prime the mockGetOffset to send us to a new offset
@@ -255,7 +255,7 @@ class TestBrokerProxy extends Logging {
     val bp = new BrokerProxy("host", 423, "system", "clientID", doNothingMetrics, mockMessageSink, Int.MaxValue, 1024000, 256 * 1024, 524288, 1000, mockOffsetGetter) {
 
       override def createSimpleConsumer() = {
-        if(callsToCreateSimpleConsumer > 1) {
+        if (callsToCreateSimpleConsumer > 1) {
           failString = "Tried to create more than one simple consumer"
           countdownLatch.countDown()
         }
@@ -264,11 +264,11 @@ class TestBrokerProxy extends Logging {
       }
     }
 
-    bp.addTopicPartition(tp, Option("earliest"))
+    bp.addTopicPartition(tp, Option(null))
     bp.start
     countdownLatch.await()
     bp.stop
-    if(failString != null) {
+    if (failString != null) {
       fail(failString)
     }
   }
