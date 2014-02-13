@@ -90,6 +90,9 @@ class BrokerProxy(
     if (nextOffsets.containsKey(tp)) toss("Already consuming TopicPartition %s" format tp)
 
     val offset = offsetGetter.getNextOffsetUsingLastCheckpointedOffset(TopicAndPartitionConsumer(simpleConsumer, tp), lastCheckpointedOffset)
+    
+    info("Adding topic %s with offset %s." format (tp, offset))
+    
     nextOffsets += tp -> offset
 
     metrics.topicPartitions(host, port).set(nextOffsets.size)
@@ -202,6 +205,9 @@ class BrokerProxy(
 
       try {
         val newOffset = offsetGetter.getNextOffsetUsingAutoOffsetReset(TopicAndPartitionConsumer(simpleConsumer, e.tp))
+
+        info("Got offset %s for topic %s." format (newOffset, e.tp))
+
         // Put the new offset into the map (if the tp still exists).  Will catch it on the next go-around
         nextOffsets.replace(e.tp, newOffset)
       } catch {

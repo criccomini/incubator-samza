@@ -132,7 +132,9 @@ public interface SystemConsumer {
    *          pick up where it left off in cases where the SamzaContainer fails,
    *          or is shut down and restarted. The lastReadOffset is saved and
    *          restored by the CheckpointManager whenever SamzaContainer shuts
-   *          down and starts up.
+   *          down and starts up. If lastReadOffset is null, the system consumer
+   *          should begin trying to read from the oldest possible message
+   *          available in the stream.
    */
   void register(SystemStreamPartition systemStreamPartition, String lastReadOffset);
 
