@@ -47,7 +47,7 @@ class KafkaSystemFactory extends SystemFactory {
     val autoOffsetResetDefault = consumerConfig.autoOffsetReset
     val autoOffsetResetTopics = config.getAutoOffsetResetTopics(systemName)
     val fetchThreshold = config.getConsumerFetchThreshold(systemName).getOrElse("0").toInt
-    val offsetGetter = new GetOffset(autoOffsetResetDefault, autoOffsetResetTopics)
+    val offsetGetter = new GetOffset("fail", autoOffsetResetTopics)
    
     new KafkaSystemConsumer(
       systemName = systemName,
