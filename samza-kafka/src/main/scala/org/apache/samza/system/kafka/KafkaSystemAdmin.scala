@@ -20,24 +20,22 @@
 package org.apache.samza.system.kafka
 
 import org.apache.samza.Partition
-import java.util.UUID
-import org.apache.samza.util.ClientUtilTopicMetadataStore
-import kafka.api.TopicMetadata
-import scala.collection.JavaConversions._
-import org.apache.samza.system.SystemAdmin
 import org.apache.samza.SamzaException
+import org.apache.samza.system.SystemAdmin
+import org.apache.samza.system.SystemStreamPartitionMetadata
+import org.apache.samza.system.SystemStreamPartition
+import org.apache.samza.util.ClientUtilTopicMetadataStore
+import kafka.api._
 import kafka.consumer.SimpleConsumer
 import kafka.utils.Utils
 import kafka.client.ClientUtils
-import java.util.Random
-import kafka.api.TopicMetadataRequest
 import kafka.common.TopicAndPartition
-import kafka.api.PartitionOffsetRequestInfo
-import kafka.api.OffsetRequest
-import kafka.api.FetchRequestBuilder
-import org.apache.samza.system.SystemStreamPartition
 import kafka.common.ErrorMapping
+import kafka.cluster.Broker
 import grizzled.slf4j.Logging
+import java.util.UUID
+import scala.collection.JavaConversions._
+import org.apache.samza.system.SystemStreamPartitionMetadata
 
 class KafkaSystemAdmin(
   systemName: String,
@@ -47,27 +45,16 @@ class KafkaSystemAdmin(
   bufferSize: Int = 1024000,
   clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
 
-  val rand = new Random
-
   private def getTopicMetadata(topics: Set[String]) = {
     new ClientUtilTopicMetadataStore(brokerListString, clientId)
       .getTopicInfo(topics)
   }
 
-  def getPartitions(streamName: String): java.util.Set[Partition] = {
-    val metadata = TopicMetadataCache.getTopicMetadata(
-      Set(streamName),
-      systemName,
-      getTopicMetadata)
-
-    metadata(streamName)
-      .partitionsMetadata
-      .map(pm => new Partition(pm.partitionId))
-      .toSet[Partition]
-  }
-
-  def getLastOffsets(streams: java.util.Set[String]) = {
-    var offsets = Map[SystemStreamPartition, String]()
+  def getSystemStreamPartitionMetadata(streams: java.util.Set[String]) = {
+    var earliestOffsets = Map[SystemStreamPartition, String]()
+    var latestOffsets = Map[SystemStreamPartition, String]()
+    // TODO populate this
+    var nextOffsets = Map[SystemStreamPartition, String]()
     var done = false
     var consumer: SimpleConsumer = null
 
@@ -100,39 +87,19 @@ class KafkaSystemAdmin(
           // Convert to a Map[Broker, Seq[(Broker, TopicAndPartition)]]
           .groupBy(_._1)
           // Convert to a Map[Broker, Seq[TopicAndPartition]]
-          .mapValues(_.map(_._2))
+          .mapValues(_.map(_._2).toSet)
 
         debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
 
         // Get the latest offsets for each topic and partition.
         for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
-          val partitionOffsetInfo = topicsAndPartitions
-            .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(OffsetRequest.LatestTime, 1)))
-            .toMap
           consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
-          val brokerOffsets = consumer
-            .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
-            .partitionErrorAndOffsets
-            .map(partitionAndOffset => {
-              if (partitionAndOffset._2.offsets.head <= 0) {
-                debug("Filtering out empty topic partition: %s" format partitionAndOffset)
-              }
-
-              partitionAndOffset
-            })
-            .filter(_._2.offsets.head > 0)
-            // Kafka returns 1 greater than the offset of the last message in 
-            // the topic, so subtract one to fetch the last message.
-            .mapValues(_.offsets.head - 1)
-
-          debug("Got offsets: %s" format brokerOffsets)
+          debug("Getting earliest offsets for %s" format topicsAndPartitions)
+          earliestOffsets ++= getOffsets(consumer, topicsAndPartitions, OffsetRequest.EarliestTime)
+          debug("Getting latest offsets for %s" format topicsAndPartitions)
+          latestOffsets ++= getOffsets(consumer, topicsAndPartitions, OffsetRequest.LatestTime)
           debug("Shutting down consumer for %s:%s." format (broker.host, broker.port))
-
           consumer.close
-
-          for ((topicAndPartition, offset) <- brokerOffsets) {
-            offsets += new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition)) -> offset.toString
-          }
         }
 
         done = true
@@ -150,7 +117,37 @@ class KafkaSystemAdmin(
       }
     }
 
-    info("Got latest offsets for streams: %s, %s" format (streams, offsets))
+    val streamMetadata = (earliestOffsets.keySet ++ latestOffsets.keySet ++ nextOffsets.keySet)
+      .map(systemStreamPartition => {
+        val earliestOffset = earliestOffsets(systemStreamPartition)
+        val latestOffset = latestOffsets(systemStreamPartition)
+        val nextOffset = nextOffsets(systemStreamPartition)
+        val systemStreamPartitionMetadata = new SystemStreamPartitionMetadata(earliestOffset, latestOffset, nextOffset)
+        (systemStreamPartition, systemStreamPartitionMetadata)
+      })
+      .toMap
+
+    info("Got latest offsets for streams: %s, %s" format (streams, streamMetadata))
+
+    streamMetadata
+  }
+
+  private def getOffsets(consumer: SimpleConsumer, topicsAndPartitions: Set[TopicAndPartition], earliestOrLatest: Long) = {
+    var offsets = Map[SystemStreamPartition, String]()
+    val partitionOffsetInfo = topicsAndPartitions
+      .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(earliestOrLatest, 1)))
+      .toMap
+    val brokerOffsets = consumer
+      .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
+      .partitionErrorAndOffsets
+      // TODO should we check errors here?
+      .mapValues(_.offsets.head)
+
+    for ((topicAndPartition, offset) <- brokerOffsets) {
+      offsets += new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition)) -> offset.toString
+    }
+
+    debug("Got offsets: %s" format offsets)
 
     offsets
   }

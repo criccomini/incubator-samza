@@ -21,7 +21,6 @@ package org.apache.samza.system;
 
 import java.util.Map;
 import java.util.Set;
-import org.apache.samza.Partition;
 
 /*
  * ++1. Add SystemAdmin.getStreamMetadata().
@@ -35,7 +34,5 @@ import org.apache.samza.Partition;
  */
 
 public interface SystemAdmin {
-  Set<Partition> getPartitions(String streamName);
-
-  Map<SystemStreamPartition, SystemStreamPartitionMetadata> getStreamMetadata(Set<String> streams);
+  Map<SystemStreamPartition, SystemStreamPartitionMetadata> getSystemStreamPartitionMetadata(Set<String> streamNames);
 }

@@ -91,10 +91,17 @@ object Util extends Logging {
       val systemAdmin = systemFactory.getAdmin(systemName, config)
       (systemName, systemAdmin)
     }).toMap
-    
-    def getPartitions(is:SystemStream) = systemAdmins.getOrElse(is.getSystem, throw new IllegalArgumentException("Could not find a stream admin for system '" + is.getSystem + "'"))
-                                                     .getPartitions(is.getStream).map(p => new SystemStreamPartition(is, p))
-    systemStreams.map(getPartitions).flatten
+
+    systemStreams
+      .groupBy(_.getSystem)
+      .flatMap {
+        case (systemName, systemStreamsToGetMetadata) =>
+          systemAdmins
+            .getOrElse(systemName, throw new IllegalArgumentException("Could not find a stream admin for system '" + systemName + "'"))
+            .getSystemStreamPartitionMetadata(systemStreamsToGetMetadata.map(_.getStream))
+            .keySet
+      }
+      .toSet
   }
   
   /**

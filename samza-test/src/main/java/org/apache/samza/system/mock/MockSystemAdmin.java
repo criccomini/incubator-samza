@@ -19,23 +19,24 @@
 
 package org.apache.samza.system.mock;
 
-import org.apache.samza.system.SystemStreamPartitionMetadata;
-
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.samza.Partition;
 import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemStreamPartition;
+import org.apache.samza.system.SystemStreamPartitionMetadata;
 
 /**
  * A SystemAdmin that returns a constant set of partitions for all streams.
  */
 public class MockSystemAdmin implements SystemAdmin {
+  private final String systemName;
   private final Set<Partition> partitions;
 
-  public MockSystemAdmin(int partitionCount) {
+  public MockSystemAdmin(String systemName, int partitionCount) {
+    this.systemName = systemName;
     this.partitions = new HashSet<Partition>();
 
     for (int i = 0; i < partitionCount; ++i) {
@@ -44,14 +45,16 @@ public class MockSystemAdmin implements SystemAdmin {
   }
 
   @Override
-  public Set<Partition> getPartitions(String streamName) {
-    // Partitions are immutable, so making the set immutable should make the
-    // partition set fully safe to re-use.
-    return Collections.unmodifiableSet(partitions);
-  }
+  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getSystemStreamPartitionMetadata(Set<String> streamNames) {
+    Map<SystemStreamPartition, SystemStreamPartitionMetadata> metadata = new HashMap<SystemStreamPartition, SystemStreamPartitionMetadata>();
 
-  @Override
-  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getStreamMetadata(Set<String> streams) {
-    throw new RuntimeException("MockSystemAdmin doesn't implement this method.");
+    for (Partition partition : partitions) {
+      for (String streamName : streamNames) {
+        SystemStreamPartition systemStreamPartition = new SystemStreamPartition(systemName, streamName, partition);
+        metadata.put(systemStreamPartition, new SystemStreamPartitionMetadata(null, null, null));
+      }
+    }
+
+    return metadata;
   }
 }

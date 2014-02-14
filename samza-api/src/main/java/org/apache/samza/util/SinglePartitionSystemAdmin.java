@@ -19,37 +19,46 @@
 
 package org.apache.samza.util;
 
-import org.apache.samza.system.SystemStreamPartitionMetadata;
-
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.samza.Partition;
-import org.apache.samza.SamzaException;
 import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemStreamPartition;
+import org.apache.samza.system.SystemStreamPartitionMetadata;
 
 /**
  * A simple helper admin class that defines a single partition (partition 0) for
- * a given system. This class should be used when a system has no concept of
- * partitioning, since Samza needs at least one partition for an input stream,
- * in order to read it.
+ * a given system. The metadata uses null for all offsets, which means that the
+ * stream doesn't support offsets, and will be treated as empty. This class
+ * should be used when a system has no concept of partitioning or offsets, since
+ * Samza needs at least one partition for an input stream, in order to read it.
  */
 public class SinglePartitionSystemAdmin implements SystemAdmin {
-  private static final Set<Partition> ONE_PARTITION = new HashSet<Partition>();
+  private final String systemName;
 
-  static {
-    ONE_PARTITION.add(new Partition(0));
+  public SinglePartitionSystemAdmin(String systemName) {
+    this.systemName = systemName;
   }
 
   @Override
-  public Set<Partition> getPartitions(String streamName) {
-    return Collections.unmodifiableSet(ONE_PARTITION);
+  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getSystemStreamPartitionMetadata(Set<String> streamNames) {
+    Map<SystemStreamPartition, SystemStreamPartitionMetadata> metadata = new HashMap<SystemStreamPartition, SystemStreamPartitionMetadata>();
+
+    for (String streamName : streamNames) {
+      SystemStreamPartition systemStreamPartition = new SystemStreamPartition(systemName, streamName, new Partition(0));
+      metadata.put(systemStreamPartition, new SystemStreamPartitionMetadata(null, null, null));
+    }
+
+    return metadata;
+  }
+
+  public String getSystemName() {
+    return systemName;
   }
 
   @Override
-  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getStreamMetadata(Set<String> streams) {
-    throw new SamzaException("Method unsupported for single partition admin.");
+  public String toString() {
+    return "SinglePartitionSystemAdmin [systemName=" + systemName + "]";
   }
 }

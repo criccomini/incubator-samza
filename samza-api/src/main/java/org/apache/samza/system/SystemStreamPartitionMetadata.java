@@ -30,20 +30,27 @@ public class SystemStreamPartitionMetadata {
     this.nextOffset = nextOffset;
   }
 
+  /**
+   * 
+   * @return Earliest offset, or null if stream is empty.
+   */
   public String getEarliestOffset() {
     return earliestOffset;
   }
 
+  /**
+   * 
+   * @return Latest offset, or null if stream is empty.
+   */
   public String getLatestOffset() {
     return latestOffset;
   }
 
+  /**
+   * 
+   * @return Next offset, or null if stream doesn't support offsets.
+   */
   public String getNextOffset() {
     return nextOffset;
-  }
-
-  @Override
-  public String toString() {
-    return "SystemStreamPartitionMetadata [earliestOffset=" + earliestOffset + ", latestOffset=" + latestOffset + ", nextOffset=" + nextOffset + "]";
   }
 }
