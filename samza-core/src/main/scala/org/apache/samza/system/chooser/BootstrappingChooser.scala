@@ -27,6 +27,7 @@ import grizzled.slf4j.Logging
 import org.apache.samza.metrics.MetricsHelper
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.MetricsRegistry
+import org.apache.samza.system.SystemStreamPartitionMetadata
 
 /**
  * BootstrappingChooser is a composable MessageChooser that only chooses
@@ -55,11 +56,11 @@ class BootstrappingChooser(
   wrapped: MessageChooser,
 
   /**
-   * A map from SSP to latest offset for each SSP. If a stream does not need
-   * to be guaranteed available to the underlying wrapped chooser, it should
-   * not be included in this map.
+   * A map from SSP to metadata information, which includes first, last, and
+   * next offsets. If a stream does not need to be guaranteed available to the
+   * underlying wrapped chooser, it should not be included in this map.
    */
-  var latestMessageOffsets: Map[SystemStreamPartition, String] = Map(),
+  var bootstrapStreamMetadata: Map[SystemStreamPartition, SystemStreamPartitionMetadata] = Map(),
 
   /**
    * An object that holds all of the metrics related to bootstrapping.
@@ -69,7 +70,7 @@ class BootstrappingChooser(
   /**
    * The number of lagging partitions for each SystemStream that's behind.
    */
-  var systemStreamLagCounts = latestMessageOffsets
+  var systemStreamLagCounts = bootstrapStreamMetadata
     .keySet
     .groupBy(_.getSystemStream)
     .mapValues(partitions => partitions.size)
@@ -86,7 +87,7 @@ class BootstrappingChooser(
   var updatedSystemStreams = Map[SystemStream, Int]()
 
   def start = {
-    debug("Starting bootstrapping chooser with latest message offsets: %s" format latestMessageOffsets)
+    debug("Starting bootstrapping chooser with bootstrap metadata: %s" format bootstrapStreamMetadata)
     info("Got lagging partition counts for bootstrap streams: %s" format systemStreamLagCounts)
     metrics.setLaggingSystemStreams(() => systemStreamLagSize)
     systemStreamLagCounts.keys.foreach { (systemStream: SystemStream) =>
@@ -111,7 +112,7 @@ class BootstrappingChooser(
     wrapped.update(envelope)
 
     // If this is an SSP that is still lagging, update the count for the stream.
-    if (latestMessageOffsets.contains(envelope.getSystemStreamPartition)) {
+    if (bootstrapStreamMetadata.contains(envelope.getSystemStreamPartition)) {
       trace("Bumping available message count for stream partition: %s" format envelope.getSystemStreamPartition)
 
       val systemStream = envelope.getSystemStreamPartition.getSystemStream
@@ -144,7 +145,7 @@ class BootstrappingChooser(
         val offset = envelope.getOffset
 
         // Chosen envelope was from a bootstrap SSP, so decrement the update map.
-        if (latestMessageOffsets.contains(systemStreamPartition)) {
+        if (bootstrapStreamMetadata.contains(systemStreamPartition)) {
           val systemStream = systemStreamPartition.getSystemStream
 
           updatedSystemStreams += systemStream -> (updatedSystemStreams.getOrElse(systemStream, 0) - 1)
@@ -161,15 +162,15 @@ class BootstrappingChooser(
   }
 
   private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String) {
-    val latestOffset = latestMessageOffsets.getOrElse(systemStreamPartition, null)
+    val systemStreamPartitionMetadata = bootstrapStreamMetadata.getOrElse(systemStreamPartition, null)
     val systemStream = systemStreamPartition.getSystemStream
 
     trace("Check offset: %s, %s" format (systemStreamPartition, offset))
 
     // The SSP is no longer lagging if the envelope's offset equals the 
     // lastOffset map. 
-    if (offset != null && offset.equals(latestOffset)) {
-      latestMessageOffsets -= systemStreamPartition
+    if (offset != null && offset.equals(systemStreamPartitionMetadata.getLatestOffset)) {
+      bootstrapStreamMetadata -= systemStreamPartition
       systemStreamLagCounts += systemStream -> (systemStreamLagCounts(systemStream) - 1)
 
       debug("Bootstrap stream partition is fully caught up: %s" format systemStreamPartition)

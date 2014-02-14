@@ -19,11 +19,12 @@
 
 package org.apache.samza.system.mock;
 
+import org.apache.samza.system.SystemStreamPartitionMetadata;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.samza.Partition;
 import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemStreamPartition;
@@ -50,7 +51,7 @@ public class MockSystemAdmin implements SystemAdmin {
   }
 
   @Override
-  public Map<SystemStreamPartition, String> getLastOffsets(Set<String> streams) {
+  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getStreamMetadata(Set<String> streams) {
     throw new RuntimeException("MockSystemAdmin doesn't implement this method.");
   }
 }

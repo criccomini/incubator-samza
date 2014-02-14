@@ -19,23 +19,31 @@
 
 package org.apache.samza.system;
 
-import java.util.Map;
-import java.util.Set;
-import org.apache.samza.Partition;
+public class SystemStreamPartitionMetadata {
+  private final String earliestOffset;
+  private final String latestOffset;
+  private final String nextOffset;
 
-/*
- * ++1. Add SystemAdmin.getStreamMetadata().
- * ++3. Use stream metadata for bootstrap chooser.
- * 4. Convert SystemConsumer.register to nextOffset.
- * 5. Update KafkaSystemConsumer and BrokerProxy to use nextOffset.
- * 6. Default GetOffset to fail if offset out of range is found.
- * 7. Add systems.kafka.streams.foo.samza.offset.default=(largest|smallest) and systems.kafka.samza.offset.default.
- * 8. Update TaskInstance to use offset defaults when no checkpointed offset exists.
- * 2. Add SystemAdmin and SystemStreamPartitionMetadata docs.
- */
+  public SystemStreamPartitionMetadata(String earliestOffset, String latestOffset, String nextOffset) {
+    this.earliestOffset = earliestOffset;
+    this.latestOffset = latestOffset;
+    this.nextOffset = nextOffset;
+  }
 
-public interface SystemAdmin {
-  Set<Partition> getPartitions(String streamName);
+  public String getEarliestOffset() {
+    return earliestOffset;
+  }
 
-  Map<SystemStreamPartition, SystemStreamPartitionMetadata> getStreamMetadata(Set<String> streams);
+  public String getLatestOffset() {
+    return latestOffset;
+  }
+
+  public String getNextOffset() {
+    return nextOffset;
+  }
+
+  @Override
+  public String toString() {
+    return "SystemStreamPartitionMetadata [earliestOffset=" + earliestOffset + ", latestOffset=" + latestOffset + ", nextOffset=" + nextOffset + "]";
+  }
 }

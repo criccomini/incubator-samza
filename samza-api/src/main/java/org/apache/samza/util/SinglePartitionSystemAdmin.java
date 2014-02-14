@@ -19,6 +19,8 @@
 
 package org.apache.samza.util;
 
+import org.apache.samza.system.SystemStreamPartitionMetadata;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -47,7 +49,7 @@ public class SinglePartitionSystemAdmin implements SystemAdmin {
   }
 
   @Override
-  public Map<SystemStreamPartition, String> getLastOffsets(Set<String> streams) {
+  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getStreamMetadata(Set<String> streams) {
     throw new SamzaException("Method unsupported for single partition admin.");
   }
 }

@@ -59,6 +59,7 @@ import org.apache.samza.system.SystemConsumersMetrics
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.system.chooser.DefaultChooser
 import org.apache.samza.system.chooser.RoundRobinChooserFactory
+import scala.collection.JavaConversions._
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -123,6 +124,20 @@ object SamzaContainer extends Logging {
       .toMap
 
     info("Got system factories: %s" format systemFactories.keys)
+
+    val inputStreamMetadata = inputStreams
+      .map(_.getSystemStream)
+      .toSet
+      .groupBy[String](_.getSystem)
+      .flatMap {
+        case (systemName, systemStreams) =>
+          systemAdmins
+            .getOrElse(systemName, throw new SamzaException("Unable to find system admin definition for system %s." format systemName))
+            .getStreamMetadata(systemStreams.map(_.getStream))
+      }
+      .toMap
+
+    info("Got input stream metadata: %s" format inputStreamMetadata)
 
     val consumers = inputSystems
       .map(systemName => {
@@ -240,7 +255,7 @@ object SamzaContainer extends Logging {
 
     val chooserFactory = Util.getObj[MessageChooserFactory](chooserFactoryClassName)
 
-    val chooser = DefaultChooser(systemAdmins, chooserFactory, config, samzaContainerMetrics.registry)
+    val chooser = DefaultChooser(inputStreamMetadata, chooserFactory, config, samzaContainerMetrics.registry)
 
     info("Setting up metrics reporters.")
 
@@ -392,6 +407,7 @@ object SamzaContainer extends Logging {
         storeBaseDir = storeBaseDir)
 
       val inputStreamsForThisPartition = inputStreams.filter(_.getPartition.equals(partition)).map(_.getSystemStream)
+
       info("Assigning SystemStreams " + inputStreamsForThisPartition + " to " + partition)
 
       val taskInstance = new TaskInstance(
