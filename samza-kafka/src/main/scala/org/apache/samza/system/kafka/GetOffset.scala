@@ -30,12 +30,28 @@ import kafka.message.MessageAndOffset
 import org.apache.samza.SamzaException
 
 /**
- * TODO
+ * GetOffset validates offsets for topic partitions, and manages fetching new
+ * offsets for topics using Kafka's auto.offset.reset configuration.
  */
-class GetOffset(default: String, autoOffsetResetTopics: Map[String, String] = Map()) extends Logging with Toss {
+class GetOffset(
+  /**
+   * The default auto.offset.reset to use if a topic is not overridden in
+   * autoOffsetResetTopics. Any value other than "earliest" or "latest" will
+   * result in an exception when getRestOffset is called.
+   */
+  default: String,
 
   /**
-   * TODO
+   * Topic-level overrides for auto.offset.reset. Any value other than
+   * "earliest" or "latest" will result in an exception when getRestOffset is
+   * called.
+   */
+  autoOffsetResetTopics: Map[String, String] = Map()) extends Logging with Toss {
+
+  /**
+   * Checks if an offset is valid for a given topic/partition. Validity is
+   * defined as an offset that returns a readable non-empty message set with
+   * no exceptions.
    */
   def isValidOffset(consumer: DefaultFetchSimpleConsumer, topicAndPartition: TopicAndPartition, offset: String) = {
     info("Validating offset %s for topic and partition %s" format (offset, topicAndPartition))
@@ -62,7 +78,11 @@ class GetOffset(default: String, autoOffsetResetTopics: Map[String, String] = Ma
   }
 
   /**
-   * TODO
+   * Uses a topic's auto.offset.reset setting (defined via the
+   * autoOffsetResetTopics map in the constructor) to fetch either the
+   * earliest or latest offset. If neither earliest or latest is defined for
+   * the topic in question, the default supplied in the constructor will be
+   * used.
    */
   def getResetOffset(consumer: DefaultFetchSimpleConsumer, topicAndPartition: TopicAndPartition) = {
     val offsetRequest = new OffsetRequest(Map(topicAndPartition -> new PartitionOffsetRequestInfo(getAutoOffset(topicAndPartition.topic), 1)))
@@ -81,7 +101,12 @@ class GetOffset(default: String, autoOffsetResetTopics: Map[String, String] = Ma
   }
 
   /**
-   * TODO
+   * Returns either the earliest or latest setting (a Kafka constant) for a
+   * given topic using the autoOffsetResetTopics map defined in the
+   * constructor. If the topic is not defined in autoOffsetResetTopics, the
+   * default value supplied in the constructor will be used. This is used in
+   * conjunction with getResetOffset to fetch either the earliest or latest
+   * offset for a topic.
    */
   private def getAutoOffset(topic: String): Long = {
     info("Checking if auto.offset.reset is defined for topic %s" format (topic))
