@@ -133,7 +133,10 @@ object SamzaContainer extends Logging {
         case (systemName, systemStreams) =>
           systemAdmins
             .getOrElse(systemName, throw new SamzaException("Unable to find system admin definition for system %s." format systemName))
-            .getSystemStreamPartitionMetadata(systemStreams.map(_.getStream))
+            .getSystemStreamMetadata(systemStreams.map(_.getStream))
+            .map {
+              case (streamName, metadata) => (new SystemStream(systemName, streamName), metadata)
+            }
       }
       .toMap
 

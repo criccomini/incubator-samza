@@ -29,6 +29,7 @@ import org.apache.samza.config.MapConfig
 import scala.collection.JavaConversions._
 import org.apache.samza.config.DefaultChooserConfig
 import org.apache.samza.system.SystemStream
+import org.apache.samza.system.SystemStreamMetadata
 
 class TestDefaultChooser {
   val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
@@ -44,6 +45,7 @@ class TestDefaultChooser {
     val mock0 = new MockMessageChooser
     val mock1 = new MockMessageChooser
     val mock2 = new MockMessageChooser
+    val metadata = new SystemStreamMetadata(envelope1.getSystemStreamPartition.getStream, Set(envelope1.getSystemStreamPartition.getPartition, envelope5.getSystemStreamPartition.getPartition), null, Map(envelope1.getSystemStreamPartition.getPartition -> "123", envelope5.getSystemStreamPartition.getPartition -> "321"), null)
     val chooser = new DefaultChooser(
       mock0,
       Some(2),
@@ -54,8 +56,7 @@ class TestDefaultChooser {
         Int.MaxValue -> mock1,
         1 -> mock2),
       Map(
-        envelope1.getSystemStreamPartition() -> "123",
-        envelope5.getSystemStreamPartition() -> "321"))
+        envelope1.getSystemStreamPartition.getSystemStream -> metadata))
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, null)

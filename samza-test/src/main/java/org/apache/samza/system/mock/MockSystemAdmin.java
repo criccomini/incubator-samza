@@ -20,39 +20,32 @@
 package org.apache.samza.system.mock;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.samza.Partition;
 import org.apache.samza.system.SystemAdmin;
-import org.apache.samza.system.SystemStreamPartition;
-import org.apache.samza.system.SystemStreamPartitionMetadata;
+import org.apache.samza.system.SystemStreamMetadata;
 
 /**
  * A SystemAdmin that returns a constant set of partitions for all streams.
  */
 public class MockSystemAdmin implements SystemAdmin {
-  private final String systemName;
-  private final Set<Partition> partitions;
+  private final Map<Partition, String> partitionOffsets;
 
-  public MockSystemAdmin(String systemName, int partitionCount) {
-    this.systemName = systemName;
-    this.partitions = new HashSet<Partition>();
+  public MockSystemAdmin(int partitionCount) {
+    this.partitionOffsets = new HashMap<Partition, String>();
 
     for (int i = 0; i < partitionCount; ++i) {
-      partitions.add(new Partition(i));
+      partitionOffsets.put(new Partition(i), null);
     }
   }
 
   @Override
-  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getSystemStreamPartitionMetadata(Set<String> streamNames) {
-    Map<SystemStreamPartition, SystemStreamPartitionMetadata> metadata = new HashMap<SystemStreamPartition, SystemStreamPartitionMetadata>();
+  public Map<String, SystemStreamMetadata> getSystemStreamMetadata(Set<String> streamNames) {
+    Map<String, SystemStreamMetadata> metadata = new HashMap<String, SystemStreamMetadata>();
 
-    for (Partition partition : partitions) {
-      for (String streamName : streamNames) {
-        SystemStreamPartition systemStreamPartition = new SystemStreamPartition(systemName, streamName, partition);
-        metadata.put(systemStreamPartition, new SystemStreamPartitionMetadata(null, null, null));
-      }
+    for (String streamName : streamNames) {
+      metadata.put(streamName, new SystemStreamMetadata(streamName, partitionOffsets.keySet(), partitionOffsets, partitionOffsets, partitionOffsets));
     }
 
     return metadata;

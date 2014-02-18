@@ -23,9 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.samza.Partition;
+import org.apache.samza.system.SystemStreamMetadata;
 import org.apache.samza.system.SystemAdmin;
-import org.apache.samza.system.SystemStreamPartition;
-import org.apache.samza.system.SystemStreamPartitionMetadata;
 
 /**
  * A simple helper admin class that defines a single partition (partition 0) for
@@ -35,30 +34,17 @@ import org.apache.samza.system.SystemStreamPartitionMetadata;
  * Samza needs at least one partition for an input stream, in order to read it.
  */
 public class SinglePartitionSystemAdmin implements SystemAdmin {
-  private final String systemName;
-
-  public SinglePartitionSystemAdmin(String systemName) {
-    this.systemName = systemName;
-  }
-
   @Override
-  public Map<SystemStreamPartition, SystemStreamPartitionMetadata> getSystemStreamPartitionMetadata(Set<String> streamNames) {
-    Map<SystemStreamPartition, SystemStreamPartitionMetadata> metadata = new HashMap<SystemStreamPartition, SystemStreamPartitionMetadata>();
+  public Map<String, SystemStreamMetadata> getSystemStreamMetadata(Set<String> streamNames) {
+    Map<String, SystemStreamMetadata> metadata = new HashMap<String, SystemStreamMetadata>();
+    Map<Partition, String> fakeOffsets = new HashMap<Partition, String>();
+
+    fakeOffsets.put(new Partition(0), null);
 
     for (String streamName : streamNames) {
-      SystemStreamPartition systemStreamPartition = new SystemStreamPartition(systemName, streamName, new Partition(0));
-      metadata.put(systemStreamPartition, new SystemStreamPartitionMetadata(null, null, null));
+      metadata.put(streamName, new SystemStreamMetadata(streamName, fakeOffsets.keySet(), fakeOffsets, fakeOffsets, fakeOffsets));
     }
 
     return metadata;
-  }
-
-  public String getSystemName() {
-    return systemName;
-  }
-
-  @Override
-  public String toString() {
-    return "SinglePartitionSystemAdmin [systemName=" + systemName + "]";
   }
 }

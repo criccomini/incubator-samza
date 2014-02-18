@@ -30,6 +30,7 @@ import org.apache.samza.util.ClientUtilTopicMetadataStore
 import org.I0Itec.zkclient.ZkClient
 import kafka.admin.AdminUtils
 import org.apache.samza.util.TopicMetadataStore
+import org.apache.samza.Partition
 import kafka.producer.ProducerConfig
 import kafka.utils.TestUtils
 import kafka.common.ErrorMapping
@@ -97,7 +98,7 @@ object TestKafkaSystemAdmin {
       REPLICATION_FACTOR)
   }
 
-  def validateTopic {
+  def validateTopic(expectedPartitionCount: Int) {
     var done = false
     var retries = 0
     val maxRetries = 100
@@ -110,7 +111,7 @@ object TestKafkaSystemAdmin {
 
         ErrorMapping.maybeThrowException(errorCode)
 
-        done = true
+        done = expectedPartitionCount == topicMetadata.partitionsMetadata.size
       } catch {
         case e: Throwable =>
           System.err.println("Got exception while validating test topics. Waiting and retrying.", e)
@@ -160,33 +161,67 @@ class TestKafkaSystemAdmin {
     val systemAdmin = new KafkaSystemAdmin(systemName, brokers)
 
     // Get a non-existent topic.
-    val initialInputOffsets = systemAdmin.getLastOffsets(Set("foo"))
+    val initialInputOffsets = systemAdmin.getSystemStreamMetadata(Set("foo"))
     assertEquals(0, initialInputOffsets.size)
 
     // Create an empty topic with 50 partitions, but with no offsets.
     createTopic
-    validateTopic
-    val createdInputOffsets = systemAdmin.getLastOffsets(Set(TOPIC))
-    assertEquals(0, createdInputOffsets.size)
+    validateTopic(50)
 
-    // Add a new message to one of the partitions.
+    // Verify the empty topic behaves as expected.
+    var metadata = systemAdmin.getSystemStreamMetadata(Set(TOPIC))
+    assertEquals(1, metadata.size)
+    assertNotNull(metadata(TOPIC))
+    var streamMetadata = metadata(TOPIC)
+    // Verify partition count.
+    assertEquals(50, metadata(TOPIC).getPartitions.size)
+    // Empty topics should have null for earliest/latest offset.
+    assertNull(streamMetadata.getEarliestOffset(new Partition(0)))
+    assertNull(streamMetadata.getLatestOffset(new Partition(0)))
+    // Empty Kafka topics should have a next offset of 0.
+    assertEquals("0", streamMetadata.getNextOffset(new Partition(0)))
+
+    // Add a new message to one of the partitions, and verify that it works as 
+    // expected.
     producer.send(new KeyedMessage(TOPIC, "key1", "val1"))
-    val oneMessageInputOffsets = systemAdmin.getLastOffsets(Set(TOPIC))
-    val ssp = oneMessageInputOffsets.keySet.head
-    assertEquals(1, oneMessageInputOffsets.size)
-    assertEquals(systemName, ssp.getSystem)
-    assertEquals(TOPIC, ssp.getStream)
+    metadata = systemAdmin.getSystemStreamMetadata(Set(TOPIC))
+    assertEquals(1, metadata.size)
+    val streamName = metadata.keySet.head
+    assertEquals(TOPIC, streamName)
+    streamMetadata = metadata(streamName)
     // key1 gets hash-mod'd to partition 48.
-    assertEquals(48, ssp.getPartition.getPartitionId)
+    assertEquals("0", streamMetadata.getEarliestOffset(new Partition(48)))
+    assertEquals("0", streamMetadata.getLatestOffset(new Partition(48)))
+    assertEquals("1", streamMetadata.getNextOffset(new Partition(48)))
+    // Some other partition should be empty.
+    assertNull(streamMetadata.getEarliestOffset(new Partition(3)))
+    assertNull(streamMetadata.getLatestOffset(new Partition(3)))
+    assertEquals("0", streamMetadata.getNextOffset(new Partition(3)))
+
+    // Add a second message to one of the same partition.
+    producer.send(new KeyedMessage(TOPIC, "key1", "val2"))
+    metadata = systemAdmin.getSystemStreamMetadata(Set(TOPIC))
+    assertEquals(1, metadata.size)
+    assertEquals(TOPIC, streamName)
+    streamMetadata = metadata(streamName)
+    // key1 gets hash-mod'd to partition 48.
+    assertEquals("0", streamMetadata.getEarliestOffset(new Partition(48)))
+    assertEquals("1", streamMetadata.getLatestOffset(new Partition(48)))
+    assertEquals("2", streamMetadata.getNextOffset(new Partition(48)))
 
     // Validate that a fetch will return the message.
     val connector = getConsumerConnector
     var stream = connector.createMessageStreams(Map(TOPIC -> 1)).get(TOPIC).get.get(0).iterator
-    val message = stream.next
-    val text = new String(message.message, "UTF-8")
+    var message = stream.next
+    var text = new String(message.message, "UTF-8")
     connector.shutdown
-    // Message's offset should match the expected latest offset.
-    assertEquals(oneMessageInputOffsets(ssp), message.offset.toString)
+    // First message should match the earliest expected offset.
+    assertEquals(streamMetadata.getEarliestOffset(new Partition(48)), message.offset.toString)
     assertEquals("val1", text)
+    // Second message should match the earliest expected offset.
+    message = stream.next
+    text = new String(message.message, "UTF-8")
+    assertEquals(streamMetadata.getLatestOffset(new Partition(48)), message.offset.toString)
+    assertEquals("val2", text)
   }
 }

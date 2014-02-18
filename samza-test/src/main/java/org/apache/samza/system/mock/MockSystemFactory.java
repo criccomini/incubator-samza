@@ -46,7 +46,7 @@ public class MockSystemFactory implements SystemFactory {
   public SystemAdmin getAdmin(String systemName, Config config) {
     MockSystemConsumerConfig consumerConfig = new MockSystemConsumerConfig(systemName, config);
 
-    return new MockSystemAdmin(systemName, consumerConfig.getPartitionsPerStream());
+    return new MockSystemAdmin(consumerConfig.getPartitionsPerStream());
   }
 
   /**

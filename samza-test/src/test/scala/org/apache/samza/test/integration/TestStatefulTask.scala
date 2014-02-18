@@ -214,6 +214,7 @@ class TestStatefulTask {
     "stores.mystore.changelog" -> "kafka.mystore",
     "systems.kafka.samza.factory" -> "org.apache.samza.system.kafka.KafkaSystemFactory",
     "systems.kafka.consumer.zookeeper.connect" -> zkConnect,
+    "systems.kafka.consumer.auto.offset.reset" -> "smallest",
     "systems.kafka.producer.metadata.broker.list" -> ("localhost:%s" format port1),
     "systems.kafka.samza.msg.serde" -> "string")
 

@@ -19,19 +19,29 @@
 
 package org.apache.samza.util;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-import org.junit.Test;
-import static org.junit.Assert.*;
 import org.apache.samza.Partition;
+import org.apache.samza.system.SystemStreamPartition;
+import org.apache.samza.system.SystemStreamMetadata;
+import org.junit.Test;
 
 public class TestSinglePartitionSystemAdmin {
   @Test
   public void testShouldGetASinglePartition() {
     SinglePartitionSystemAdmin admin = new SinglePartitionSystemAdmin();
-    Set<Partition> partitions1 = admin.getPartitions("a");
-    Set<Partition> partitions2 = admin.getPartitions("b");
-    assertEquals(partitions1, partitions2);
-    assertEquals(partitions1.size(), 1);
-    assertEquals(partitions1.iterator().next(), new Partition(0));
+    Set<String> streamNames = new HashSet<String>();
+    streamNames.add("a");
+    streamNames.add("b");
+    Map<String, SystemStreamMetadata> metadata = admin.getSystemStreamMetadata(streamNames);
+    assertEquals(metadata.size(), 2);
+    SystemStreamMetadata metadata1 = metadata.get("a");
+    SystemStreamMetadata metadata2 = metadata.get("b");
+    assertEquals(1, metadata1.getPartitions().size());
+    assertEquals(1, metadata2.getPartitions().size());
+    assertEquals(null, metadata.get(new SystemStreamPartition("test-system", "c", new Partition(0))));
   }
 }

@@ -33,11 +33,11 @@ import org.apache.samza.util.Util
 import org.apache.samza.system.SystemAdmin
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.metrics.MetricsRegistryMap
-import org.apache.samza.system.SystemStreamPartitionMetadata
+import org.apache.samza.system.SystemStreamMetadata
 import grizzled.slf4j.Logging
 
 object DefaultChooser extends Logging {
-  def apply(inputStreamMetadata: Map[SystemStreamPartition, SystemStreamPartitionMetadata], chooserFactory: MessageChooserFactory, config: Config, registry: MetricsRegistry) = {
+  def apply(inputStreamMetadata: Map[SystemStream, SystemStreamMetadata], chooserFactory: MessageChooserFactory, config: Config, registry: MetricsRegistry) = {
     val batchSize = config.getChooserBatchSize match {
       case Some(batchSize) => Some(batchSize.toInt)
       case _ => None
@@ -70,7 +70,7 @@ object DefaultChooser extends Logging {
     val useBootstrapping = prioritizedBootstrapStreams.size > 0
     val usePriority = useBootstrapping || prioritizedStreams.size > 0
     val bootstrapStreamMetadata = inputStreamMetadata
-      .filterKeys(systemStreamPartition => prioritizedBootstrapStreams.contains(systemStreamPartition.getSystemStream))
+      .filterKeys(prioritizedBootstrapStreams.contains(_))
 
     debug("Got bootstrap stream metadata: %s" format bootstrapStreamMetadata)
 
@@ -249,7 +249,7 @@ class DefaultChooser(
    * Using bootstrap streams automatically enables stream prioritization.
    * Bootstrap streams default to a priority of Int.MaxValue.
    */
-  bootstrapStreamMetadata: Map[SystemStreamPartition, SystemStreamPartitionMetadata] = Map(),
+  bootstrapStreamMetadata: Map[SystemStream, SystemStreamMetadata] = Map(),
 
   /**
    * Metrics registry to be used when wiring up wrapped choosers.
