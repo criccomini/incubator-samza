@@ -170,7 +170,7 @@ class BootstrappingChooser(
     val systemStreamMetadata = bootstrapStreamMetadata.getOrElse(systemStreamPartition.getSystemStream, null)
     val systemStream = systemStreamPartition.getSystemStream
     val latestOffset = if (systemStreamMetadata != null) {
-      systemStreamMetadata.getLatestOffset(systemStreamPartition.getPartition)
+      systemStreamMetadata.getNewestOffset(systemStreamPartition.getPartition)
     } else {
       null
     }

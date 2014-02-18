@@ -36,12 +36,40 @@ import grizzled.slf4j.Logging
 import java.util.UUID
 import scala.collection.JavaConversions._
 
+/**
+ * A Kafka-based implementation of SystemAdmin.
+ */
 class KafkaSystemAdmin(
+  /**
+   * The system name to use when creating SystemStreamPartitions to return in
+   * the getSystemStreamMetadata responser.
+   */
   systemName: String,
+
   // TODO whenever Kafka decides to make the Set[Broker] class public, let's switch to Set[Broker] here.
+  /**
+   * List of brokers that are part of the Kafka system that we wish to
+   * interact with. The format is host1:port1,host2:port2.
+   */
   brokerListString: String,
+
+  /**
+   * The timeout to use for the simple consumer when fetching metadata from
+   * Kafka. Equivalent to Kafka's socket.timeout.ms configuration.
+   */
   timeout: Int = Int.MaxValue,
+
+  /**
+   * The buffer size to use for the simple consumer when fetching metadata
+   * from Kafka. Equivalent to Kafka's socket.receive.buffer.bytes
+   * configuration.
+   */
   bufferSize: Int = 1024000,
+
+  /**
+   * The client ID to use for the simple consumer when fetching metadata from
+   * Kafka. Equivalent to Kafka's client.id configuration.
+   */
   clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
 
   private def getTopicMetadata(topics: Set[String]) = {
@@ -49,12 +77,17 @@ class KafkaSystemAdmin(
       .getTopicInfo(topics)
   }
 
+  /**
+   * Given a set of stream names (topics), fetch metadata from Kafka for each
+   * stream, and return a map from stream name to SystemStreamMetadata for
+   * each stream. This method will return null for oldest and newest offsets
+   * if a given SystemStreamPartition is empty.
+   */
   def getSystemStreamMetadata(streams: java.util.Set[String]) = {
     var partitions = Map[String, Set[Partition]]()
-    var earliestOffsets = Map[SystemStreamPartition, String]()
-    var latestOffsets = Map[SystemStreamPartition, String]()
-    // TODO populate this
-    var nextOffsets = Map[SystemStreamPartition, String]()
+    var oldestOffsets = Map[SystemStreamPartition, String]()
+    var newestOffsets = Map[SystemStreamPartition, String]()
+    var futureOffsets = Map[SystemStreamPartition, String]()
     var done = false
     var consumer: SimpleConsumer = null
 
@@ -69,6 +102,7 @@ class KafkaSystemAdmin(
 
         debug("Got metadata for streams: %s" format metadata)
 
+        // Get partitions for all streams.
         partitions = streams.map(streamName => {
           val partitions = metadata(streamName)
             .partitionsMetadata
@@ -77,7 +111,10 @@ class KafkaSystemAdmin(
           (streamName, partitions)
         }).toMap
 
-        // Break topic metadata topic/partitions into per-broker map.
+        debug("Got partitions for streams: %s" format partitions)
+
+        // Break topic metadata topic/partitions into per-broker map so that 
+        // we can execute only one offset request per broker.
         val brokersToTopicPartitions = metadata
           .values
           // Convert the topic metadata to a Seq[(Broker, TopicAndPartition)] 
@@ -94,32 +131,34 @@ class KafkaSystemAdmin(
             }))
           // Convert to a Map[Broker, Seq[(Broker, TopicAndPartition)]]
           .groupBy(_._1)
-          // Convert to a Map[Broker, Seq[TopicAndPartition]]
+          // Convert to a Map[Broker, Set[TopicAndPartition]]
           .mapValues(_.map(_._2).toSet)
 
         debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
 
-        // Get the latest offsets for each topic and partition.
+        // Get oldest, newest, and future offsets for each topic and partition.
         for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
+          debug("Fetching offsets for %s:%s: %s" format (broker.host, broker.port, topicsAndPartitions))
+
           consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
-          debug("Getting earliest offsets for %s" format topicsAndPartitions)
-          earliestOffsets ++= getOffsets(consumer, topicsAndPartitions, OffsetRequest.EarliestTime)
-          debug("Getting next offsets for %s" format topicsAndPartitions)
-          nextOffsets ++= getOffsets(consumer, topicsAndPartitions, OffsetRequest.LatestTime)
-          // Kafka's latest offset is always last message in stream's offset + 
-          // 1, so get last message in stream by subtracting one. this is safe 
+          oldestOffsets ++= getOffsets(consumer, topicsAndPartitions, OffsetRequest.EarliestTime)
+          futureOffsets ++= getOffsets(consumer, topicsAndPartitions, OffsetRequest.LatestTime)
+          // Kafka's "latest" offset is always last message in stream's offset + 
+          // 1, so get newest message in stream by subtracting one. this is safe 
           // even for key-deduplicated streams, since the last message will 
           // never be deduplicated.
-          latestOffsets = nextOffsets.mapValues(offset => (offset.toLong - 1).toString)
-          // Keep only earliest/latest offsets where there is a message. Should 
+          newestOffsets = futureOffsets.mapValues(offset => (offset.toLong - 1).toString)
+          // Keep only oldest/newest offsets where there is a message. Should 
           // return null offsets for empty streams.
-          nextOffsets.foreach {
+          futureOffsets.foreach {
             case (topicAndPartition, offset) =>
               if (offset.toLong <= 0) {
-                earliestOffsets -= topicAndPartition
-                latestOffsets -= topicAndPartition
+                debug("Stripping oldest/newest offsets for %s because the topic appears empty." format topicAndPartition)
+                oldestOffsets -= topicAndPartition
+                newestOffsets -= topicAndPartition
               }
           }
+
           debug("Shutting down consumer for %s:%s." format (broker.host, broker.port))
 
           consumer.close
@@ -140,24 +179,27 @@ class KafkaSystemAdmin(
       }
     }
 
-    val allMetadata = (earliestOffsets.keySet ++ latestOffsets.keySet ++ nextOffsets.keySet)
+    // Assemble a map from stream name to metadata.
+    val allMetadata = (oldestOffsets.keySet ++ newestOffsets.keySet ++ futureOffsets.keySet)
       .groupBy(_.getStream)
       .map {
         case (streamName, systemStreamPartitions) =>
           val partitionOffsets = systemStreamPartitions
             .map(systemStreamPartition => {
               val offsets = SystemStreamPartitionOffsets(
-                earliestOffsets.getOrElse(systemStreamPartition, null),
-                latestOffsets.getOrElse(systemStreamPartition, null),
-                nextOffsets(systemStreamPartition))
+                // If the topic/partition is empty then oldest and newest will 
+                // be stripped over their offsets, so default to null.
+                oldestOffsets.getOrElse(systemStreamPartition, null),
+                newestOffsets.getOrElse(systemStreamPartition, null),
+                futureOffsets(systemStreamPartition))
               (systemStreamPartition.getPartition, offsets)
             })
             .toMap
-          val streamEarliestOffsets = partitionOffsets.mapValues(_.earliestOffset)
-          val streamLatestOffsets = partitionOffsets.mapValues(_.latestOffset)
-          val streamNextOffsets = partitionOffsets.mapValues(_.nextOffset)
+          val streamOldestOffsets = partitionOffsets.mapValues(_.oldestOffset)
+          val streamNewestOffsets = partitionOffsets.mapValues(_.newestOffset)
+          val streamFutureOffsets = partitionOffsets.mapValues(_.futureOffset)
           val streamPartitions = partitions(streamName)
-          val streamMetadata = new SystemStreamMetadata(streamName, streamPartitions, streamEarliestOffsets, streamLatestOffsets, streamNextOffsets)
+          val streamMetadata = new SystemStreamMetadata(streamName, streamPartitions, streamOldestOffsets, streamNewestOffsets, streamFutureOffsets)
           (streamName, streamMetadata)
       }
       .toMap
@@ -167,25 +209,39 @@ class KafkaSystemAdmin(
     allMetadata
   }
 
+  /**
+   * Use a SimpleConsumer to fetch either the earliest or latest offset from
+   * Kafka for each topic/partition in the topicsAndPartitions set. It is
+   * assumed that all topics/partitions supplied reside on the broker that the
+   * consumer is connected to.
+   */
   private def getOffsets(consumer: SimpleConsumer, topicsAndPartitions: Set[TopicAndPartition], earliestOrLatest: Long) = {
+    debug("Getting offsets for %s using earliest/latest value of %s." format (topicsAndPartitions, earliestOrLatest))
+
     var offsets = Map[SystemStreamPartition, String]()
     val partitionOffsetInfo = topicsAndPartitions
       .map(topicAndPartition => (topicAndPartition, PartitionOffsetRequestInfo(earliestOrLatest, 1)))
       .toMap
-
     val brokerOffsets = consumer
       .getOffsetsBefore(new OffsetRequest(partitionOffsetInfo))
       .partitionErrorAndOffsets
-      .mapValues(_.offsets.head)
+      .mapValues(partitionErrorAndOffset => {
+        ErrorMapping.maybeThrowException(partitionErrorAndOffset.error)
+        partitionErrorAndOffset.offsets.head
+      })
 
     for ((topicAndPartition, offset) <- brokerOffsets) {
       offsets += new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition)) -> offset.toString
     }
 
-    debug("Got offsets: %s" format offsets)
+    debug("Got offsets for %s using earliest/latest value of %s: %s" format (topicsAndPartitions, earliestOrLatest, offsets))
 
     offsets
   }
 }
 
-case class SystemStreamPartitionOffsets(earliestOffset: String, latestOffset: String, nextOffset: String)
+/**
+ * A case class that helps hold oldest, newest, and future offsets in one
+ * object, so we can put them in a map easily.
+ */
+case class SystemStreamPartitionOffsets(oldestOffset: String, newestOffset: String, futureOffset: String)
