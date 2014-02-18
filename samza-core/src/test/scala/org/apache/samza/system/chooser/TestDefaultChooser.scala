@@ -39,6 +39,7 @@ class TestDefaultChooser {
   val envelope5 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(1)), null, null, 5);
   val envelope6 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(1)), "321", null, 6);
   val envelope7 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 7);
+  val envelope8 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream3", new Partition(0)), "654", null, 8);
 
   @Test
   def testDefaultChooserWithBatchingPrioritizationAndBootstrapping {
@@ -47,28 +48,39 @@ class TestDefaultChooser {
     val mock2 = new MockMessageChooser
     // Create metadata for two envelopes (1 and 5) that are part of the same 
     // stream, but have different partitions and offsets.
-    val metadata = new SystemStreamMetadata(
+    val metadata1 = new SystemStreamMetadata(
       envelope1.getSystemStreamPartition.getStream,
       Set(envelope1.getSystemStreamPartition.getPartition, envelope5.getSystemStreamPartition.getPartition),
-      null,
+      Map[Partition, String](),
       Map(envelope1.getSystemStreamPartition.getPartition -> "123", envelope5.getSystemStreamPartition.getPartition -> "321"),
-      null)
+      Map[Partition, String]())
+    val metadata8 = new SystemStreamMetadata(
+      envelope8.getSystemStreamPartition.getStream,
+      Set(envelope8.getSystemStreamPartition.getPartition),
+      Map(envelope8.getSystemStreamPartition.getPartition -> "0"),
+      Map(envelope8.getSystemStreamPartition.getPartition -> "456"),
+      Map(envelope8.getSystemStreamPartition.getPartition -> "654"))
     val chooser = new DefaultChooser(
       mock0,
       Some(2),
       Map(
         envelope1.getSystemStreamPartition().getSystemStream -> Int.MaxValue,
+        envelope8.getSystemStreamPartition().getSystemStream -> Int.MaxValue,
         envelope2.getSystemStreamPartition().getSystemStream -> 1),
       Map(
         Int.MaxValue -> mock1,
         1 -> mock2),
       Map(
-        envelope1.getSystemStreamPartition.getSystemStream -> metadata))
+        envelope1.getSystemStreamPartition.getSystemStream -> metadata1,
+        envelope8.getSystemStreamPartition.getSystemStream -> metadata8))
 
     chooser.register(envelope1.getSystemStreamPartition, null)
     chooser.register(envelope2.getSystemStreamPartition, null)
     chooser.register(envelope3.getSystemStreamPartition, null)
     chooser.register(envelope5.getSystemStreamPartition, null)
+    // Add a bootstrap stream that's already caught up. If everything is 
+    // working properly, it shouldn't interfere with anything.
+    chooser.register(envelope8.getSystemStreamPartition, "654")
     chooser.start
     assertEquals(null, chooser.choose)
 

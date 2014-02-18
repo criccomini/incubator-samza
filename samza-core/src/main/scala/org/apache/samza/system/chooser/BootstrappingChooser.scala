@@ -29,6 +29,7 @@ import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.system.SystemStreamMetadata
 import scala.collection.JavaConversions._
+import org.apache.samza.SamzaException
 
 /**
  * BootstrappingChooser is a composable MessageChooser that only chooses
@@ -103,14 +104,16 @@ class BootstrappingChooser(
 
   def stop = wrapped.stop
 
-  override def register(systemStreamPartition: SystemStreamPartition, lastReadOffset: String) {
-    debug("Registering stream partition with last read offset: %s, %s" format (systemStreamPartition, lastReadOffset))
+  override def register(systemStreamPartition: SystemStreamPartition, offset: String) {
+    debug("Registering stream partition with offset: %s, %s" format (systemStreamPartition, offset))
 
-    // If the last offset read is the same as the latest offset in the SSP, 
-    // then we're already at head for this SSP, so remove it from the lag list.
-    checkOffset(systemStreamPartition, lastReadOffset)
+    // If the offset we're starting to consume from is the same as the future 
+    // offset for this system stream partition, then we've already read all
+    // messages in the stream, and we're at head for this system stream 
+    // partition.
+    checkOffset(systemStreamPartition, offset, Future)
 
-    wrapped.register(systemStreamPartition, lastReadOffset)
+    wrapped.register(systemStreamPartition, offset)
   }
 
   def update(envelope: IncomingMessageEnvelope) {
@@ -156,7 +159,10 @@ class BootstrappingChooser(
           updatedSystemStreams += systemStream -> (updatedSystemStreams.getOrElse(systemStream, 0) - 1)
         }
 
-        checkOffset(systemStreamPartition, offset)
+        // If the offset we just read is the same as the offset for the last 
+        // message (newest) in this system stream partition, then we have read 
+        // all messages, and can mark this SSP as bootstrapped.
+        checkOffset(systemStreamPartition, offset, Newest)
       }
 
       envelope
@@ -166,20 +172,24 @@ class BootstrappingChooser(
     }
   }
 
-  private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String) {
+  private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String, newestOrFuture: OffsetType) {
     val systemStreamMetadata = bootstrapStreamMetadata.getOrElse(systemStreamPartition.getSystemStream, null)
     val systemStream = systemStreamPartition.getSystemStream
-    val latestOffset = if (systemStreamMetadata != null) {
-      systemStreamMetadata.getNewestOffset(systemStreamPartition.getPartition)
+    val offsetToCheck = if (systemStreamMetadata != null) {
+      newestOrFuture match {
+        case Newest => systemStreamMetadata.getNewestOffset(systemStreamPartition.getPartition)
+        case Future => systemStreamMetadata.getFutureOffset(systemStreamPartition.getPartition)
+        case _ => throw new SamzaException("Got unexpected offset type: %s" format newestOrFuture)
+      }
     } else {
       null
     }
 
-    trace("Check offset: %s, %s" format (systemStreamPartition, offset))
+    trace("Check %s offset %s against %s for %s." format (newestOrFuture.getClass.getSimpleName, offset, offsetToCheck, systemStreamPartition))
 
     // The SSP is no longer lagging if the envelope's offset equals the 
-    // lastOffset map. 
-    if (offset != null && offset.equals(latestOffset)) {
+    // latest offset. 
+    if (offset != null && offset.equals(offsetToCheck)) {
       laggingSystemStreamPartitions -= systemStreamPartition
       systemStreamLagCounts += systemStream -> (systemStreamLagCounts(systemStream) - 1)
 
@@ -215,3 +225,7 @@ class BootstrappingChooserMetrics(val registry: MetricsRegistry = new MetricsReg
     newGauge("%s-%s-lagging-partitions" format (systemStream.getSystem, systemStream.getStream), getValue)
   }
 }
+
+sealed abstract class OffsetType
+object Future extends OffsetType
+object Newest extends OffsetType
