@@ -72,16 +72,12 @@ class KafkaSystemAdmin(
    */
   clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
 
-  private def getTopicMetadata(topics: Set[String]) = {
-    new ClientUtilTopicMetadataStore(brokerListString, clientId)
-      .getTopicInfo(topics)
-  }
-
   /**
    * Given a set of stream names (topics), fetch metadata from Kafka for each
    * stream, and return a map from stream name to SystemStreamMetadata for
    * each stream. This method will return null for oldest and newest offsets
-   * if a given SystemStreamPartition is empty.
+   * if a given SystemStreamPartition is empty. This method will block and
+   * retry indefinitely until it gets a successful response from Kafka.
    */
   def getSystemStreamMetadata(streams: java.util.Set[String]) = {
     var partitions = Map[String, Set[Partition]]()
@@ -102,39 +98,9 @@ class KafkaSystemAdmin(
 
         debug("Got metadata for streams: %s" format metadata)
 
-        // Get partitions for all streams.
-        partitions = streams.map(streamName => {
-          val partitions = metadata(streamName)
-            .partitionsMetadata
-            .map(pm => new Partition(pm.partitionId))
-            .toSet[Partition]
-          (streamName, partitions)
-        }).toMap
+        partitions = getPartitions(metadata)
 
-        debug("Got partitions for streams: %s" format partitions)
-
-        // Break topic metadata topic/partitions into per-broker map so that 
-        // we can execute only one offset request per broker.
-        val brokersToTopicPartitions = metadata
-          .values
-          // Convert the topic metadata to a Seq[(Broker, TopicAndPartition)] 
-          .flatMap(topicMetadata => topicMetadata
-            .partitionsMetadata
-            // Convert Seq[PartitionMetadata] to Seq[(Broker, TopicAndPartition)]
-            .map(partitionMetadata => {
-              ErrorMapping.maybeThrowException(partitionMetadata.errorCode)
-              val topicAndPartition = new TopicAndPartition(topicMetadata.topic, partitionMetadata.partitionId)
-              val leader = partitionMetadata
-                .leader
-                .getOrElse(throw new SamzaException("Need leaders for all partitions when fetching offsets. No leader available for TopicAndPartition: %s" format topicAndPartition))
-              (leader, topicAndPartition)
-            }))
-          // Convert to a Map[Broker, Seq[(Broker, TopicAndPartition)]]
-          .groupBy(_._1)
-          // Convert to a Map[Broker, Set[TopicAndPartition]]
-          .mapValues(_.map(_._2).toSet)
-
-        debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
+        val brokersToTopicPartitions = getTopicsAndPartitionsByBroker(metadata)
 
         // Get oldest, newest, and future offsets for each topic and partition.
         for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
@@ -179,7 +145,72 @@ class KafkaSystemAdmin(
       }
     }
 
-    // Assemble a map from stream name to metadata.
+    assembleMetadata(partitions, oldestOffsets, newestOffsets, futureOffsets)
+  }
+
+  /**
+   * Helper method to use topic metadata cache when fetching metadata, so we
+   * don't hammer Kafka more than we need to.
+   */
+  private def getTopicMetadata(topics: Set[String]) = {
+    new ClientUtilTopicMetadataStore(brokerListString, clientId)
+      .getTopicInfo(topics)
+  }
+
+  /**
+   * Get a map from stream name to partition set for each stream in the
+   * metadata provided.
+   */
+  private def getPartitions(metadata: Map[String, TopicMetadata]) = {
+    // Get partitions for all streams.
+    val partitions = metadata.map {
+      case (streamName, topicMetadata) =>
+        val partitions = topicMetadata
+          .partitionsMetadata
+          .map(pm => new Partition(pm.partitionId))
+          .toSet[Partition]
+        (streamName, partitions)
+    }.toMap
+
+    debug("Got partitions for streams: %s" format partitions)
+
+    partitions
+  }
+
+  /**
+   * Break topic metadata topic/partitions into per-broker map so that we can
+   * execute only one offset request per broker.
+   */
+  private def getTopicsAndPartitionsByBroker(metadata: Map[String, TopicMetadata]) = {
+    val brokersToTopicPartitions = metadata
+      .values
+      // Convert the topic metadata to a Seq[(Broker, TopicAndPartition)] 
+      .flatMap(topicMetadata => topicMetadata
+        .partitionsMetadata
+        // Convert Seq[PartitionMetadata] to Seq[(Broker, TopicAndPartition)]
+        .map(partitionMetadata => {
+          ErrorMapping.maybeThrowException(partitionMetadata.errorCode)
+          val topicAndPartition = new TopicAndPartition(topicMetadata.topic, partitionMetadata.partitionId)
+          val leader = partitionMetadata
+            .leader
+            .getOrElse(throw new SamzaException("Need leaders for all partitions when fetching offsets. No leader available for TopicAndPartition: %s" format topicAndPartition))
+          (leader, topicAndPartition)
+        }))
+      // Convert to a Map[Broker, Seq[(Broker, TopicAndPartition)]]
+      .groupBy(_._1)
+      // Convert to a Map[Broker, Set[TopicAndPartition]]
+      .mapValues(_.map(_._2).toSet)
+
+    debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
+
+    brokersToTopicPartitions
+  }
+
+  /**
+   * A helper method that takes oldest, newest, and future offsets, and creates
+   * a single map from stream name to SystemStreamMetadata.
+   */
+  private def assembleMetadata(partitions: Map[String, Set[Partition]], oldestOffsets: Map[SystemStreamPartition, String], newestOffsets: Map[SystemStreamPartition, String], futureOffsets: Map[SystemStreamPartition, String]) = {
     val allMetadata = (oldestOffsets.keySet ++ newestOffsets.keySet ++ futureOffsets.keySet)
       .groupBy(_.getStream)
       .map {
@@ -204,7 +235,7 @@ class KafkaSystemAdmin(
       }
       .toMap
 
-    info("Got metadata for streams: %s, %s" format (streams, allMetadata))
+    info("Got metadata: %s" format allMetadata)
 
     allMetadata
   }
