@@ -23,56 +23,82 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.samza.Partition;
 
+/**
+ * SystemAdmins use this class to return useful metadata about a stream's offset
+ * and partition information.
+ */
 public class SystemStreamMetadata {
   private final String streamName;
   private final Set<Partition> partitions;
-  private final Map<Partition, String> earliestOffsets;
-  private final Map<Partition, String> latestOffsets;
-  private final Map<Partition, String> nextOffsets;
+  private final Map<Partition, String> oldestOffsets;
+  private final Map<Partition, String> newestOffsets;
+  private final Map<Partition, String> futureOffsets;
 
-  public SystemStreamMetadata(String streamName, Set<Partition> partitions, Map<Partition, String> earliestOffsets, Map<Partition, String> latestOffsets, Map<Partition, String> nextOffsets) {
+  public SystemStreamMetadata(String streamName, Set<Partition> partitions, Map<Partition, String> oldestOffsets, Map<Partition, String> newestOffsets, Map<Partition, String> futureOffsets) {
     this.streamName = streamName;
     this.partitions = partitions;
-    this.earliestOffsets = earliestOffsets;
-    this.latestOffsets = latestOffsets;
-    this.nextOffsets = nextOffsets;
+    this.oldestOffsets = oldestOffsets;
+    this.newestOffsets = newestOffsets;
+    this.futureOffsets = futureOffsets;
   }
 
+  /**
+   * @return The stream name that's associated with the metadata contained in an
+   *         instance of this class.
+   */
+  public String getStreamName() {
+    return streamName;
+  }
+
+  /**
+   * @return A set of partitions that exist for the stream.
+   */
   public Set<Partition> getPartitions() {
     return partitions;
   }
 
   /**
-   * 
-   * @return Earliest offset, or null if stream is empty.
+   * @return The oldest offset that still exists in the stream for the partition
+   *         given. If a partition has two messages with offsets 0 and 1,
+   *         respectively, then this method would return 0 for the oldest
+   *         offset. This offset is useful when one wishes to read all messages
+   *         in a stream from the very beginning.
    */
-  public String getEarliestOffset(Partition partition) {
-    return earliestOffsets.get(partition);
+  public String getOldestOffset(Partition partition) {
+    return oldestOffsets.get(partition);
   }
 
   /**
-   * 
-   * @return Latest offset, or null if stream is empty.
+   * @return The newest offset that exists in the stream for the partition
+   *         given. If a partition has two messages with offsets 0 and 1,
+   *         respectively, then this method would return 1 for the newest
+   *         offset. This offset is useful when one wishes to see if all
+   *         messages have been read from a stream (offset of last message read
+   *         == newest offset).
    */
-  public String getLatestOffset(Partition partition) {
-    return latestOffsets.get(partition);
+  public String getNewestOffset(Partition partition) {
+    return newestOffsets.get(partition);
   }
 
   /**
-   * 
-   * @return Next offset, or null if stream doesn't support offsets.
+   * @return The offset that represents the next message to be written in the
+   *         stream for the partition given. If a partition has two messages
+   *         with offsets 0 and 1, respectively, then this method would return 2
+   *         for the future offset. This offset is useful when one wishes to
+   *         pick up reading at the very end of a stream.
    */
-  public String getNextOffset(Partition partition) {
-    return nextOffsets.get(partition);
+  public String getFutureOffset(Partition partition) {
+    return futureOffsets.get(partition);
   }
 
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((earliestOffsets == null) ? 0 : earliestOffsets.hashCode());
-    result = prime * result + ((latestOffsets == null) ? 0 : latestOffsets.hashCode());
-    result = prime * result + ((nextOffsets == null) ? 0 : nextOffsets.hashCode());
+    result = prime * result + ((futureOffsets == null) ? 0 : futureOffsets.hashCode());
+    result = prime * result + ((newestOffsets == null) ? 0 : newestOffsets.hashCode());
+    result = prime * result + ((oldestOffsets == null) ? 0 : oldestOffsets.hashCode());
+    result = prime * result + ((partitions == null) ? 0 : partitions.hashCode());
     result = prime * result + ((streamName == null) ? 0 : streamName.hashCode());
     return result;
   }
@@ -86,20 +112,25 @@ public class SystemStreamMetadata {
     if (getClass() != obj.getClass())
       return false;
     SystemStreamMetadata other = (SystemStreamMetadata) obj;
-    if (earliestOffsets == null) {
-      if (other.earliestOffsets != null)
+    if (futureOffsets == null) {
+      if (other.futureOffsets != null)
         return false;
-    } else if (!earliestOffsets.equals(other.earliestOffsets))
+    } else if (!futureOffsets.equals(other.futureOffsets))
       return false;
-    if (latestOffsets == null) {
-      if (other.latestOffsets != null)
+    if (newestOffsets == null) {
+      if (other.newestOffsets != null)
         return false;
-    } else if (!latestOffsets.equals(other.latestOffsets))
+    } else if (!newestOffsets.equals(other.newestOffsets))
       return false;
-    if (nextOffsets == null) {
-      if (other.nextOffsets != null)
+    if (oldestOffsets == null) {
+      if (other.oldestOffsets != null)
         return false;
-    } else if (!nextOffsets.equals(other.nextOffsets))
+    } else if (!oldestOffsets.equals(other.oldestOffsets))
+      return false;
+    if (partitions == null) {
+      if (other.partitions != null)
+        return false;
+    } else if (!partitions.equals(other.partitions))
       return false;
     if (streamName == null) {
       if (other.streamName != null)
@@ -111,6 +142,6 @@ public class SystemStreamMetadata {
 
   @Override
   public String toString() {
-    return "StreamMetadata [streamName=" + streamName + ", earliestOffsets=" + earliestOffsets + ", latestOffsets=" + latestOffsets + ", nextOffsets=" + nextOffsets + "]";
+    return "SystemStreamMetadata [streamName=" + streamName + ", partitions=" + partitions + ", oldestOffsets=" + oldestOffsets + ", newestOffsets=" + newestOffsets + ", futureOffsets=" + futureOffsets + "]";
   }
 }
