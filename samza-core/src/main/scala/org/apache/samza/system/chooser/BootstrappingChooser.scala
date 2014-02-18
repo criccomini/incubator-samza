@@ -58,9 +58,9 @@ class BootstrappingChooser(
 
   /**
    * A map from system stream to metadata information, which includes first,
-   * last, and next offsets. If a stream does not need to be guaranteed
-   * available to the underlying wrapped chooser, it should not be included in
-   * this map.
+   * last, and next offsets for each partition. If a stream does not need to
+   * be guaranteed available to the underlying wrapped chooser, it should not
+   * be included in this map.
    */
   var bootstrapStreamMetadata: Map[SystemStream, SystemStreamMetadata] = Map(),
 
@@ -169,12 +169,17 @@ class BootstrappingChooser(
   private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String) {
     val systemStreamMetadata = bootstrapStreamMetadata.getOrElse(systemStreamPartition.getSystemStream, null)
     val systemStream = systemStreamPartition.getSystemStream
+    val latestOffset = if (systemStreamMetadata != null) {
+      systemStreamMetadata.getLatestOffset(systemStreamPartition.getPartition)
+    } else {
+      null
+    }
 
     trace("Check offset: %s, %s" format (systemStreamPartition, offset))
 
     // The SSP is no longer lagging if the envelope's offset equals the 
     // lastOffset map. 
-    if (offset != null && systemStreamMetadata != null && offset.equals(systemStreamMetadata.getLatestOffset(systemStreamPartition.getPartition))) {
+    if (offset != null && offset.equals(latestOffset)) {
       laggingSystemStreamPartitions -= systemStreamPartition
       systemStreamLagCounts += systemStream -> (systemStreamLagCounts(systemStream) - 1)
 

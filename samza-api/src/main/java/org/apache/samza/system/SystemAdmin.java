@@ -31,7 +31,7 @@ import java.util.Set;
 public interface SystemAdmin {
   /**
    * Fetch metadata from a system for a set of streams.
-   * 
+   *
    * @param streamNames
    *          The streams to to fetch metadata for.
    * @return A map from stream name to SystemStreamMetadata for each stream

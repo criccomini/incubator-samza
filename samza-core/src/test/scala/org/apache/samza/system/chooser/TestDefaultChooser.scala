@@ -45,7 +45,14 @@ class TestDefaultChooser {
     val mock0 = new MockMessageChooser
     val mock1 = new MockMessageChooser
     val mock2 = new MockMessageChooser
-    val metadata = new SystemStreamMetadata(envelope1.getSystemStreamPartition.getStream, Set(envelope1.getSystemStreamPartition.getPartition, envelope5.getSystemStreamPartition.getPartition), null, Map(envelope1.getSystemStreamPartition.getPartition -> "123", envelope5.getSystemStreamPartition.getPartition -> "321"), null)
+    // Create metadata for two envelopes (1 and 5) that are part of the same 
+    // stream, but have different partitions and offsets.
+    val metadata = new SystemStreamMetadata(
+      envelope1.getSystemStreamPartition.getStream,
+      Set(envelope1.getSystemStreamPartition.getPartition, envelope5.getSystemStreamPartition.getPartition),
+      null,
+      Map(envelope1.getSystemStreamPartition.getPartition -> "123", envelope5.getSystemStreamPartition.getPartition -> "321"),
+      null)
     val chooser = new DefaultChooser(
       mock0,
       Some(2),

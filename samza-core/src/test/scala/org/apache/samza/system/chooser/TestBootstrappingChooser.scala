@@ -40,6 +40,18 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(0)), null, null, 3);
   val envelope4 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), "123", null, 4);
 
+  /**
+   * Helper function to create metadata for a single envelope with a single offset.
+   */
+  private def getMetadata(envelope: IncomingMessageEnvelope, newestOffset: String) = {
+    new SystemStreamMetadata(
+      envelope.getSystemStreamPartition.getStream,
+      Set(envelope.getSystemStreamPartition.getPartition),
+      null,
+      Map(envelope.getSystemStreamPartition.getPartition -> newestOffset),
+      null)
+  }
+
   @Test
   def testChooserShouldIgnoreStreamsThatArentInOffsetMap {
     val mock = new MockMessageChooser
@@ -59,7 +71,7 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   @Test
   def testChooserShouldEliminateCaughtUpStreamsOnRegister {
     val mock = new MockMessageChooser
-    val metadata = new SystemStreamMetadata(envelope1.getSystemStreamPartition.getStream, Set(envelope1.getSystemStreamPartition.getPartition), null, Map(envelope1.getSystemStreamPartition.getPartition -> "123"), null)
+    val metadata = getMetadata(envelope1, "123")
     val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition.getSystemStream -> metadata))
 
     // Even though envelope1's SSP is registered as a bootstrap stream, since 
@@ -77,7 +89,7 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   @Test
   def testChooserShouldEliminateCaughtUpStreamsAfterRegister {
     val mock = new MockMessageChooser
-    val metadata = new SystemStreamMetadata(envelope1.getSystemStreamPartition.getStream, Set(envelope1.getSystemStreamPartition.getPartition), null, Map(envelope1.getSystemStreamPartition.getPartition -> "123"), null)
+    val metadata = getMetadata(envelope1, "123")
     val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition.getSystemStream -> metadata))
 
     // Even though envelope1's SSP is registered as a bootstrap stream, since 
@@ -119,8 +131,8 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   @Test
   def testChooserShouldWorkWithTwoBootstrapStreams {
     val mock = new MockMessageChooser
-    val metadata1 = new SystemStreamMetadata(envelope1.getSystemStreamPartition.getStream, Set(envelope1.getSystemStreamPartition.getPartition), null, Map(envelope1.getSystemStreamPartition.getPartition -> "123"), null)
-    val metadata2 = new SystemStreamMetadata(envelope2.getSystemStreamPartition.getStream, Set(envelope2.getSystemStreamPartition.getPartition), null, Map(envelope2.getSystemStreamPartition.getPartition -> "321"), null)
+    val metadata1 = getMetadata(envelope1, "123")
+    val metadata2 = getMetadata(envelope2, "321")
     val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition.getSystemStream -> metadata1, envelope2.getSystemStreamPartition.getSystemStream -> metadata2))
 
     chooser.register(envelope1.getSystemStreamPartition, "1")
