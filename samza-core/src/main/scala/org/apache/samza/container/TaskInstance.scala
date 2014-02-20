@@ -33,7 +33,6 @@ import org.apache.samza.task.ClosableTask
 import org.apache.samza.task.InitableTask
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.task.WindowableTask
-import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.task.TaskLifecycleListener
 import org.apache.samza.task.StreamTask
 import org.apache.samza.system.SystemStream
@@ -51,19 +50,17 @@ class TaskInstance(
   metrics: TaskInstanceMetrics,
   consumerMultiplexer: SystemConsumers,
   producerMultiplexer: SystemProducers,
+  offsetManager: OffsetManager,
   storageManager: TaskStorageManager = null,
-  checkpointManager: CheckpointManager = null,
   reporters: Map[String, MetricsReporter] = Map(),
   listeners: Seq[TaskLifecycleListener] = Seq(),
   inputStreams: Set[SystemStream] = Set(),
-  resetInputStreams: Map[SystemStream, Boolean] = Map(),
   queueSize: Int = 1000,
   windowMs: Long = -1,
   commitMs: Long = 60000,
   clock: () => Long = { System.currentTimeMillis },
   collector: ReadableCollector = new ReadableCollector) extends Logging {
 
-  var offsets = Map[SystemStream, String]()
   var lastWindowMs = 0L
   var lastCommitMs = 0L
   val isInitableTask = task.isInstanceOf[InitableTask]
@@ -87,14 +84,10 @@ class TaskInstance(
     reporters.values.foreach(_.register(metrics.source, metrics.registry))
   }
 
-  def registerCheckpoints {
-    if (checkpointManager != null) {
-      debug("Registering checkpoint manager for partition: %s." format partition)
+  def registerOffsets {
+    debug("Registering offsets for partition: %s." format partition)
 
-      checkpointManager.register(partition)
-    } else {
-      debug("Skipping checkpoint manager registration for partition: %s." format partition)
-    }
+    offsetManager.register(partition)
   }
 
   def startStores {
@@ -128,34 +121,17 @@ class TaskInstance(
   }
 
   def registerConsumers {
-    if (checkpointManager != null) {
-      debug("Loading checkpoints for partition: %s." format partition)
-
-      val checkpoint = checkpointManager.readLastCheckpoint(partition)
-
-      if (checkpoint != null) {
-        for ((systemStream, offset) <- checkpoint.getOffsets) {
-          if (!resetInputStreams.getOrElse(systemStream, false)) {
-            offsets += systemStream -> offset
-
-            metrics.addOffsetGauge(systemStream, () => offsets(systemStream))
-          } else {
-            info("Got offset %s for %s, but ignoring, since stream was configured to reset offsets." format (offset, systemStream))
-          }
-        }
-
-        info("Successfully loaded offsets for partition: %s, %s" format (partition, offsets))
-      } else {
-        warn("No checkpoint found for partition: %s. This is allowed if this is your first time running the job, but if it's not, you've probably lost data." format partition)
-      }
-    }
-
     debug("Registering consumers for partition: %s." format partition)
 
-    inputStreams.foreach(stream =>
-      consumerMultiplexer.register(
-        new SystemStreamPartition(stream, partition),
-        offsets.get(stream).getOrElse(null)))
+    inputStreams
+      .map(new SystemStreamPartition(_, partition))
+      .foreach(systemStreamPartition => {
+        val offset = offsetManager.next(systemStreamPartition)
+
+        debug("Registering consumer for %s with offset %s." format (systemStreamPartition, offset))
+
+        consumerMultiplexer.register(systemStreamPartition, offset)
+      })
   }
 
   def process(envelope: IncomingMessageEnvelope, coordinator: ReadableCoordinator) {
@@ -171,7 +147,7 @@ class TaskInstance(
 
     trace("Updating offset map for partition: %s, %s, %s" format (partition, envelope.getSystemStreamPartition, envelope.getOffset))
 
-    offsets += envelope.getSystemStreamPartition.getSystemStream -> envelope.getOffset
+    offsetManager.update(envelope.getSystemStreamPartition, envelope.getOffset)
   }
 
   def window(coordinator: ReadableCoordinator) {
@@ -222,11 +198,9 @@ class TaskInstance(
 
       producerMultiplexer.flush(metrics.source)
 
-      if (checkpointManager != null) {
-        trace("Committing checkpoint manager for partition: %s" format partition)
+      trace("Checkpointing offsets for partition: %s" format partition)
 
-        checkpointManager.writeCheckpoint(partition, new Checkpoint(offsets))
-      }
+      offsetManager.checkpoint(partition)
 
       lastCommitMs = clock()
     } else {
@@ -259,9 +233,9 @@ class TaskInstance(
       debug("Skipping storage manager shutdown for partition: %s" format partition)
     }
   }
-  
+
   override def toString() = "TaskInstance for class %s and partition %s." format (task.getClass.getName, partition)
- 
-  def toDetailedString() = "TaskInstance [windowable=%s, window_time=%s, commit_time=%s, closable=%s, collector_size=%s]" format (isWindowableTask, lastWindowMs, lastCommitMs, isClosableTask, collector.envelopes.size) 
-  
+
+  def toDetailedString() = "TaskInstance [windowable=%s, window_time=%s, commit_time=%s, closable=%s, collector_size=%s]" format (isWindowableTask, lastWindowMs, lastCommitMs, isClosableTask, collector.envelopes.size)
+
 }

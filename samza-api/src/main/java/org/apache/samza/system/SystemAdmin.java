@@ -29,9 +29,18 @@ import java.util.Set;
  * system.
  */
 public interface SystemAdmin {
+
+  /**
+   * TODO
+   * 
+   * @param currentOffsets
+   * @return
+   */
+  Map<SystemStreamPartition, String> getNextOffsets(Map<SystemStreamPartition, String> currentOffsets);
+
   /**
    * Fetch metadata from a system for a set of streams.
-   *
+   * 
    * @param streamNames
    *          The streams to to fetch metadata for.
    * @return A map from stream name to SystemStreamMetadata for each stream

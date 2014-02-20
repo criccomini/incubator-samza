@@ -286,6 +286,8 @@ object SamzaContainer extends Logging {
 
     info("Got checkpoint manager: %s" format checkpointManager)
 
+    val offsetManager = new OffsetManager(systemAdmins, checkpointManager, defaultOffsets, resetInputStreams)
+
     val consumerMultiplexer = new SystemConsumers(
       // TODO add config values for no new message timeout and max msgs per stream partition
       chooser = chooser,
@@ -420,12 +422,11 @@ object SamzaContainer extends Logging {
         metrics = taskInstanceMetrics,
         consumerMultiplexer = consumerMultiplexer,
         producerMultiplexer = producerMultiplexer,
+        offsetManager = offsetManager,
         storageManager = storageManager,
-        checkpointManager = checkpointManager,
         reporters = reporters,
         listeners = listeners,
         inputStreams = inputStreamsForThisPartition,
-        resetInputStreams = resetInputStreams,
         windowMs = taskWindowMs,
         commitMs = taskCommitMs,
         collector = collector)
