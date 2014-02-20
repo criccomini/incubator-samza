@@ -29,10 +29,10 @@ import org.apache.samza.system.SystemStreamPartition;
 import org.apache.samza.system.SystemStreamMetadata;
 import org.junit.Test;
 
-public class TestSinglePartitionSystemAdmin {
+public class TestSinglePartitionWithoutOffsetsSystemAdmin {
   @Test
   public void testShouldGetASinglePartition() {
-    SinglePartitionSystemAdmin admin = new SinglePartitionSystemAdmin();
+    SinglePartitionWithoutOffsetsSystemAdmin admin = new SinglePartitionWithoutOffsetsSystemAdmin();
     Set<String> streamNames = new HashSet<String>();
     streamNames.add("a");
     streamNames.add("b");
@@ -40,8 +40,8 @@ public class TestSinglePartitionSystemAdmin {
     assertEquals(metadata.size(), 2);
     SystemStreamMetadata metadata1 = metadata.get("a");
     SystemStreamMetadata metadata2 = metadata.get("b");
-    assertEquals(1, metadata1.getPartitions().size());
-    assertEquals(1, metadata2.getPartitions().size());
+    assertEquals(1, metadata1.getSystemStreamPartitionMetadata().size());
+    assertEquals(1, metadata2.getSystemStreamPartitionMetadata().size());
     assertEquals(null, metadata.get(new SystemStreamPartition("test-system", "c", new Partition(0))));
   }
 }

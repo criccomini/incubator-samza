@@ -176,14 +176,14 @@ class TestKafkaSystemAdmin {
     var metadata = systemAdmin.getSystemStreamMetadata(Set(TOPIC))
     assertEquals(1, metadata.size)
     assertNotNull(metadata(TOPIC))
-    var streamMetadata = metadata(TOPIC)
     // Verify partition count.
-    assertEquals(50, metadata(TOPIC).getPartitions.size)
+    var sspMetadata = metadata(TOPIC).getSystemStreamPartitionMetadata
+    assertEquals(50, sspMetadata.size)
     // Empty topics should have null for earliest/latest offset.
-    assertNull(streamMetadata.getOldestOffset(new Partition(0)))
-    assertNull(streamMetadata.getNewestOffset(new Partition(0)))
+    assertNull(sspMetadata.get(new Partition(0)).getOldestOffset)
+    assertNull(sspMetadata.get(new Partition(0)).getNewestOffset)
     // Empty Kafka topics should have a next offset of 0.
-    assertEquals("0", streamMetadata.getFutureOffset(new Partition(0)))
+    assertEquals("0", sspMetadata.get(new Partition(0)).getUpcomingOffset)
 
     // Add a new message to one of the partitions, and verify that it works as 
     // expected.
@@ -192,26 +192,26 @@ class TestKafkaSystemAdmin {
     assertEquals(1, metadata.size)
     val streamName = metadata.keySet.head
     assertEquals(TOPIC, streamName)
-    streamMetadata = metadata(streamName)
+    sspMetadata = metadata(streamName).getSystemStreamPartitionMetadata
     // key1 gets hash-mod'd to partition 48.
-    assertEquals("0", streamMetadata.getOldestOffset(new Partition(48)))
-    assertEquals("0", streamMetadata.getNewestOffset(new Partition(48)))
-    assertEquals("1", streamMetadata.getFutureOffset(new Partition(48)))
+    assertEquals("0", sspMetadata.get(new Partition(48)).getOldestOffset)
+    assertEquals("0", sspMetadata.get(new Partition(48)).getNewestOffset)
+    assertEquals("1", sspMetadata.get(new Partition(48)).getUpcomingOffset)
     // Some other partition should be empty.
-    assertNull(streamMetadata.getOldestOffset(new Partition(3)))
-    assertNull(streamMetadata.getNewestOffset(new Partition(3)))
-    assertEquals("0", streamMetadata.getFutureOffset(new Partition(3)))
+    assertNull(sspMetadata.get(new Partition(3)).getOldestOffset)
+    assertNull(sspMetadata.get(new Partition(3)).getNewestOffset)
+    assertEquals("0", sspMetadata.get(new Partition(3)).getUpcomingOffset)
 
     // Add a second message to one of the same partition.
     producer.send(new KeyedMessage(TOPIC, "key1", "val2"))
     metadata = systemAdmin.getSystemStreamMetadata(Set(TOPIC))
     assertEquals(1, metadata.size)
     assertEquals(TOPIC, streamName)
-    streamMetadata = metadata(streamName)
+    sspMetadata = metadata(streamName).getSystemStreamPartitionMetadata
     // key1 gets hash-mod'd to partition 48.
-    assertEquals("0", streamMetadata.getOldestOffset(new Partition(48)))
-    assertEquals("1", streamMetadata.getNewestOffset(new Partition(48)))
-    assertEquals("2", streamMetadata.getFutureOffset(new Partition(48)))
+    assertEquals("0", sspMetadata.get(new Partition(48)).getOldestOffset)
+    assertEquals("1", sspMetadata.get(new Partition(48)).getNewestOffset)
+    assertEquals("2", sspMetadata.get(new Partition(48)).getUpcomingOffset)
 
     // Validate that a fetch will return the message.
     val connector = getConsumerConnector
@@ -220,12 +220,12 @@ class TestKafkaSystemAdmin {
     var text = new String(message.message, "UTF-8")
     connector.shutdown
     // First message should match the earliest expected offset.
-    assertEquals(streamMetadata.getOldestOffset(new Partition(48)), message.offset.toString)
+    assertEquals(sspMetadata.get(new Partition(48)).getOldestOffset, message.offset.toString)
     assertEquals("val1", text)
     // Second message should match the earliest expected offset.
     message = stream.next
     text = new String(message.message, "UTF-8")
-    assertEquals(streamMetadata.getNewestOffset(new Partition(48)), message.offset.toString)
+    assertEquals(sspMetadata.get(new Partition(48)).getNewestOffset, message.offset.toString)
     assertEquals("val2", text)
   }
 }

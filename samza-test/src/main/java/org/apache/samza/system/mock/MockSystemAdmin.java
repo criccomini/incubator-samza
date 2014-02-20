@@ -25,18 +25,19 @@ import java.util.Set;
 import org.apache.samza.Partition;
 import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemStreamMetadata;
+import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata;
 
 /**
  * A SystemAdmin that returns a constant set of partitions for all streams.
  */
 public class MockSystemAdmin implements SystemAdmin {
-  private final Map<Partition, String> partitionOffsets;
+  private final Map<Partition, SystemStreamPartitionMetadata> systemStreamPartitionMetadata;
 
   public MockSystemAdmin(int partitionCount) {
-    this.partitionOffsets = new HashMap<Partition, String>();
+    this.systemStreamPartitionMetadata = new HashMap<Partition, SystemStreamPartitionMetadata>();
 
     for (int i = 0; i < partitionCount; ++i) {
-      partitionOffsets.put(new Partition(i), null);
+      systemStreamPartitionMetadata.put(new Partition(i), new SystemStreamPartitionMetadata(null, null, null));
     }
   }
 
@@ -45,7 +46,7 @@ public class MockSystemAdmin implements SystemAdmin {
     Map<String, SystemStreamMetadata> metadata = new HashMap<String, SystemStreamMetadata>();
 
     for (String streamName : streamNames) {
-      metadata.put(streamName, new SystemStreamMetadata(streamName, partitionOffsets.keySet(), partitionOffsets, partitionOffsets, partitionOffsets));
+      metadata.put(streamName, new SystemStreamMetadata(streamName, systemStreamPartitionMetadata));
     }
 
     return metadata;

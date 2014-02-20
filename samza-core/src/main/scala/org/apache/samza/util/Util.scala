@@ -102,7 +102,8 @@ object Util extends Logging {
             .flatMap {
               case (streamName, metadata) =>
                 metadata
-                  .getPartitions
+                  .getSystemStreamPartitionMetadata
+                  .keys
                   .map(new SystemStreamPartition(systemName, streamName, _))
             }
       }

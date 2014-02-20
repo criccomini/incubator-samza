@@ -19,8 +19,8 @@
 
 package org.apache.samza.system;
 
+import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import org.apache.samza.Partition;
 
 /**
@@ -29,17 +29,11 @@ import org.apache.samza.Partition;
  */
 public class SystemStreamMetadata {
   private final String streamName;
-  private final Set<Partition> partitions;
-  private final Map<Partition, String> oldestOffsets;
-  private final Map<Partition, String> newestOffsets;
-  private final Map<Partition, String> futureOffsets;
+  private final Map<Partition, SystemStreamPartitionMetadata> partitionMetadata;
 
-  public SystemStreamMetadata(String streamName, Set<Partition> partitions, Map<Partition, String> oldestOffsets, Map<Partition, String> newestOffsets, Map<Partition, String> futureOffsets) {
+  public SystemStreamMetadata(String streamName, Map<Partition, SystemStreamPartitionMetadata> partitionMetadata) {
     this.streamName = streamName;
-    this.partitions = partitions;
-    this.oldestOffsets = oldestOffsets;
-    this.newestOffsets = newestOffsets;
-    this.futureOffsets = futureOffsets;
+    this.partitionMetadata = partitionMetadata;
   }
 
   /**
@@ -51,54 +45,18 @@ public class SystemStreamMetadata {
   }
 
   /**
-   * @return A set of partitions that exist for the stream.
+   * @return A map of SystemStreamPartitionMetadata that includes offset
+   *         information for each partition.
    */
-  public Set<Partition> getPartitions() {
-    return partitions;
-  }
-
-  /**
-   * @return The oldest offset that still exists in the stream for the partition
-   *         given. If a partition has two messages with offsets 0 and 1,
-   *         respectively, then this method would return 0 for the oldest
-   *         offset. This offset is useful when one wishes to read all messages
-   *         in a stream from the very beginning.
-   */
-  public String getOldestOffset(Partition partition) {
-    return oldestOffsets.get(partition);
-  }
-
-  /**
-   * @return The newest offset that exists in the stream for the partition
-   *         given. If a partition has two messages with offsets 0 and 1,
-   *         respectively, then this method would return 1 for the newest
-   *         offset. This offset is useful when one wishes to see if all
-   *         messages have been read from a stream (offset of last message read
-   *         == newest offset).
-   */
-  public String getNewestOffset(Partition partition) {
-    return newestOffsets.get(partition);
-  }
-
-  /**
-   * @return The offset that represents the next message to be written in the
-   *         stream for the partition given. If a partition has two messages
-   *         with offsets 0 and 1, respectively, then this method would return 2
-   *         for the future offset. This offset is useful when one wishes to
-   *         pick up reading at the very end of a stream.
-   */
-  public String getFutureOffset(Partition partition) {
-    return futureOffsets.get(partition);
+  public Map<Partition, SystemStreamPartitionMetadata> getSystemStreamPartitionMetadata() {
+    return Collections.unmodifiableMap(partitionMetadata);
   }
 
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((futureOffsets == null) ? 0 : futureOffsets.hashCode());
-    result = prime * result + ((newestOffsets == null) ? 0 : newestOffsets.hashCode());
-    result = prime * result + ((oldestOffsets == null) ? 0 : oldestOffsets.hashCode());
-    result = prime * result + ((partitions == null) ? 0 : partitions.hashCode());
+    result = prime * result + ((partitionMetadata == null) ? 0 : partitionMetadata.hashCode());
     result = prime * result + ((streamName == null) ? 0 : streamName.hashCode());
     return result;
   }
@@ -112,25 +70,10 @@ public class SystemStreamMetadata {
     if (getClass() != obj.getClass())
       return false;
     SystemStreamMetadata other = (SystemStreamMetadata) obj;
-    if (futureOffsets == null) {
-      if (other.futureOffsets != null)
+    if (partitionMetadata == null) {
+      if (other.partitionMetadata != null)
         return false;
-    } else if (!futureOffsets.equals(other.futureOffsets))
-      return false;
-    if (newestOffsets == null) {
-      if (other.newestOffsets != null)
-        return false;
-    } else if (!newestOffsets.equals(other.newestOffsets))
-      return false;
-    if (oldestOffsets == null) {
-      if (other.oldestOffsets != null)
-        return false;
-    } else if (!oldestOffsets.equals(other.oldestOffsets))
-      return false;
-    if (partitions == null) {
-      if (other.partitions != null)
-        return false;
-    } else if (!partitions.equals(other.partitions))
+    } else if (!partitionMetadata.equals(other.partitionMetadata))
       return false;
     if (streamName == null) {
       if (other.streamName != null)
@@ -142,6 +85,98 @@ public class SystemStreamMetadata {
 
   @Override
   public String toString() {
-    return "SystemStreamMetadata [streamName=" + streamName + ", partitions=" + partitions + ", oldestOffsets=" + oldestOffsets + ", newestOffsets=" + newestOffsets + ", futureOffsets=" + futureOffsets + "]";
+    return "SystemStreamMetadata [streamName=" + streamName + ", partitionMetadata=" + partitionMetadata + "]";
+  }
+
+  /**
+   * Provides offset information for a given SystemStreamPartition. This
+   * currently only includes offset information.
+   */
+  public static class SystemStreamPartitionMetadata {
+    private final String oldestOffset;
+    private final String newestOffset;
+    private final String upcomingOffset;
+
+    public SystemStreamPartitionMetadata(String oldestOffset, String newestOffset, String upcomingOffset) {
+      this.oldestOffset = oldestOffset;
+      this.newestOffset = newestOffset;
+      this.upcomingOffset = upcomingOffset;
+    }
+
+    /**
+     * @return The oldest offset that still exists in the stream for the
+     *         partition given. If a partition has two messages with offsets 0
+     *         and 1, respectively, then this method would return 0 for the
+     *         oldest offset. This offset is useful when one wishes to read all
+     *         messages in a stream from the very beginning.
+     */
+    public String getOldestOffset() {
+      return oldestOffset;
+    }
+
+    /**
+     * @return The newest offset that exists in the stream for the partition
+     *         given. If a partition has two messages with offsets 0 and 1,
+     *         respectively, then this method would return 1 for the newest
+     *         offset. This offset is useful when one wishes to see if all
+     *         messages have been read from a stream (offset of last message
+     *         read == newest offset).
+     */
+    public String getNewestOffset() {
+      return newestOffset;
+    }
+
+    /**
+     * @return The offset that represents the next message to be written in the
+     *         stream for the partition given. If a partition has two messages
+     *         with offsets 0 and 1, respectively, then this method would return
+     *         2 for the upcoming offset. This offset is useful when one wishes
+     *         to pick up reading at the very end of a stream.
+     */
+    public String getUpcomingOffset() {
+      return upcomingOffset;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((newestOffset == null) ? 0 : newestOffset.hashCode());
+      result = prime * result + ((oldestOffset == null) ? 0 : oldestOffset.hashCode());
+      result = prime * result + ((upcomingOffset == null) ? 0 : upcomingOffset.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      SystemStreamPartitionMetadata other = (SystemStreamPartitionMetadata) obj;
+      if (newestOffset == null) {
+        if (other.newestOffset != null)
+          return false;
+      } else if (!newestOffset.equals(other.newestOffset))
+        return false;
+      if (oldestOffset == null) {
+        if (other.oldestOffset != null)
+          return false;
+      } else if (!oldestOffset.equals(other.oldestOffset))
+        return false;
+      if (upcomingOffset == null) {
+        if (other.upcomingOffset != null)
+          return false;
+      } else if (!upcomingOffset.equals(other.upcomingOffset))
+        return false;
+      return true;
+    }
+
+    @Override
+    public String toString() {
+      return "SystemStreamPartitionMetadata [oldestOffset=" + oldestOffset + ", newestOffset=" + newestOffset + ", upcomingOffset=" + upcomingOffset + "]";
+    }
   }
 }

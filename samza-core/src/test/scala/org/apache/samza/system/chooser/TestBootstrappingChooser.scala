@@ -26,6 +26,7 @@ import scala.collection.immutable.Queue
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.Partition
 import org.apache.samza.system.SystemStreamMetadata
+import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
@@ -46,10 +47,7 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   private def getMetadata(envelope: IncomingMessageEnvelope, newestOffset: String) = {
     new SystemStreamMetadata(
       envelope.getSystemStreamPartition.getStream,
-      Set(envelope.getSystemStreamPartition.getPartition),
-      null,
-      Map(envelope.getSystemStreamPartition.getPartition -> newestOffset),
-      null)
+      Map(envelope.getSystemStreamPartition.getPartition -> new SystemStreamPartitionMetadata(null, newestOffset, null)))
   }
 
   @Test
