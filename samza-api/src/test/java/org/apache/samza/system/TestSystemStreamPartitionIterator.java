@@ -109,7 +109,7 @@ public class TestSystemStreamPartitionIterator {
       List<IncomingMessageEnvelope> list = new ArrayList<IncomingMessageEnvelope>();
 
       if (numPollReturnsWithMessages-- > 0) {
-        list.add(new IncomingMessageEnvelope(SSP, "", null, numPollReturnsWithMessages));
+        list.add(new IncomingMessageEnvelope(SSP, "", "", null, numPollReturnsWithMessages));
       }
 
       return list;

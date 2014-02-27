@@ -20,36 +20,43 @@
 package org.apache.samza.system;
 
 /**
- * This class represents a message envelope that is received by a StreamTask for each message that is received from a
- * partition of a specific input stream.
+ * This class represents a message envelope that is received by a StreamTask for
+ * each message that is received from a partition of a specific input stream.
  */
 public class IncomingMessageEnvelope {
   private final SystemStreamPartition systemStreamPartition;
-  private final String offset;
+  private final String currentOffset;
+  private final String nextOffset;
   private final Object key;
   private final Object message;
 
   /**
    * Constructs a new IncomingMessageEnvelope from specified components.
-   * @param systemStreamPartition The aggregate object representing the incoming stream name, the name of the cluster
-   * from which the stream came, and the partition of the stream from which the message was received.
-   * @param offset The offset in the partition that the message was received from.
-   * @param key A deserialized key received from the partition offset.
-   * @param message A deserialized message received from the partition offset.
+   * 
+   * @param systemStreamPartition
+   *          The aggregate object representing the incoming stream name, the
+   *          name of the cluster from which the stream came, and the partition
+   *          of the stream from which the message was received.
+   * @param currentOffset
+   *          The offset in the partition that the message was received from.
+   * @param nextOffset
+   *          The offset in the partition for the next message to be read after
+   *          this message.
+   * @param key
+   *          A deserialized key received from the partition offset.
+   * @param message
+   *          A deserialized message received from the partition offset.
    */
-  public IncomingMessageEnvelope(SystemStreamPartition systemStreamPartition, String offset, Object key, Object message) {
+  public IncomingMessageEnvelope(SystemStreamPartition systemStreamPartition, String currentOffset, String nextOffset, Object key, Object message) {
     this.systemStreamPartition = systemStreamPartition;
-    this.offset = offset;
+    this.currentOffset = currentOffset;
+    this.nextOffset = nextOffset;
     this.key = key;
     this.message = message;
   }
 
   public SystemStreamPartition getSystemStreamPartition() {
     return systemStreamPartition;
-  }
-
-  public String getOffset() {
-    return offset;
   }
 
   public Object getKey() {
@@ -60,13 +67,22 @@ public class IncomingMessageEnvelope {
     return message;
   }
 
+  public String getCurrentOffset() {
+    return currentOffset;
+  }
+
+  public String getNextOffset() {
+    return nextOffset;
+  }
+
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
+    result = prime * result + ((currentOffset == null) ? 0 : currentOffset.hashCode());
     result = prime * result + ((key == null) ? 0 : key.hashCode());
     result = prime * result + ((message == null) ? 0 : message.hashCode());
-    result = prime * result + ((offset == null) ? 0 : offset.hashCode());
+    result = prime * result + ((nextOffset == null) ? 0 : nextOffset.hashCode());
     result = prime * result + ((systemStreamPartition == null) ? 0 : systemStreamPartition.hashCode());
     return result;
   }
@@ -80,6 +96,11 @@ public class IncomingMessageEnvelope {
     if (getClass() != obj.getClass())
       return false;
     IncomingMessageEnvelope other = (IncomingMessageEnvelope) obj;
+    if (currentOffset == null) {
+      if (other.currentOffset != null)
+        return false;
+    } else if (!currentOffset.equals(other.currentOffset))
+      return false;
     if (key == null) {
       if (other.key != null)
         return false;
@@ -90,10 +111,10 @@ public class IncomingMessageEnvelope {
         return false;
     } else if (!message.equals(other.message))
       return false;
-    if (offset == null) {
-      if (other.offset != null)
+    if (nextOffset == null) {
+      if (other.nextOffset != null)
         return false;
-    } else if (!offset.equals(other.offset))
+    } else if (!nextOffset.equals(other.nextOffset))
       return false;
     if (systemStreamPartition == null) {
       if (other.systemStreamPartition != null)
@@ -105,6 +126,6 @@ public class IncomingMessageEnvelope {
 
   @Override
   public String toString() {
-    return "IncomingMessageEnvelope [systemStreamPartition=" + systemStreamPartition + ", offset=" + offset + ", key=" + key + ", message=" + message + "]";
+    return "IncomingMessageEnvelope [systemStreamPartition=" + systemStreamPartition + ", currentOffset=" + currentOffset + ", nextOffset=" + nextOffset + ", key=" + key + ", message=" + message + "]";
   }
 }

@@ -153,7 +153,8 @@ class BootstrappingChooser(
         trace("Wrapped chooser chose non-null envelope: %s" format envelope)
 
         val systemStreamPartition = envelope.getSystemStreamPartition
-        val offset = envelope.getOffset
+        // TODO can use getNextOffset here, and get rid of Newest/Future split in checkOffset
+        val offset = envelope.getCurrentOffset
 
         // Chosen envelope was from a bootstrap SSP, so decrement the update map.
         if (laggingSystemStreamPartitions.contains(systemStreamPartition)) {

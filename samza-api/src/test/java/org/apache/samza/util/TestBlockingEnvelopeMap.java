@@ -34,7 +34,7 @@ import org.apache.samza.system.SystemStreamPartition;
 
 public class TestBlockingEnvelopeMap {
   private static final SystemStreamPartition SSP = new SystemStreamPartition("test", "test", new Partition(0));
-  private static final IncomingMessageEnvelope envelope = new IncomingMessageEnvelope(SSP, null, null, null);
+  private static final IncomingMessageEnvelope envelope = new IncomingMessageEnvelope(SSP, null, null, null, null);
   private static final Map<SystemStreamPartition, Integer> FETCH = new HashMap<SystemStreamPartition, Integer>();
 
   static {

@@ -62,11 +62,11 @@ class TestTaskInstance {
       producerMultiplexer: SystemProducers)
     val systemStream = new SystemStream("test-system", "test-stream")
     // Pretend our last checkpointed offset was 1.
-    taskInstance.offsets += systemStream -> "1"
+    taskInstance.offsets += systemStream -> "2"
     // Pretend we got a message with offset 2.
-    taskInstance.process(new IncomingMessageEnvelope(new SystemStreamPartition("test-system", "test-stream", new Partition(0)), "2", null, null), new ReadableCoordinator)
+    taskInstance.process(new IncomingMessageEnvelope(new SystemStreamPartition("test-system", "test-stream", new Partition(0)), "2", "3", null, null), new ReadableCoordinator)
     // Check to see if the offset map has been properly updated with offset 2.
     assertEquals(1, taskInstance.offsets.size)
-    assertEquals("2", taskInstance.offsets(systemStream))
+    assertEquals("3", taskInstance.offsets(systemStream))
   }
 }

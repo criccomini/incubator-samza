@@ -116,7 +116,8 @@ class SerdeManager(
 
     new IncomingMessageEnvelope(
       envelope.getSystemStreamPartition,
-      envelope.getOffset,
+      envelope.getCurrentOffset,
+      envelope.getNextOffset,
       key,
       message)
   }

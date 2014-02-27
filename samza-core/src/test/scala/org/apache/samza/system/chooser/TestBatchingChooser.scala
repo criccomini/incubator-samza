@@ -34,9 +34,9 @@ import java.util.Arrays
 class TestBatchingChooser(getChooser: (MessageChooser, Int) => MessageChooser) {
   @Test
   def testChooserShouldHandleBothBatchSizeOverrunAndNoEnvelopeAvailable {
-    val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 1);
-    val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, 2);
-    val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, 3);
+    val envelope1 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, null, 1);
+    val envelope2 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream1", new Partition(1)), null, null, null, 2);
+    val envelope3 = new IncomingMessageEnvelope(new SystemStreamPartition("kafka", "stream", new Partition(0)), null, null, null, 3);
     val mock = new MockMessageChooser
     val chooser = getChooser(mock, 2)
 

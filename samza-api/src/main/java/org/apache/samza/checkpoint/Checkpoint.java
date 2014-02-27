@@ -39,8 +39,8 @@ public class Checkpoint {
   }
 
   /**
-   * Gets a unmodifiable view of the current Samza stream offsets.
-   * @return A unmodifiable view of a Map of Samza streams to their recorded offsets.
+   * Gets a unmodifiable view of the next Samza stream offsets.
+   * @return A unmodifiable view of a Map of Samza streams to their recorded next offsets.
    */
   public Map<SystemStream, String> getOffsets() {
     return Collections.unmodifiableMap(offsets);
