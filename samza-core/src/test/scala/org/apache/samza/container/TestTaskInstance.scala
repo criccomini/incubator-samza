@@ -19,23 +19,27 @@
 
 package org.apache.samza.container
 
+import scala.collection.JavaConversions._
+import org.apache.samza.Partition
+import org.apache.samza.config.MapConfig
+import org.apache.samza.serializers.SerdeManager
+import org.apache.samza.system.IncomingMessageEnvelope
+import org.apache.samza.system.SystemConsumer
+import org.apache.samza.system.SystemConsumers
+import org.apache.samza.system.SystemProducer
+import org.apache.samza.system.SystemProducers
+import org.apache.samza.system.SystemStream
+import org.apache.samza.system.SystemStreamMetadata
+import org.apache.samza.system.SystemStreamMetadata.OffsetType
+import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata
+import org.apache.samza.system.SystemStreamPartition
+import org.apache.samza.system.chooser.RoundRobinChooser
+import org.apache.samza.task.MessageCollector
+import org.apache.samza.task.ReadableCoordinator
+import org.apache.samza.task.StreamTask
+import org.apache.samza.task.TaskCoordinator
 import org.junit.Assert._
 import org.junit.Test
-import org.apache.samza.system.IncomingMessageEnvelope
-import org.apache.samza.system.SystemProducers
-import org.apache.samza.task.MessageCollector
-import org.apache.samza.task.StreamTask
-import org.apache.samza.system.SystemConsumers
-import org.apache.samza.task.TaskCoordinator
-import org.apache.samza.config.MapConfig
-import org.apache.samza.Partition
-import org.apache.samza.system.chooser.RoundRobinChooser
-import org.apache.samza.system.SystemProducer
-import org.apache.samza.serializers.SerdeManager
-import org.apache.samza.system.SystemConsumer
-import org.apache.samza.system.SystemStream
-import org.apache.samza.system.SystemStreamPartition
-import org.apache.samza.task.ReadableCoordinator
 
 class TestTaskInstance {
   @Test
@@ -53,20 +57,26 @@ class TestTaskInstance {
     val producerMultiplexer = new SystemProducers(
       Map[String, SystemProducer](),
       new SerdeManager)
+    val systemStream = new SystemStream("test-system", "test-stream")
+    val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
+    // Pretend our last checkpointed (next) offset was 2.
+    val testSystemStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
+    val offsetManager = new OffsetManager(
+      streamMetadata = Map(systemStream -> testSystemStreamMetadata),
+      defaultOffsets = Map(systemStream -> OffsetType.UPCOMING))
     val taskInstance: TaskInstance = new TaskInstance(
       task,
       partition,
       config,
       new TaskInstanceMetrics,
-      consumerMultiplexer: SystemConsumers,
-      producerMultiplexer: SystemProducers)
-    val systemStream = new SystemStream("test-system", "test-stream")
-    // Pretend our last checkpointed offset was 1.
-    taskInstance.offsets += systemStream -> "2"
-    // Pretend we got a message with offset 2.
-    taskInstance.process(new IncomingMessageEnvelope(new SystemStreamPartition("test-system", "test-stream", new Partition(0)), "2", "3", null, null), new ReadableCoordinator)
-    // Check to see if the offset map has been properly updated with offset 2.
-    assertEquals(1, taskInstance.offsets.size)
-    assertEquals("3", taskInstance.offsets(systemStream))
+      consumerMultiplexer,
+      producerMultiplexer,
+      offsetManager)
+    // Pretend we got a message with offset 2 and next offset 3.
+    taskInstance.process(new IncomingMessageEnvelope(systemStreamPartition, "2", "3", null, null), new ReadableCoordinator)
+    // Check to see if the offset manager has been properly updated with offset 3.
+    val newNextOffset = offsetManager(systemStreamPartition)
+    assertTrue(newNextOffset.isDefined)
+    assertEquals("3", newNextOffset.get)
   }
 }

@@ -274,6 +274,7 @@ class BootstrappingChooserMetrics(val registry: MetricsRegistry = new MetricsReg
   }
 }
 
+// TODO use SystemStreamMetadata.OffsetType instead
 private sealed abstract class OffsetType
 private object Upcoming extends OffsetType
 private object Newest extends OffsetType

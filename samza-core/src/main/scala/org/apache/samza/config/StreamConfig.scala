@@ -24,6 +24,7 @@ import scala.collection.JavaConversions._
 import org.apache.samza.SamzaException
 import org.apache.samza.util.Util
 import org.apache.samza.system.SystemStream
+import org.apache.samza.system.SystemStreamMetadata.OffsetType
 
 object StreamConfig {
   // stream config constants
@@ -31,6 +32,7 @@ object StreamConfig {
   val MSG_SERDE = STREAM_PREFIX + "samza.msg.serde"
   val KEY_SERDE = STREAM_PREFIX + "samza.key.serde"
   val CONSUMER_RESET_OFFSET = STREAM_PREFIX + "samza.reset.offset"
+  val CONSUMER_OFFSET_DEFAULT = STREAM_PREFIX + "samza.offset.default"
 
   implicit def Config2Stream(config: Config) = new StreamConfig(config)
 }
@@ -62,6 +64,16 @@ class StreamConfig(config: Config) extends ScalaMapConfig(config) with Logging {
         warn("Got a configuration for %s that is not true, or false (was %s). Defaulting to false." format (StreamConfig.CONSUMER_RESET_OFFSET format (systemStream.getSystem, systemStream.getStream), resetOffset))
         false
       case _ => false
+    }
+
+  def getDefaultOffset(systemStream: SystemStream) =
+    getOption(StreamConfig.CONSUMER_OFFSET_DEFAULT format (systemStream.getSystem, systemStream.getStream)) match {
+      case Some("oldest") => OffsetType.OLDEST
+      case Some("newest") => OffsetType.UPCOMING
+      case Some(defaultOffset) =>
+        warn("Got a configuration for %s that is not valid (was %s). Defaulting to newest offset." format (StreamConfig.CONSUMER_RESET_OFFSET format (systemStream.getSystem, systemStream.getStream), defaultOffset))
+        OffsetType.UPCOMING
+      case _ => OffsetType.UPCOMING
     }
 
   /**

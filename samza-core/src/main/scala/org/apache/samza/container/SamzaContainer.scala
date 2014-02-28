@@ -62,6 +62,7 @@ import org.apache.samza.system.chooser.RoundRobinChooserFactory
 import scala.collection.JavaConversions._
 import org.apache.samza.system.SystemAdmin
 import org.apache.samza.system.SystemStreamMetadata
+import org.apache.samza.system.SystemStreamMetadata.OffsetType
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -100,9 +101,14 @@ object SamzaContainer extends Logging {
 
     info("Got system names: %s" format systemNames)
 
-    val resetInputStreams = systemNames.flatMap(systemName => {
-      config.getResetOffsetMap(systemName)
-    }).toMap
+    val defaultOffsets = getDefaultOffsets(inputStreams.map(_.getSystemStream).toSet, config)
+
+    info("Got default offset settings: %s" format defaultOffsets)
+
+    val resetInputStreams = systemNames.flatMap(config.getResetOffsetMap)
+      .toMap
+      .filter(_._2)
+      .keySet
 
     info("Got input stream resets: %s" format resetInputStreams)
 
@@ -275,6 +281,14 @@ object SamzaContainer extends Logging {
 
     info("Got checkpoint manager: %s" format checkpointManager)
 
+    val offsetManager = new OffsetManager(
+      inputStreamMetadata,
+      defaultOffsets,
+      resetInputStreams,
+      checkpointManager)
+
+    info("Got offset manager: %s" format offsetManager)
+
     val consumerMultiplexer = new SystemConsumers(
       // TODO add config values for no new message timeout and max msgs per stream partition
       chooser = chooser,
@@ -411,12 +425,11 @@ object SamzaContainer extends Logging {
         metrics = taskInstanceMetrics,
         consumerMultiplexer = consumerMultiplexer,
         producerMultiplexer = producerMultiplexer,
+        offsetManager = offsetManager,
         storageManager = storageManager,
-        checkpointManager = checkpointManager,
         reporters = reporters,
         listeners = listeners,
         inputStreams = inputStreamsForThisPartition,
-        resetInputStreams = resetInputStreams,
         windowMs = taskWindowMs,
         commitMs = taskCommitMs,
         collector = collector)
@@ -431,8 +444,8 @@ object SamzaContainer extends Logging {
       config = config,
       consumerMultiplexer = consumerMultiplexer,
       producerMultiplexer = producerMultiplexer,
+      offsetManager = offsetManager,
       metrics = samzaContainerMetrics,
-      checkpointManager = checkpointManager,
       reporters = reporters,
       jvm = jvm)
   }
@@ -457,6 +470,12 @@ object SamzaContainer extends Logging {
       }
       .toMap
   }
+
+  def getDefaultOffsets(inputSystemStreams: Set[SystemStream], config: Config): Map[SystemStream, OffsetType] = {
+    inputSystemStreams
+      .map(systemStream => { (systemStream, config.getDefaultOffset(systemStream)) })
+      .toMap
+  }
 }
 
 class SamzaContainer(
@@ -465,7 +484,7 @@ class SamzaContainer(
   consumerMultiplexer: SystemConsumers,
   producerMultiplexer: SystemProducers,
   metrics: SamzaContainerMetrics,
-  checkpointManager: CheckpointManager = null,
+  offsetManager: OffsetManager = new OffsetManager,
   reporters: Map[String, MetricsReporter] = Map(),
   jvm: JvmMetrics = null) extends Runnable with Logging {
 
@@ -474,7 +493,7 @@ class SamzaContainer(
       info("Starting container.")
 
       startMetrics
-      startCheckpoints
+      startOffsetManager
       startStores
       startTask
       startProducers
@@ -507,7 +526,7 @@ class SamzaContainer(
       shutdownProducers
       shutdownTask
       shutdownStores
-      shutdownCheckpoints
+      shutdownOffsetManager
       shutdownMetrics
 
       info("Shutdown complete.")
@@ -533,18 +552,14 @@ class SamzaContainer(
     })
   }
 
-  def startCheckpoints {
-    info("Registering task instances with checkpoints.")
+  def startOffsetManager {
+    info("Registering task instances with offsets.")
 
-    taskInstances.values.foreach(_.registerCheckpoints)
+    taskInstances.values.foreach(_.registerOffsets)
 
-    if (checkpointManager != null) {
-      info("Registering checkpoint manager.")
+    info("Starting offset manager.")
 
-      checkpointManager.start
-    } else {
-      warn("No checkpoint manager defined. No consumer offsets will be maintained for this job.")
-    }
+    offsetManager.start
   }
 
   def startStores {
@@ -649,13 +664,10 @@ class SamzaContainer(
     taskInstances.values.foreach(_.shutdownStores)
   }
 
-  def shutdownCheckpoints {
-    if (checkpointManager != null) {
-      info("Shutting down checkpoint manager.")
-      checkpointManager.stop
-    } else {
-      info("No checkpoint manager defined, so skipping checkpoint manager stop.")
-    }
+  def shutdownOffsetManager {
+    info("Shutting down offset manager.")
+
+    offsetManager.stop
   }
 
   def shutdownMetrics {
