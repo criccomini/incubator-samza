@@ -30,15 +30,64 @@ import org.apache.samza.SamzaException
 import scala.collection.JavaConversions._
 import grizzled.slf4j.Logging
 
+/**
+ * OffsetManager does three things:
+ *
+ * <ul>
+ * <li>1. Loads initial offsets for all input SystemStreamPartitions in a
+ * SamzaContainer.</li>
+ * <li>Keep track of the next offset to read for each
+ * SystemStreamPartitions in a SamzaContainer.</li>
+ * <li>Checkpoint the next offset to read SystemStreamPartitions in a
+ * SamzaContainer periodically to the CheckpointManager.</li>
+ * </ul>
+ *
+ * All partitions must be registered before start is called, and start must be
+ * called before get/update/checkpoint/stop are called.
+ */
 class OffsetManager(
+  /**
+   * Metadata for all streams that the offset manager is tracking.
+   */
   streamMetadata: Map[SystemStream, SystemStreamMetadata] = Map(),
+
+  /**
+   * Default offset types (oldest, newest, or upcoming) for all streams that
+   * the offset manager is tracking. This setting is used when no checkpoint
+   * is available for a SystemStream if the job is starting for the first
+   * time, or the SystemStream has been reset (see resetOffsets, below).
+   */
   defaultOffsets: Map[SystemStream, OffsetType] = Map(),
+
+  /**
+   * A set of SystemStreams whose offsets should be ignored at initialization
+   * time, even if a checkpoint is available. This is useful for jobs that
+   * wish to restart reading from a stream at a different position than where
+   * they last checkpointed. If a SystemStream is in this set, its
+   * defaultOffset will be used to find the new starting position in the
+   * stream.
+   */
   resetOffsets: Set[SystemStream] = Set(),
+
+  /**
+   * Optional checkpoint manager for checkpointing next offsets whenever
+   * checkpoint is called.
+   */
   checkpointManager: CheckpointManager = null) extends Logging {
 
+  /**
+   * Next offsets to be read for each SystemStreamPartition.
+   */
   var offsets = Map[SystemStreamPartition, String]()
+
+  /**
+   * The set of partitions that have been registered with the OffsetManager.
+   */
   var partitions = Set[Partition]()
 
+  /**
+   * Get the next offset to be read for a SystemStreamPartition.
+   */
   def apply(systemStreamPartition: SystemStreamPartition) = {
     offsets.get(systemStreamPartition)
   }
@@ -59,10 +108,16 @@ class OffsetManager(
     info("Successfully loaded offsets: %s" format offsets)
   }
 
+  /**
+   * Set a new next offset for a given SystemStreamPartition.
+   */
   def update(systemStreamPartition: SystemStreamPartition, nextOffset: String) {
     offsets += systemStreamPartition -> nextOffset
   }
 
+  /**
+   * Checkpoint all next offsets for a given partition using the CheckpointManager.
+   */
   def checkpoint(partition: Partition) {
     if (checkpointManager != null) {
       debug("Checkpointing offsets for partition %s." format partition)
@@ -88,6 +143,9 @@ class OffsetManager(
     }
   }
 
+  /**
+   * Loads innitial next offsets for all registered partitions.
+   */
   private def loadOffsetsFromCheckpointManager {
     if (checkpointManager != null) {
       debug("Loading offsets from checkpoint manager.")
@@ -100,6 +158,9 @@ class OffsetManager(
     }
   }
 
+  /**
+   * Loads next offsets for a single partition.
+   */
   private def restoreOffsetsFromCheckpoint(partition: Partition) = {
     debug("Loading checkpoints for partition: %s." format partition)
 
@@ -110,6 +171,10 @@ class OffsetManager(
       .toMap
   }
 
+  /**
+   * Removes next offset settings for all SystemStreams that are to be
+   * forcibly reset using resetOffsets.
+   */
   private def stripResetStreams {
     offsets = offsets.filter {
       case (systemStreamPartition, offset) =>
@@ -123,6 +188,10 @@ class OffsetManager(
     }
   }
 
+  /**
+   * Use defaultOffsets to get a next offset for every SystemStream that has a
+   * registered Partition but no offset.
+   */
   private def loadDefaults {
     partitions.foreach(partition => {
       streamMetadata.foreach {
