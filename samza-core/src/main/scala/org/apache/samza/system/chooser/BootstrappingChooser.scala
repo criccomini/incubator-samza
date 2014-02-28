@@ -114,8 +114,7 @@ class BootstrappingChooser(
     // offset for this system stream partition, then we've already read all
     // messages in the stream, and we're at head for this system stream 
     // partition.
-    checkOffset(systemStreamPartition, offset, Upcoming)
-
+    checkOffset(systemStreamPartition, offset)
     wrapped.register(systemStreamPartition, offset)
   }
 
@@ -153,8 +152,7 @@ class BootstrappingChooser(
         trace("Wrapped chooser chose non-null envelope: %s" format envelope)
 
         val systemStreamPartition = envelope.getSystemStreamPartition
-        // TODO can use getNextOffset here, and get rid of Newest/Future split in checkOffset
-        val offset = envelope.getCurrentOffset
+        val offset = envelope.getNextOffset
 
         // Chosen envelope was from a bootstrap SSP, so decrement the update map.
         if (laggingSystemStreamPartitions.contains(systemStreamPartition)) {
@@ -162,11 +160,11 @@ class BootstrappingChooser(
 
           updatedSystemStreams += systemStream -> (updatedSystemStreams.getOrElse(systemStream, 0) - 1)
         }
-
+System.err.println(envelope)
         // If the offset we just read is the same as the offset for the last 
         // message (newest) in this system stream partition, then we have read 
         // all messages, and can mark this SSP as bootstrapped.
-        checkOffset(systemStreamPartition, offset, Newest)
+        checkOffset(systemStreamPartition, offset)
       }
 
       envelope
@@ -188,10 +186,10 @@ class BootstrappingChooser(
    * to start reading from offset 7, and the upcoming offset for the
    * SystemStreamPartition is also 7, then all prior messages are assumed to
    * already have been chosen, and the stream is marked as bootstrapped.
-   * Second, if the offset for a chosen message equals the newest offset for the
-   * message's SystemStreamPartition, then that SystemStreamPartition is deemed
-   * caught up, because all messages in the stream up to the "newest" message
-   * have been chosen.
+   * Second, if the next offset for a chosen message equals the upcoming
+   * offset for the message's SystemStreamPartition, then that
+   * SystemStreamPartition is deemed caught up, because all messages in the
+   * stream up to the "upcoming" message offset have been chosen.
    *
    * Note that the definition of "caught up" here is defined to be when all
    * messages that existed at container start time have been processed. If a
@@ -203,12 +201,8 @@ class BootstrappingChooser(
    *
    * @param systemStreamPartition The SystemStreamPartition to check.
    * @param offset The offset to check.
-   * @param newestOrUpcoming Whether to check the offset against the newest or
-   *                         upcoming offset for the SystemStreamPartition.
-   *                         Upcoming is useful during the registration phase,
-   *                         and newest is useful during the choosing phase.
    */
-  private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String, newestOrUpcoming: OffsetType) {
+  private def checkOffset(systemStreamPartition: SystemStreamPartition, offset: String) {
     val systemStream = systemStreamPartition.getSystemStream
     val systemStreamMetadata = bootstrapStreamMetadata.getOrElse(systemStreamPartition.getSystemStream, null)
     // Metadata for system/stream, and system/stream/partition are allowed to 
@@ -220,24 +214,21 @@ class BootstrappingChooser(
     } else {
       null
     }
-    val offsetToCheck = if (systemStreamPartitionMetadata == null) {
-      // Use null for offsetToCheck in cases where the partition metadata was 
+    val upcomingOffset = if (systemStreamPartitionMetadata == null) {
+      // Use null for upcomingOffset in cases where the partition metadata was 
       // null. A null partition metadata implies that the stream is not a 
       // bootstrap stream, and therefore, there is no need to check its offset.
       null
-    } else if (Newest.equals(newestOrUpcoming)) {
-      systemStreamPartitionMetadata.getNewestOffset
-    } else if (Upcoming.equals(newestOrUpcoming)) {
-      systemStreamPartitionMetadata.getUpcomingOffset
     } else {
-      throw new SamzaException("Got unknown offset type %s" format newestOrUpcoming)
+      systemStreamPartitionMetadata.getUpcomingOffset
     }
 
-    trace("Check %s offset %s against %s for %s." format (newestOrUpcoming.getClass.getSimpleName, offset, offsetToCheck, systemStreamPartition))
+    trace("Check offset %s against %s for %s." format (offset, upcomingOffset, systemStreamPartition))
 
     // The SSP is no longer lagging if the envelope's offset equals the 
     // latest offset. 
-    if (offset != null && offset.equals(offsetToCheck)) {
+System.err.println(offset + " vs. " + upcomingOffset)
+    if (offset != null && offset.equals(upcomingOffset)) {
       laggingSystemStreamPartitions -= systemStreamPartition
       systemStreamLagCounts += systemStream -> (systemStreamLagCounts(systemStream) - 1)
 
@@ -273,8 +264,3 @@ class BootstrappingChooserMetrics(val registry: MetricsRegistry = new MetricsReg
     newGauge("%s-%s-lagging-partitions" format (systemStream.getSystem, systemStream.getStream), getValue)
   }
 }
-
-// TODO use SystemStreamMetadata.OffsetType instead
-private sealed abstract class OffsetType
-private object Upcoming extends OffsetType
-private object Newest extends OffsetType

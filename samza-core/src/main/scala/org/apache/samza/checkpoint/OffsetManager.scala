@@ -17,13 +17,11 @@
  * under the License.
  */
 
-package org.apache.samza.container
+package org.apache.samza.checkpoint
 
-import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.system.SystemStream
 import org.apache.samza.Partition
 import org.apache.samza.system.SystemStreamPartition
-import org.apache.samza.checkpoint.Checkpoint
 import org.apache.samza.system.SystemStreamMetadata
 import org.apache.samza.system.SystemStreamMetadata.OffsetType
 import org.apache.samza.SamzaException
@@ -81,7 +79,15 @@ class OffsetManager(
   var offsets = Map[SystemStreamPartition, String]()
 
   /**
-   * The set of partitions that have been registered with the OffsetManager.
+   * The set of system stream partitions that have been registered with the
+   * OffsetManager. These are the SSPs that will be tracked within the offset
+   * manager.
+   */
+  var systemStreamPartitions = Set[SystemStreamPartition]()
+
+  /**
+   * A derivative of systemStreamPartitions that holds all partitions that
+   * have been registered.
    */
   var partitions = Set[Partition]()
 
@@ -92,15 +98,13 @@ class OffsetManager(
     offsets.get(systemStreamPartition)
   }
 
-  def register(partition: Partition) {
-    if (checkpointManager != null) {
-      checkpointManager.register(partition)
-    }
-
-    partitions += partition
+  def register(systemStreamPartition: SystemStreamPartition) {
+    systemStreamPartitions += systemStreamPartition
+    partitions += systemStreamPartition.getPartition
   }
 
   def start {
+    registerCheckpointManager
     loadOffsetsFromCheckpointManager
     stripResetStreams
     loadDefaults
@@ -140,6 +144,19 @@ class OffsetManager(
       checkpointManager.stop
     } else {
       debug("Skipping checkpoint manager shutdown because no checkpoint manager is defined.")
+    }
+  }
+
+  /**
+   * Register all partitions with the CheckpointManager.
+   */
+  private def registerCheckpointManager {
+    if (checkpointManager != null) {
+      debug("Registering checkpoint manager.")
+
+      partitions.foreach(checkpointManager.register)
+    } else {
+      debug("Skipping checkpoint manager registration because no manager was defined.")
     }
   }
 
@@ -189,33 +206,32 @@ class OffsetManager(
   }
 
   /**
-   * Use defaultOffsets to get a next offset for every SystemStream that has a
-   * registered Partition but no offset.
+   * Use defaultOffsets to get a next offset for every SystemStreamPartition
+   * that was registered, but has no offset.
    */
   private def loadDefaults {
-    partitions.foreach(partition => {
-      streamMetadata.foreach {
-        case (systemStream, systemStreamMetadata) =>
-          val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
+    systemStreamPartitions.foreach(systemStreamPartition => {
+      if (!offsets.contains(systemStreamPartition)) {
+        val systemStream = systemStreamPartition.getSystemStream
+        val partition = systemStreamPartition.getPartition
+        val systemStreamMetadata = streamMetadata.getOrElse(systemStream, throw new SamzaException("No metadata available for %s. Can't continue without this information." format systemStream))
+        val offsetType = defaultOffsets.getOrElse(systemStream, throw new SamzaException("No default offeset defined for %s. Unable to load a default." format systemStream))
 
-          if (!offsets.contains(systemStreamPartition)) {
-            val offsetType = defaultOffsets.getOrElse(systemStream, throw new SamzaException("No default offeset defined for %s. Unable to load a default." format systemStream))
+        debug("Got default offset type %s for %s" format (offsetType, systemStreamPartition))
 
-            debug("Got default offset type %s for %s" format (offsetType, systemStreamPartition))
+        val systemStreamPartitionMetadata = systemStreamMetadata
+          .getSystemStreamPartitionMetadata
+          .get(partition)
 
-            val systemStreamPartitionMetadata = systemStreamMetadata
-              .getSystemStreamPartitionMetadata
-              .get(partition)
-            val nextOffset = if (systemStreamPartitionMetadata != null) {
-              systemStreamPartitionMetadata.getOffset(offsetType)
-            } else {
-              throw new SamzaException("No metadata available for %s." format systemStreamPartitionMetadata)
-            }
+        if (systemStreamPartitionMetadata != null) {
+          val nextOffset = systemStreamPartitionMetadata.getOffset(offsetType)
 
-            debug("Got next default offset %s for %s" format (nextOffset, systemStreamPartition))
+          debug("Got next default offset %s for %s" format (nextOffset, systemStreamPartition))
 
-            offsets += systemStreamPartition -> nextOffset
-          }
+          offsets += systemStreamPartition -> nextOffset
+        } else {
+          throw new SamzaException("No metadata available for partition %s." format systemStreamPartitionMetadata)
+        }
       }
     })
   }

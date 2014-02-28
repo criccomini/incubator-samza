@@ -63,6 +63,7 @@ import scala.collection.JavaConversions._
 import org.apache.samza.system.SystemAdmin
 import org.apache.samza.system.SystemStreamMetadata
 import org.apache.samza.system.SystemStreamMetadata.OffsetType
+import org.apache.samza.checkpoint.OffsetManager
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {

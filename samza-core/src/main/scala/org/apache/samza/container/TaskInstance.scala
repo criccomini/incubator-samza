@@ -44,6 +44,7 @@ import org.apache.samza.system.SystemProducers
 import org.apache.samza.task.ReadableCoordinator
 import org.apache.samza.metrics.Gauge
 import org.apache.samza.SamzaException
+import org.apache.samza.checkpoint.OffsetManager
 
 class TaskInstance(
   task: StreamTask,
@@ -88,7 +89,9 @@ class TaskInstance(
   def registerOffsets {
     debug("Registering offsets for partition: %s." format partition)
 
-    offsetManager.register(partition)
+    inputStreams.foreach(systemStream => {
+      offsetManager.register(new SystemStreamPartition(systemStream, partition))
+    })
   }
 
   def startStores {

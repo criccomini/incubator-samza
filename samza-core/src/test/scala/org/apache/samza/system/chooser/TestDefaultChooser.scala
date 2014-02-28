@@ -49,8 +49,8 @@ class TestDefaultChooser {
     val mock2 = new MockMessageChooser
     // Create metadata for two envelopes (1 and 5) that are part of the same 
     // stream, but have different partitions and offsets.
-    val env1Metadata = new SystemStreamPartitionMetadata(null, "123", null)
-    val env5Metadata = new SystemStreamPartitionMetadata(null, "321", null)
+    val env1Metadata = new SystemStreamPartitionMetadata(null, null, "124")
+    val env5Metadata = new SystemStreamPartitionMetadata(null, null, "656")
     val env8Metadata = new SystemStreamPartitionMetadata("0", "456", "654")
     val streamMetadata = new SystemStreamMetadata("stream", Map(
       envelope1.getSystemStreamPartition().getPartition() -> env1Metadata,

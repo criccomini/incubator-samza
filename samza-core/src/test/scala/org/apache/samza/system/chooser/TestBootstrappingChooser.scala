@@ -87,13 +87,11 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   @Test
   def testChooserShouldEliminateCaughtUpStreamsAfterRegister {
     val mock = new MockMessageChooser
-    val metadata = getMetadata(envelope1, "123")
+    val metadata = getMetadata(envelope1, "100", Some("124"))
     val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition.getSystemStream -> metadata))
 
-    // Even though envelope1's SSP is registered as a bootstrap stream, since 
-    // 123=123, it should be marked as "caught up" and treated like a normal 
-    // stream. This means that non-bootstrap stream envelope should be allowed 
-    // to be chosen.
+    // Envelope1's SSP is registered, but still in bootstrap mode, since 
+    // 1 != 123.
     chooser.register(envelope1.getSystemStreamPartition, "1")
     chooser.register(envelope2.getSystemStreamPartition, null)
     chooser.start
@@ -111,7 +109,7 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
     // No envelope for envelope1's SSP has been given, so it should block.
     chooser.update(envelope2)
     assertEquals(null, chooser.choose)
-    // Now we're giving an envelope with the proper last offset (123), so no
+    // Now we're giving an envelope with the proper last offset (124), so no
     // envelope1's SSP should be treated no differently than envelope2's.
     chooser.update(envelope4)
     assertEquals(envelope2, chooser.choose)
@@ -129,7 +127,7 @@ class TestBootstrappingChooser(getChooser: (MessageChooser, Map[SystemStream, Sy
   @Test
   def testChooserShouldWorkWithTwoBootstrapStreams {
     val mock = new MockMessageChooser
-    val metadata1 = getMetadata(envelope1, "123")
+    val metadata1 = getMetadata(envelope1, "123", Some("124"))
     val metadata2 = getMetadata(envelope2, "321")
     val chooser = getChooser(mock, Map(envelope1.getSystemStreamPartition.getSystemStream -> metadata1, envelope2.getSystemStreamPartition.getSystemStream -> metadata2))
 

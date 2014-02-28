@@ -40,6 +40,7 @@ import org.apache.samza.task.StreamTask
 import org.apache.samza.task.TaskCoordinator
 import org.junit.Assert._
 import org.junit.Test
+import org.apache.samza.checkpoint.OffsetManager
 
 class TestTaskInstance {
   @Test
