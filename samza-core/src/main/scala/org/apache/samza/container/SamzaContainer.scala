@@ -484,8 +484,30 @@ object SamzaContainer extends Logging {
    */
   def getDefaultOffsets(inputSystemStreams: Set[SystemStream], config: Config): Map[SystemStream, OffsetType] = {
     inputSystemStreams
-      .map(systemStream => { (systemStream, config.getDefaultOffset(systemStream)) })
-      .toMap
+      .map(systemStream => {
+        val streamDefaultOffset = config.getDefaultStreamOffset(systemStream)
+        val systemDefaultOffset = config.getDefaultSystemOffset(systemStream.getSystem)
+        val defaultOffsetType = if (streamDefaultOffset.isDefined) {
+          OffsetType.valueOf(streamDefaultOffset.get)
+        } else if (systemDefaultOffset.isDefined) {
+          OffsetType.valueOf(systemDefaultOffset.get)
+        } else {
+          debug("No default offset for %s defined. Using newest." format systemStream)
+          OffsetType.UPCOMING
+        }
+        debug("Using default offset %s for %s." format (defaultOffsetType, systemStream))
+        // This method is a little funky because we use "newest" to actually mean 
+        // upcoming offset type. It just seemed a little more intuitive for the 
+        // end-developer to say "newest" rather than "upcoming" since "upcoming" 
+        // is kind of a strange way to express this behavior, even though under 
+        // the hood we actually use "upcoming".
+        val finalOffsetType = if (defaultOffsetType.equals(OffsetType.NEWEST)) {
+          OffsetType.UPCOMING
+        } else {
+          defaultOffsetType
+        }
+        (systemStream, finalOffsetType)
+      }).toMap
   }
 
   /**

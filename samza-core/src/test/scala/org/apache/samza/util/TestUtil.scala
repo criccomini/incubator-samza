@@ -123,7 +123,6 @@ class TestUtil {
     val backToStreamsAndParts = createStreamPartitionsFromString(asString)
 
     assertEquals(streamsAndParts, backToStreamsAndParts)
-
   }
 }
 

@@ -66,23 +66,7 @@ class StreamConfig(config: Config) extends ScalaMapConfig(config) with Logging {
       case _ => false
     }
 
-  def getDefaultOffset(systemStream: SystemStream) =
-    // This method is a little funky because we use "newest" to actually mean 
-    // upcoming offset type. It just seemed a little more intuitive for the 
-    // end-developer to say "newest" rather than "upcoming" since "upcoming" 
-    // is kind of a strange way to express this behavior, even though under 
-    // the hood we actually use "upcoming".
-    getOption(StreamConfig.CONSUMER_OFFSET_DEFAULT format (systemStream.getSystem, systemStream.getStream)) match {
-      case Some("oldest") => OffsetType.OLDEST
-      case Some("newest") => OffsetType.UPCOMING
-      case Some(defaultOffset) =>
-        warn("Got a configuration for %s that is not valid (was %s). Defaulting to newest offset." format (StreamConfig.CONSUMER_RESET_OFFSET format (systemStream.getSystem, systemStream.getStream), defaultOffset))
-        OffsetType.UPCOMING
-      case _ => {
-        info("No default offset defined for %s. Defaulting to newest." format systemStream)
-        OffsetType.UPCOMING
-      }
-    }
+  def getDefaultStreamOffset(systemStream: SystemStream) = getOption(StreamConfig.CONSUMER_OFFSET_DEFAULT format (systemStream.getSystem, systemStream.getStream))
 
   /**
    * Returns a list of all SystemStreams that have a serde defined from the config file.

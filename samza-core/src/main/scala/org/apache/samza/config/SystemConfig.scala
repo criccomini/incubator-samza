@@ -20,8 +20,9 @@
 package org.apache.samza.config
 
 import scala.collection.JavaConversions._
-
 import grizzled.slf4j.Logging
+import org.apache.samza.system.SystemStreamMetadata.OffsetType
+import org.apache.samza.SamzaException
 
 object SystemConfig {
   // system config constants
@@ -29,6 +30,7 @@ object SystemConfig {
   val SYSTEM_FACTORY = "systems.%s.samza.factory"
   val KEY_SERDE = "systems.%s.samza.key.serde"
   val MSG_SERDE = "systems.%s.samza.msg.serde"
+  val CONSUMER_OFFSET_DEFAULT = SYSTEM_PREFIX + "samza.offset.default"
 
   implicit def Config2System(config: Config) = new SystemConfig(config)
 }
@@ -39,6 +41,8 @@ class SystemConfig(config: Config) extends ScalaMapConfig(config) with Logging {
   def getSystemKeySerde(name: String) = getOption(SystemConfig.KEY_SERDE format name)
 
   def getSystemMsgSerde(name: String) = getOption(SystemConfig.MSG_SERDE format name)
+
+  def getDefaultSystemOffset(systemName: String) = getOption(SystemConfig.CONSUMER_OFFSET_DEFAULT format (systemName))
 
   /**
    * Returns a list of all system names from the config file. Useful for
