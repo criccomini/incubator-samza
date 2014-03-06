@@ -42,6 +42,9 @@ import org.apache.samza.task.ClosableTask
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.SinglePartitionWithoutOffsetsSystemAdmin
 import org.apache.samza.system.SystemStream
+import scala.collection.JavaConversions._
+import org.apache.samza.util.TestUtil._
+import org.apache.samza.system.SystemStreamMetadata.OffsetType
 
 class TestSamzaContainer {
   @Test
@@ -108,5 +111,35 @@ class TestSamzaContainer {
       case e: Exception => // Expected 
     }
     assertTrue(task.wasShutdown)
+  }
+
+  @Test
+  def testDefaultSystemShouldFailWhenFailIsSpecified {
+    val config = new MapConfig(Map("systems.test-system.samza.offset.default" -> "fail"))
+    expect(classOf[IllegalArgumentException]) {
+      SamzaContainer.getDefaultOffsets(Set(new SystemStream("test-system", "test-stream")), config)
+    }
+  }
+
+  @Test
+  def testDefaultStreamShouldFailWhenFailIsSpecified {
+    val config = new MapConfig(Map("systems.test-system.streams.test-stream.samza.offset.default" -> "fail"))
+    expect(classOf[IllegalArgumentException]) {
+      SamzaContainer.getDefaultOffsets(Set(new SystemStream("test-system", "test-stream")), config)
+    }
+  }
+
+  @Test
+  def testDefaultStreams {
+    val configOldest = new MapConfig(Map("systems.test-system.streams.test-stream.samza.offset.default" -> "oldest"))
+    val configNewest = new MapConfig(Map("systems.test-system.streams.test-stream.samza.offset.default" -> "newest"))
+    val configUpcoming = new MapConfig(Map("systems.test-system.streams.test-stream.samza.offset.default" -> "upcoming"))
+    val oldestDefaultOffset = SamzaContainer.getDefaultOffsets(Set(new SystemStream("test-system", "test-stream")), configOldest)
+    val newestDefaultOffset = SamzaContainer.getDefaultOffsets(Set(new SystemStream("test-system", "test-stream")), configNewest)
+    val upcomingDefaultOffset = SamzaContainer.getDefaultOffsets(Set(new SystemStream("test-system", "test-stream")), configUpcoming)
+    assertEquals(1, oldestDefaultOffset.size)
+    assertEquals(OffsetType.OLDEST, oldestDefaultOffset.values.head)
+    assertEquals(OffsetType.NEWEST, newestDefaultOffset.values.head)
+    assertEquals(OffsetType.UPCOMING, upcomingDefaultOffset.values.head)
   }
 }

@@ -200,8 +200,29 @@ public class SystemStreamMetadata {
     }
   }
 
+  /**
+   * OffsetType is an enum used to define which offset should be used when
+   * reading from a SystemStreamPartition for the first time.
+   */
   public enum OffsetType {
-    OLDEST("oldest"), NEWEST("newest"), UPCOMING("upcoming");
+
+    /**
+     * Signals the offset of the oldest message in a SystemStreamPartition.
+     */
+    OLDEST("oldest"),
+
+    /**
+     * Signals the offset of the newest message in a SystemStreamPartition.
+     */
+    NEWEST("newest"),
+
+    /**
+     * Signals the offset of the next message to be written into a
+     * SystemStreamPartition. If the offset of the most recent message written
+     * to a SystemStreamPartition is 7, then upcoming would signal offset 8
+     * (assuming the offsets were incremental).
+     */
+    UPCOMING("upcoming");
 
     private final String offsetType;
 
