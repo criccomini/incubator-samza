@@ -201,7 +201,7 @@ public class SystemStreamMetadata {
   }
 
   public enum OffsetType {
-    OLDEST("oldest"), NEWEST("newst"), UPCOMING("upcoming");
+    OLDEST("oldest"), NEWEST("newest"), UPCOMING("upcoming");
 
     private final String offsetType;
 
