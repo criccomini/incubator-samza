@@ -56,7 +56,7 @@ import grizzled.slf4j.Logging
  * samza.task.max.messages
  * <pre>
  *
- * For example, you might specify wish to process 10000 messages simulated 
+ * For example, you might specify wish to process 10000 messages simulated
  * from two input streams on one broker:
  *
  * <pre>
@@ -68,7 +68,7 @@ import grizzled.slf4j.Logging
  *   -Psamza.task.max.messages=10000
  * <pre>
  */
-class TestSamzaContainerPerformance extends Logging{
+class TestSamzaContainerPerformance extends Logging {
   val consumerThreadCount = System.getProperty("samza.mock.consumer.thread.count", "12").toInt
   val messagesPerBatch = System.getProperty("samza.mock.messages.per.batch", "5000").toInt
   val streamCount = System.getProperty("samza.mock.input.streams", "1000").toInt
@@ -85,6 +85,7 @@ class TestSamzaContainerPerformance extends Logging{
     "task.log.interval" -> logInterval.toString,
     "task.max.messages" -> maxMessages.toString,
     "systems.mock.samza.factory" -> classOf[org.apache.samza.system.mock.MockSystemFactory].getCanonicalName,
+    "systems.mock.samza.offset.default" -> "oldest",
     "systems.mock.partitions.per.stream" -> partitionsPerStreamCount.toString,
     "systems.mock.messages.per.batch" -> messagesPerBatch.toString,
     "systems.mock.consumer.thread.count" -> consumerThreadCount.toString,

@@ -49,7 +49,7 @@ class TestTaskInstance {
       def process(envelope: IncomingMessageEnvelope, collector: MessageCollector, coordinator: TaskCoordinator) {
       }
     }
-    val config = new MapConfig
+    val config = new MapConfig(Map("systems.test-system.streams.test-stream.samza.offset.default" -> "upcoming"))
     val partition = new Partition(0)
     val containerName = "test-container"
     val consumerMultiplexer = new SystemConsumers(
@@ -62,9 +62,7 @@ class TestTaskInstance {
     val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
     // Pretend our last checkpointed (next) offset was 2.
     val testSystemStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
-    val offsetManager = new OffsetManager(
-      streamMetadata = Map(systemStream -> testSystemStreamMetadata),
-      defaultOffsets = Map(systemStream -> OffsetType.UPCOMING))
+    val offsetManager = OffsetManager(Map(systemStream -> testSystemStreamMetadata), config)
     val taskInstance: TaskInstance = new TaskInstance(
       task,
       partition,

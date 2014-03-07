@@ -31,19 +31,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.apache.samza.SamzaException
 import org.apache.samza.util.TestUtil._
+import org.apache.samza.config.MapConfig
 
 class TestOffsetManager {
   @Test
-  def testShouldUseDefaults {
+  def testSystemShouldUseDefaults {
     val systemStream = new SystemStream("test-system", "test-stream")
     val partition = new Partition(0)
     val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
     val testStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
     val systemStreamMetadata = Map(systemStream -> testStreamMetadata)
-    val defaultOffsets = Map(systemStream -> OffsetType.OLDEST)
-    val offsetManager = new OffsetManager(
-      systemStreamMetadata,
-      defaultOffsets)
+    val config = new MapConfig(Map("systems.test-system.samza.offset.default" -> "oldest"))
+    val offsetManager = OffsetManager(systemStreamMetadata, config)
     offsetManager.register(systemStreamPartition)
     offsetManager.start
     assertTrue(offsetManager(systemStreamPartition).isDefined)
@@ -55,8 +54,11 @@ class TestOffsetManager {
     val systemStream = new SystemStream("test-system", "test-stream")
     val partition = new Partition(0)
     val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
+    val testStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
+    val systemStreamMetadata = Map(systemStream -> testStreamMetadata)
+    val config = new MapConfig
     val checkpointManager = getCheckpointManager(systemStreamPartition)
-    val offsetManager = new OffsetManager(checkpointManager = checkpointManager)
+    val offsetManager = OffsetManager(systemStreamMetadata, config, checkpointManager)
     offsetManager.register(systemStreamPartition)
     offsetManager.start
     assertTrue(checkpointManager.isStarted)
@@ -82,11 +84,10 @@ class TestOffsetManager {
     val defaultOffsets = Map(systemStream -> OffsetType.OLDEST)
     val checkpoint = new Checkpoint(Map(systemStream -> "45"))
     val checkpointManager = getCheckpointManager(systemStreamPartition)
-    val offsetManager = new OffsetManager(
-      systemStreamMetadata,
-      defaultOffsets,
-      resetOffsets = Set(systemStream),
-      checkpointManager)
+    val config = new MapConfig(Map(
+      "systems.test-system.samza.offset.default" -> "oldest",
+      "systems.test-system.streams.test-stream.samza.reset.offset" -> "true"))
+    val offsetManager = OffsetManager(systemStreamMetadata, config, checkpointManager)
     offsetManager.register(systemStreamPartition)
     offsetManager.start
     assertTrue(checkpointManager.isStarted)
@@ -105,7 +106,7 @@ class TestOffsetManager {
     val offsetManager = new OffsetManager
     offsetManager.register(systemStreamPartition)
 
-    expect(classOf[SamzaException], Some("No metadata available for SystemStream [system=test-system, stream=test-stream]. Can't continue without this information.")) {
+    expect(classOf[SamzaException], Some("Attempting to load defaults for stream SystemStream [system=test-system, stream=test-stream], which has no offset settings.")) {
       offsetManager.start
     }
   }
@@ -117,11 +118,37 @@ class TestOffsetManager {
     val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
     val testStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
     val systemStreamMetadata = Map(systemStream -> testStreamMetadata)
-    val offsetManager = new OffsetManager(systemStreamMetadata)
+    val offsetManager = OffsetManager(systemStreamMetadata, new MapConfig(Map[String, String]()))
     offsetManager.register(systemStreamPartition)
 
     expect(classOf[SamzaException], Some("No default offeset defined for SystemStream [system=test-system, stream=test-stream]. Unable to load a default.")) {
       offsetManager.start
+    }
+  }
+
+  @Test
+  def testDefaultSystemShouldFailWhenFailIsSpecified {
+    val systemStream = new SystemStream("test-system", "test-stream")
+    val partition = new Partition(0)
+    val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
+    val testStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
+    val systemStreamMetadata = Map(systemStream -> testStreamMetadata)
+    val config = new MapConfig(Map("systems.test-system.samza.offset.default" -> "fail"))
+    expect(classOf[IllegalArgumentException]) {
+      OffsetManager(systemStreamMetadata, config)
+    }
+  }
+
+  @Test
+  def testDefaultStreamShouldFailWhenFailIsSpecified {
+    val systemStream = new SystemStream("test-system", "test-stream")
+    val partition = new Partition(0)
+    val systemStreamPartition = new SystemStreamPartition(systemStream, partition)
+    val testStreamMetadata = new SystemStreamMetadata(systemStream.getStream, Map(partition -> new SystemStreamPartitionMetadata("0", "1", "2")))
+    val systemStreamMetadata = Map(systemStream -> testStreamMetadata)
+    val config = new MapConfig(Map("systems.test-system.streams.test-stream.samza.offset.default" -> "fail"))
+    expect(classOf[IllegalArgumentException]) {
+      OffsetManager(systemStreamMetadata, config)
     }
   }
 

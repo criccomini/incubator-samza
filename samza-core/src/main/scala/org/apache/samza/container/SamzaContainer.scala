@@ -102,17 +102,6 @@ object SamzaContainer extends Logging {
 
     info("Got system names: %s" format systemNames)
 
-    val defaultOffsets = getDefaultOffsets(inputStreams.map(_.getSystemStream).toSet, config)
-
-    info("Got default offset settings: %s" format defaultOffsets)
-
-    val resetInputStreams = systemNames.flatMap(config.getResetOffsetMap)
-      .toMap
-      .filter(_._2)
-      .keySet
-
-    info("Got input stream resets: %s" format resetInputStreams)
-
     val serdeStreams = systemNames.foldLeft(Set[SystemStream]())(_ ++ config.getSerdeStreams(_))
 
     debug("Got serde streams: %s" format serdeStreams)
@@ -286,11 +275,7 @@ object SamzaContainer extends Logging {
 
     info("Got checkpoint manager: %s" format checkpointManager)
 
-    val offsetManager = new OffsetManager(
-      inputStreamMetadata,
-      defaultOffsets,
-      resetInputStreams,
-      checkpointManager)
+    val offsetManager = OffsetManager(inputStreamMetadata, config, checkpointManager)
 
     info("Got offset manager: %s" format offsetManager)
 
@@ -477,27 +462,6 @@ object SamzaContainer extends Logging {
             }
       }
       .toMap
-  }
-
-  /**
-   * Builds a map from SystemStream to offset type for all input streams.
-   */
-  def getDefaultOffsets(inputSystemStreams: Set[SystemStream], config: Config): Map[SystemStream, OffsetType] = {
-    inputSystemStreams
-      .map(systemStream => {
-        val streamDefaultOffset = config.getDefaultStreamOffset(systemStream)
-        val systemDefaultOffset = config.getDefaultSystemOffset(systemStream.getSystem)
-        val defaultOffsetType = if (streamDefaultOffset.isDefined) {
-          OffsetType.valueOf(streamDefaultOffset.get.toUpperCase)
-        } else if (systemDefaultOffset.isDefined) {
-          OffsetType.valueOf(systemDefaultOffset.get.toUpperCase)
-        } else {
-          debug("No default offset for %s defined. Using newest." format systemStream)
-          OffsetType.UPCOMING
-        }
-        debug("Using default offset %s for %s." format (defaultOffsetType, systemStream))
-        (systemStream, defaultOffsetType)
-      }).toMap
   }
 
   /**

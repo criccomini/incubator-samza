@@ -27,6 +27,72 @@ import org.apache.samza.system.SystemStreamMetadata.OffsetType
 import org.apache.samza.SamzaException
 import scala.collection.JavaConversions._
 import grizzled.slf4j.Logging
+import org.apache.samza.config.Config
+import org.apache.samza.config.StreamConfig.Config2Stream
+import org.apache.samza.config.SystemConfig.Config2System
+
+/**
+ * OffsetSetting encapsulates a SystemStream's metadata, default offset, and
+ * reset offset settings. It's just a convenience class to make OffsetManager
+ * easier to work with.
+ */
+case class OffsetSetting(
+  /**
+   * The metadata for the SystemStream.
+   */
+  metadata: SystemStreamMetadata,
+
+  /**
+   * The default offset (oldest, newest, or upcoming) for the SystemStream.
+   * This setting is used when no checkpoint is available for a SystemStream
+   * if the job is starting for the first time, or the SystemStream has been
+   * reset (see resetOffsets, below).
+   */
+  defaultOffset: OffsetType,
+
+  /**
+   * Whether the SystemStream's offset should be reset or not. Determines
+   * whether an offset should be ignored at initialization time, even if a
+   * checkpoint is available. This is useful for jobs that wish to restart
+   * reading from a stream at a different position than where they last
+   * checkpointed. If this is true, then defaultOffset will be used to find
+   * the new starting position in the stream.
+   */
+  resetOffset: Boolean)
+
+/**
+ * OffsetManager object is a helper that does wiring to build an OffsetManager
+ * from a config object.
+ */
+object OffsetManager extends Logging {
+  def apply(systemStreamMetadata: Map[SystemStream, SystemStreamMetadata], config: Config, checkpointManager: CheckpointManager = null) = {
+    debug("Building offset manager for %s." format systemStreamMetadata)
+    val offsetSettings = systemStreamMetadata
+      .map {
+        case (systemStream, systemStreamMetadata) =>
+          // Get default offset.
+          val streamDefaultOffset = config.getDefaultStreamOffset(systemStream)
+          val systemDefaultOffset = config.getDefaultSystemOffset(systemStream.getSystem)
+          val defaultOffsetType = if (streamDefaultOffset.isDefined) {
+            OffsetType.valueOf(streamDefaultOffset.get.toUpperCase)
+          } else if (systemDefaultOffset.isDefined) {
+            OffsetType.valueOf(systemDefaultOffset.get.toUpperCase)
+          } else {
+            debug("No default offset for %s defined. Using newest." format systemStream)
+            OffsetType.UPCOMING
+          }
+          debug("Using default offset %s for %s." format (defaultOffsetType, systemStream))
+
+          // Get reset offset.
+          val resetOffset = config.getResetOffset(systemStream)
+          debug("Using reset offset %s for %s." format (resetOffset, systemStream))
+
+          // Build OffsetSetting so we can create a map for OffsetManager.
+          (systemStream, OffsetSetting(systemStreamMetadata, defaultOffsetType, resetOffset))
+      }.toMap
+    new OffsetManager(offsetSettings, checkpointManager)
+  }
+}
 
 /**
  * OffsetManager does three things:
@@ -45,33 +111,15 @@ import grizzled.slf4j.Logging
  */
 class OffsetManager(
   /**
-   * Metadata for all streams that the offset manager is tracking.
+   * Offset settings for all streams that the OffsetManager is managing.
    */
-  streamMetadata: Map[SystemStream, SystemStreamMetadata] = Map(),
-
-  /**
-   * Default offset types (oldest, newest, or upcoming) for all streams that
-   * the offset manager is tracking. This setting is used when no checkpoint
-   * is available for a SystemStream if the job is starting for the first
-   * time, or the SystemStream has been reset (see resetOffsets, below).
-   */
-  defaultOffsets: Map[SystemStream, OffsetType] = Map(),
-
-  /**
-   * A set of SystemStreams whose offsets should be ignored at initialization
-   * time, even if a checkpoint is available. This is useful for jobs that
-   * wish to restart reading from a stream at a different position than where
-   * they last checkpointed. If a SystemStream is in this set, its
-   * defaultOffset will be used to find the new starting position in the
-   * stream.
-   */
-  resetOffsets: Set[SystemStream] = Set(),
+  val offsetSettings: Map[SystemStream, OffsetSetting] = Map(),
 
   /**
    * Optional checkpoint manager for checkpointing next offsets whenever
    * checkpoint is called.
    */
-  checkpointManager: CheckpointManager = null) extends Logging {
+  val checkpointManager: CheckpointManager = null) extends Logging {
 
   /**
    * Next offsets to be read for each SystemStreamPartition.
@@ -195,7 +243,10 @@ class OffsetManager(
   private def stripResetStreams {
     offsets = offsets.filter {
       case (systemStreamPartition, offset) =>
-        if (resetOffsets.contains(systemStreamPartition.getSystemStream)) {
+        val systemStream = systemStreamPartition.getSystemStream
+        val offsetSetting = offsetSettings.getOrElse(systemStream, throw new SamzaException("Attempting to reset a stream that doesn't have offset settings %s." format systemStream))
+
+        if (offsetSetting.resetOffset) {
           info("Got offset %s for %s, but ignoring, since stream was configured to reset offsets." format (offset, systemStreamPartition))
 
           false
@@ -214,8 +265,9 @@ class OffsetManager(
       if (!offsets.contains(systemStreamPartition)) {
         val systemStream = systemStreamPartition.getSystemStream
         val partition = systemStreamPartition.getPartition
-        val systemStreamMetadata = streamMetadata.getOrElse(systemStream, throw new SamzaException("No metadata available for %s. Can't continue without this information." format systemStream))
-        val offsetType = defaultOffsets.getOrElse(systemStream, throw new SamzaException("No default offeset defined for %s. Unable to load a default." format systemStream))
+        val offsetSetting = offsetSettings.getOrElse(systemStream, throw new SamzaException("Attempting to load defaults for stream %s, which has no offset settings." format systemStream))
+        val systemStreamMetadata = offsetSetting.metadata
+        val offsetType = offsetSetting.defaultOffset
 
         debug("Got default offset type %s for %s" format (offsetType, systemStreamPartition))
 
