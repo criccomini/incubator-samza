@@ -29,9 +29,19 @@ import java.util.Set;
  * system.
  */
 public interface SystemAdmin {
+
+  /**
+   * Fetches the offsets for the messages immediately after the supplied offsets
+   * for a group of SystemStreamPartitions.
+   * 
+   * @param offsets TODO should write something here
+   * @return TODO should write something here
+   */
+  Map<SystemStreamPartition, String> getOffsetsAfter(Map<SystemStreamPartition, String> offsets);
+
   /**
    * Fetch metadata from a system for a set of streams.
-   *
+   * 
    * @param streamNames
    *          The streams to to fetch metadata for.
    * @return A map from stream name to SystemStreamMetadata for each stream

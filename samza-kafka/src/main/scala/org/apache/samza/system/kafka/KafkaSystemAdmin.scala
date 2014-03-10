@@ -109,6 +109,11 @@ class KafkaSystemAdmin(
 
   import KafkaSystemAdmin._
 
+  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String]) = {
+    // TODO write this method
+    Map[SystemStreamPartition, String]()
+  }
+
   def getSystemStreamMetadata(streams: java.util.Set[String]) =
     getSystemStreamMetadata(streams, new ExponentialSleepStrategy(initialDelayMs = 500))
 
