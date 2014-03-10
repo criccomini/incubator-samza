@@ -175,14 +175,14 @@ class OffsetManager(
   }
 
   /**
-   * Set the last read offset for a given SystemStreamPartition.
+   * Set the last processed offset for a given SystemStreamPartition.
    */
   def update(systemStreamPartition: SystemStreamPartition, offset: String) {
     lastProcessedOffsets += systemStreamPartition -> offset
   }
 
   /**
-   * Get the last read offset for a SystemStreamPartition.
+   * Get the last processed offset for a SystemStreamPartition.
    */
   def getLastProcessedOffset(systemStreamPartition: SystemStreamPartition) = {
     lastProcessedOffsets.get(systemStreamPartition)
@@ -237,7 +237,7 @@ class OffsetManager(
   }
 
   /**
-   * Loads last read offsets from checkpoint manager for all registered
+   * Loads last processed offsets from checkpoint manager for all registered
    * partitions.
    */
   private def loadOffsetsFromCheckpointManager {
@@ -253,7 +253,7 @@ class OffsetManager(
   }
 
   /**
-   * Loads last read offsets for a single partition.
+   * Loads last processed offsets for a single partition.
    */
   private def restoreOffsetsFromCheckpoint(partition: Partition) = {
     debug("Loading checkpoints for partition: %s." format partition)
@@ -286,7 +286,7 @@ class OffsetManager(
   }
 
   /**
-   * Use last read offsets to get next available offset for each
+   * Use last processed offsets to get next available offset for each
    * SystemStreamPartition, and populate startingOffsets.
    */
   private def loadStartingOffsets {
@@ -297,7 +297,7 @@ class OffsetManager(
       .flatMap {
         case (systemName, systemStreamPartitionOffsets) =>
           systemAdmins
-            .getOrElse(systemName, throw new SamzaException("Missing system admin for %s. Need system admin to load offsets." format systemName))
+            .getOrElse(systemName, throw new SamzaException("Missing system admin for %s. Need system admin to load starting offsets." format systemName))
             .getOffsetsAfter(systemStreamPartitionOffsets)
       }
   }
