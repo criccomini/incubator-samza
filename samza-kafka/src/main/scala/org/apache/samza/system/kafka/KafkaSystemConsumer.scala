@@ -163,8 +163,7 @@ private[kafka] class KafkaSystemConsumer(
 
       val systemStreamPartition = toSystemStreamPartition(tp)
       val isAtHead = highWatermark == msg.offset
-      val currentOffset = msg.offset.toString
-      val nextOffset = msg.nextOffset.toString
+      val offset = msg.offset.toString
       val key = if (msg.message.key != null) {
         keyDeserializer.fromBytes(Utils.readBytes(msg.message.key))
       } else {
@@ -176,7 +175,7 @@ private[kafka] class KafkaSystemConsumer(
         null
       }
 
-      put(systemStreamPartition, new IncomingMessageEnvelope(systemStreamPartition, currentOffset, nextOffset, key, message))
+      put(systemStreamPartition, new IncomingMessageEnvelope(systemStreamPartition, offset, key, message))
 
       setIsAtHead(systemStreamPartition, isAtHead)
     }

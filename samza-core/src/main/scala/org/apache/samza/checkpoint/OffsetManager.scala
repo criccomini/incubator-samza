@@ -209,7 +209,7 @@ class OffsetManager(
   }
 
   /**
-   * Loads innitial next offsets for all registered partitions.
+   * Loads initial next offsets for all registered partitions.
    */
   private def loadOffsetsFromCheckpointManager {
     if (checkpointManager != null) {

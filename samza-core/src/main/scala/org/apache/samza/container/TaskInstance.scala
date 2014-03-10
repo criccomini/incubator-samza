@@ -151,9 +151,9 @@ class TaskInstance(
 
     listeners.foreach(_.afterProcess(envelope, config, context))
 
-    trace("Updating offset map for partition: %s, %s, %s" format (partition, envelope.getSystemStreamPartition, envelope.getNextOffset))
+    trace("Updating offset map for partition: %s, %s, %s" format (partition, envelope.getSystemStreamPartition, envelope.getOffset))
 
-    offsetManager.update(envelope.getSystemStreamPartition, envelope.getNextOffset)
+    offsetManager.update(envelope.getSystemStreamPartition, envelope.getOffset)
   }
 
   def window(coordinator: ReadableCoordinator) {
