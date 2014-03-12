@@ -37,6 +37,7 @@ import grizzled.slf4j.Logging
 import java.util.UUID
 import scala.collection.JavaConversions._
 import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata
+import kafka.consumer.ConsumerConfig
 
 object KafkaSystemAdmin extends Logging {
   /**
@@ -99,17 +100,88 @@ class KafkaSystemAdmin(
    * from Kafka. Equivalent to Kafka's socket.receive.buffer.bytes
    * configuration.
    */
-  bufferSize: Int = 1024000,
+  bufferSize: Int = ConsumerConfig.SocketBufferSize,
 
   /**
    * The client ID to use for the simple consumer when fetching metadata from
    * Kafka. Equivalent to Kafka's client.id configuration.
    */
-  clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
+  clientId: String = UUID.randomUUID.toString,
+
+  /**
+   * Fetch size to use when using Kafka's FetchBuilder to fetch offsets after
+   * a current offset map.
+   */
+  fetchSize: Int = ConsumerConfig.FetchSize) extends SystemAdmin with Logging {
 
   import KafkaSystemAdmin._
 
-  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String]) = {
+  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String]) =
+    getOffsetsAfter(offsets, new ExponentialSleepStrategy(initialDelayMs = 500))
+
+  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String], retryBackoff: ExponentialSleepStrategy) = {
+    var consumer: SimpleConsumer = null
+    var done = false
+    val streams = offsets
+      .keys
+      .map(_.getStream)
+    var offsetsAfter = Map[SystemStreamPartition, String]()
+
+    debug("Fetching next offsets for %s with current offsets: %s" format (streams, offsets))
+
+    while (!done) {
+      try {
+        val metadata = TopicMetadataCache.getTopicMetadata(
+          streams.toSet,
+          systemName,
+          getTopicMetadata)
+
+        debug("Got metadata for streams: %s" format metadata)
+
+        val brokersToTopicPartitions = getTopicsAndPartitionsByBroker(metadata)
+
+        // Get next offsets for each topic and partition.
+        for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
+          debug("Fetching offsets for %s:%s: %s" format (broker.host, broker.port, topicsAndPartitions))
+
+          consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
+
+          val offsetsForBroker = topicsAndPartitions
+            .map(topicAndPartition => {
+              val systemStreamPartition = new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition))
+              val offset = offsets
+                .getOrElse(systemStreamPartition, throw new SamzaException("Expected to find an offset for topic/partition %s, but was missing. Can't fetch next offsets without current offset." format topicAndPartition))
+                .toLong
+              (topicAndPartition, offset)
+            }).toMap
+
+          offsetsAfter ++= getBrokerOffsetsAfter(consumer, offsetsForBroker)
+            .map {
+              case (topicAndPartition, offset) =>
+                val systemStreamPartition = new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition))
+                (systemStreamPartition, offset.toString)
+            }.toMap
+
+          debug("Shutting down consumer for %s:%s." format (broker.host, broker.port))
+
+          consumer.close
+        }
+        done = true
+      } catch {
+        case e: InterruptedException =>
+          info("Interrupted while fetching last offsets, so forwarding.")
+          if (consumer != null) {
+            consumer.close
+          }
+          throw e
+        case e: Exception =>
+          // Retry.
+          warn("Unable to fetch last offsets for streams due to: %s, %s. Retrying. Turn on debugging to get a full stack trace." format (e.getMessage, streams))
+          debug(e)
+          retryBackoff.sleep
+      }
+    }
+
     // TODO write this method
     Map[SystemStreamPartition, String]()
   }
@@ -132,7 +204,7 @@ class KafkaSystemAdmin(
     var done = false
     var consumer: SimpleConsumer = null
 
-    debug("Fetching offsets for: %s" format streams)
+    debug("Fetching system stream metadata for: %s" format streams)
 
     while (!done) {
       try {
@@ -232,6 +304,45 @@ class KafkaSystemAdmin(
     debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
 
     brokersToTopicPartitions
+  }
+
+  private def getBrokerOffsetsAfter(consumer: SimpleConsumer, offsetsForBroker: Map[TopicAndPartition, Long]) = {
+    val requestBuilder = new FetchRequestBuilder()
+      .maxWait(500)
+      .minBytes(1)
+      .clientId(clientId)
+    for ((topicAndPartition, offset) <- offsetsForBroker) {
+      requestBuilder.addFetch(topicAndPartition.topic, topicAndPartition.partition, offset, fetchSize)
+    }
+    val fetchResponse = consumer.fetch(requestBuilder.build)
+    offsetsForBroker
+      .keys
+      .map(topicAndPartition => {
+        val topic = topicAndPartition.topic
+        val partition = topicAndPartition.partition
+        val errorCode = fetchResponse.errorCode(topic, partition)
+
+        // We default to a null offset if there was an offset out of range exception.
+        if (ErrorMapping.OffsetOutOfRangeCode.equals(errorCode)) {
+          warn("Got an offset out of range exception while getting next offsets for %s, so returning a null offset. This will result in the offset.default being used for this topic/partition." format topicAndPartition)
+          (topicAndPartition, null)
+        } else {
+          ErrorMapping.maybeThrowException(errorCode)
+
+          val messageAndOffset = fetchResponse
+            .messageSet(topic, partition)
+            .toList
+            .head
+
+          val offset = messageAndOffset.nextOffset
+
+          debug("Got offset %s after %s for %s" format (offset, offsetsForBroker(topicAndPartition), topicAndPartition))
+
+          (topicAndPartition, offset)
+        }
+      })
+      .filter(_._2 != null)
+      .toMap
   }
 
   /**
