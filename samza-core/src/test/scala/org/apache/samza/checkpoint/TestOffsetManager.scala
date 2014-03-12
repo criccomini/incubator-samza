@@ -32,6 +32,7 @@ import org.junit.Test
 import org.apache.samza.SamzaException
 import org.apache.samza.util.TestUtil._
 import org.apache.samza.config.MapConfig
+import org.apache.samza.system.SystemAdmin
 
 class TestOffsetManager {
   @Test
@@ -45,8 +46,9 @@ class TestOffsetManager {
     val offsetManager = OffsetManager(systemStreamMetadata, config)
     offsetManager.register(systemStreamPartition)
     offsetManager.start
-    assertTrue(offsetManager(systemStreamPartition).isDefined)
-    assertEquals("0", offsetManager(systemStreamPartition).get)
+    assertTrue(!offsetManager.getLastProcessedOffset(systemStreamPartition).isDefined)
+    assertTrue(offsetManager.getStartingOffset(systemStreamPartition).isDefined)
+    assertEquals("0", offsetManager.getStartingOffset(systemStreamPartition).get)
   }
 
   @Test
@@ -58,19 +60,25 @@ class TestOffsetManager {
     val systemStreamMetadata = Map(systemStream -> testStreamMetadata)
     val config = new MapConfig
     val checkpointManager = getCheckpointManager(systemStreamPartition)
-    val offsetManager = OffsetManager(systemStreamMetadata, config, checkpointManager)
+    val systemAdmins = Map("test-system" -> getSystemAdmin)
+    val offsetManager = OffsetManager(systemStreamMetadata, config, checkpointManager, systemAdmins)
     offsetManager.register(systemStreamPartition)
     offsetManager.start
     assertTrue(checkpointManager.isStarted)
     assertEquals(1, checkpointManager.registered.size)
     assertEquals(partition, checkpointManager.registered.head)
     assertEquals(checkpointManager.checkpoints.head._2, checkpointManager.readLastCheckpoint(partition))
-    // Should get offset 45 back from the checkpoint manager.
-    assertEquals("45", offsetManager(systemStreamPartition).get)
+    // Should get offset 45 back from the checkpoint manager, which is last processed, and system admin should return 46 as starting offset.
+    assertEquals("46", offsetManager.getStartingOffset(systemStreamPartition).get)
+    assertEquals("45", offsetManager.getLastProcessedOffset(systemStreamPartition).get)
     offsetManager.update(systemStreamPartition, "46")
-    assertEquals("46", offsetManager(systemStreamPartition).get)
+    assertEquals("46", offsetManager.getLastProcessedOffset(systemStreamPartition).get)
+    offsetManager.update(systemStreamPartition, "47")
+    assertEquals("47", offsetManager.getLastProcessedOffset(systemStreamPartition).get)
+    // Should never update starting offset.
+    assertEquals("46", offsetManager.getStartingOffset(systemStreamPartition).get)
     offsetManager.checkpoint(partition)
-    val expectedCheckpoint = new Checkpoint(Map(systemStream -> "46"))
+    val expectedCheckpoint = new Checkpoint(Map(systemStream -> "47"))
     assertEquals(expectedCheckpoint, checkpointManager.readLastCheckpoint(partition))
   }
 
@@ -95,7 +103,7 @@ class TestOffsetManager {
     assertEquals(partition, checkpointManager.registered.head)
     assertEquals(checkpoint, checkpointManager.readLastCheckpoint(partition))
     // Should be zero even though the checkpoint has an offset of 45, since we're forcing a reset.
-    assertEquals("0", offsetManager(systemStreamPartition).get)
+    assertEquals("0", offsetManager.getStartingOffset(systemStreamPartition).get)
   }
 
   @Test
@@ -165,6 +173,16 @@ class TestOffsetManager {
       def writeCheckpoint(partition: Partition, checkpoint: Checkpoint) { checkpoints += partition -> checkpoint }
       def readLastCheckpoint(partition: Partition) = checkpoints(partition)
       def stop { isStopped = true }
+    }
+  }
+
+  private def getSystemAdmin = {
+    new SystemAdmin {
+      def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String]) =
+        offsets.mapValues(offset => (offset.toLong + 1).toString)
+
+      def getSystemStreamMetadata(streamNames: java.util.Set[String]) =
+        Map[String, SystemStreamMetadata]()
     }
   }
 }
