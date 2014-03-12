@@ -85,7 +85,7 @@ object OffsetManager extends Logging {
           } else if (systemDefaultOffset.isDefined) {
             OffsetType.valueOf(systemDefaultOffset.get.toUpperCase)
           } else {
-            debug("No default offset for %s defined. Using newest." format systemStream)
+            info("No default offset for %s defined. Using newest." format systemStream)
             OffsetType.UPCOMING
           }
           debug("Using default offset %s for %s." format (defaultOffsetType, systemStream))
@@ -255,7 +255,7 @@ class OffsetManager(
   /**
    * Loads last processed offsets for a single partition.
    */
-  private def restoreOffsetsFromCheckpoint(partition: Partition) = {
+  private def restoreOffsetsFromCheckpoint(partition: Partition): Map[SystemStreamPartition, String] = {
     debug("Loading checkpoints for partition: %s." format partition)
 
     checkpointManager
@@ -270,19 +270,27 @@ class OffsetManager(
    * reset using resetOffsets.
    */
   private def stripResetStreams {
-    lastProcessedOffsets = lastProcessedOffsets.filter {
-      case (systemStreamPartition, offset) =>
+    val systemStreamPartitionsToReset = getSystemStreamPartitionsToReset(lastProcessedOffsets.keys)
+
+    systemStreamPartitionsToReset.foreach(systemStreamPartition => {
+      val offset = lastProcessedOffsets(systemStreamPartition)
+      info("Got offset %s for %s, but ignoring, since stream was configured to reset offsets." format (offset, systemStreamPartition))
+    })
+
+    lastProcessedOffsets --= systemStreamPartitionsToReset
+  }
+
+  /**
+   * Returns a set of all SystemStreamPartitions in lastProcessedOffsets that need to be reset
+   */
+  private def getSystemStreamPartitionsToReset(systemStreamPartitions: Iterable[SystemStreamPartition]): Set[SystemStreamPartition] = {
+    systemStreamPartitions
+      .filter(systemStreamPartition => {
         val systemStream = systemStreamPartition.getSystemStream
-        val offsetSetting = offsetSettings.getOrElse(systemStream, throw new SamzaException("Attempting to reset a stream that doesn't have offset settings %s." format systemStream))
-
-        if (offsetSetting.resetOffset) {
-          info("Got offset %s for %s, but ignoring, since stream was configured to reset offsets." format (offset, systemStreamPartition))
-
-          false
-        } else {
-          true
-        }
-    }
+        offsetSettings
+          .getOrElse(systemStream, throw new SamzaException("Attempting to reset a stream that doesn't have offset settings %s." format systemStream))
+          .resetOffset
+      }).toSet
   }
 
   /**
