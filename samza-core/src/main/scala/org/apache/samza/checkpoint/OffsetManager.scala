@@ -102,21 +102,24 @@ object OffsetManager extends Logging {
 }
 
 /**
- * OffsetManager does three things:
+ * OffsetManager does several things:
  *
  * <ul>
- * <li>1. Loads initial offsets for all input SystemStreamPartitions in a
+ * <li>Loads last checkpointed offset for all input SystemStreamPartitions in a
  * SamzaContainer.</li>
- * <li>Keep track of the last offset read for each SystemStreamPartitions in a
- * SamzaContainer.</li>
- * <li>Checkpoint the next offset to read SystemStreamPartitions in a
- * SamzaContainer periodically to the CheckpointManager.</li>
+ * <li>Uses last checkpointed offset to figure out the next offset to start
+ * reading from for each input SystemStreamPartition in a SamzaContainer</li>
+ * <li>Keep track of the last processed offset for each SystemStreamPartitions
+ * in a SamzaContainer.</li>
+ * <li>Checkpoints the last processed offset for each SystemStreamPartitions
+ * in a SamzaContainer periodically to the CheckpointManager.</li>
  * </ul>
  *
  * All partitions must be registered before start is called, and start must be
  * called before get/update/checkpoint/stop are called.
  */
 class OffsetManager(
+
   /**
    * Offset settings for all streams that the OffsetManager is managing.
    */
@@ -152,15 +155,8 @@ class OffsetManager(
    */
   var systemStreamPartitions = Set[SystemStreamPartition]()
 
-  /**
-   * A derivative of systemStreamPartitions that holds all partitions that
-   * have been registered.
-   */
-  var partitions = Set[Partition]()
-
   def register(systemStreamPartition: SystemStreamPartition) {
     systemStreamPartitions += systemStreamPartition
-    partitions += systemStreamPartition.getPartition
   }
 
   def start {
@@ -189,7 +185,8 @@ class OffsetManager(
   }
 
   /**
-   * Get the starting offset for a SystemStreamPartition.
+   * Get the starting offset for a SystemStreamPartition. This is the offset 
+   * where a SamzaContainer begins reading from when it starts up.
    */
   def getStartingOffset(systemStreamPartition: SystemStreamPartition) = {
     startingOffsets.get(systemStreamPartition)
@@ -224,13 +221,23 @@ class OffsetManager(
   }
 
   /**
+   * Returns a set of partitions that have been registered with this offset
+   * manager.
+   */
+  private def getPartitions = {
+    systemStreamPartitions
+      .map(_.getPartition)
+      .toSet
+  }
+
+  /**
    * Register all partitions with the CheckpointManager.
    */
   private def registerCheckpointManager {
     if (checkpointManager != null) {
       debug("Registering checkpoint manager.")
 
-      partitions.foreach(checkpointManager.register)
+      getPartitions.foreach(checkpointManager.register)
     } else {
       debug("Skipping checkpoint manager registration because no manager was defined.")
     }
@@ -246,7 +253,7 @@ class OffsetManager(
 
       checkpointManager.start
 
-      lastProcessedOffsets ++= partitions.flatMap(restoreOffsetsFromCheckpoint(_))
+      lastProcessedOffsets ++= getPartitions.flatMap(restoreOffsetsFromCheckpoint(_))
     } else {
       debug("Skipping offset load from checkpoint manager because no manager was defined.")
     }

@@ -106,13 +106,7 @@ class KafkaSystemAdmin(
    * The client ID to use for the simple consumer when fetching metadata from
    * Kafka. Equivalent to Kafka's client.id configuration.
    */
-  clientId: String = UUID.randomUUID.toString,
-
-  /**
-   * Fetch size to use when using Kafka's FetchBuilder to fetch offsets after
-   * a current offset map.
-   */
-  fetchSize: Int = ConsumerConfig.FetchSize) extends SystemAdmin with Logging {
+  clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
 
   import KafkaSystemAdmin._
 
@@ -245,45 +239,6 @@ class KafkaSystemAdmin(
     debug("Got topic partition data for brokers: %s" format brokersToTopicPartitions)
 
     brokersToTopicPartitions
-  }
-
-  private def getBrokerOffsetsAfter(consumer: SimpleConsumer, offsetsForBroker: Map[TopicAndPartition, Long]) = {
-    val requestBuilder = new FetchRequestBuilder()
-      .maxWait(500)
-      .minBytes(1)
-      .clientId(clientId)
-    for ((topicAndPartition, offset) <- offsetsForBroker) {
-      requestBuilder.addFetch(topicAndPartition.topic, topicAndPartition.partition, offset, fetchSize)
-    }
-    val fetchResponse = consumer.fetch(requestBuilder.build)
-    offsetsForBroker
-      .keys
-      .map(topicAndPartition => {
-        val topic = topicAndPartition.topic
-        val partition = topicAndPartition.partition
-        val errorCode = fetchResponse.errorCode(topic, partition)
-
-        // We default to a null offset if there was an offset out of range exception.
-        if (ErrorMapping.OffsetOutOfRangeCode.equals(errorCode)) {
-          warn("Got an offset out of range exception while getting next offsets for %s, so returning a null offset. This will result in the offset.default being used for this topic/partition." format topicAndPartition)
-          (topicAndPartition, null)
-        } else {
-          ErrorMapping.maybeThrowException(errorCode)
-
-          val messageAndOffset = fetchResponse
-            .messageSet(topic, partition)
-            .toList
-            .head
-
-          val offset = messageAndOffset.nextOffset
-
-          debug("Got offset %s after %s for %s" format (offset, offsetsForBroker(topicAndPartition), topicAndPartition))
-
-          (topicAndPartition, offset)
-        }
-      })
-      .filter(_._2 != null)
-      .toMap
   }
 
   /**

@@ -35,8 +35,9 @@ public interface SystemAdmin {
    * for a group of SystemStreamPartitions.
    * 
    * @param offsets
-   *          TODO should write something here
-   * @return TODO should write something here
+   *          Map from SystemStreamPartition to current offsets.
+   * @return Map from SystemStreamPartition to offsets immediately after the
+   *         current offsets.
    */
   Map<SystemStreamPartition, String> getOffsetsAfter(Map<SystemStreamPartition, String> offsets);
 

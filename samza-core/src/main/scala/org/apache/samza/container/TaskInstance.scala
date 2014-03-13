@@ -132,7 +132,9 @@ class TaskInstance(
         .getOrElse(throw new SamzaException("No offset defined for partition %s: %s" format (partition, systemStream)))
       consumerMultiplexer.register(systemStreamPartition, offset)
       metrics.addOffsetGauge(systemStream, () => {
-        offsetManager.getLastProcessedOffset(systemStreamPartition).getOrElse(null)
+        offsetManager
+          .getLastProcessedOffset(systemStreamPartition)
+          .getOrElse(null)
       })
     })
   }
