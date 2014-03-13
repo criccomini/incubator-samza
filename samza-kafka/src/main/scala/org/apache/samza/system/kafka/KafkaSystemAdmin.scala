@@ -116,74 +116,15 @@ class KafkaSystemAdmin(
 
   import KafkaSystemAdmin._
 
-  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String]) =
-    getOffsetsAfter(offsets, new ExponentialSleepStrategy(initialDelayMs = 500))
-
-  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String], retryBackoff: ExponentialSleepStrategy) = {
-    var consumer: SimpleConsumer = null
-    var done = false
-    val streams = offsets
-      .keys
-      .map(_.getStream)
-    var offsetsAfter = Map[SystemStreamPartition, String]()
-
-    debug("Fetching next offsets for %s with current offsets: %s" format (streams, offsets))
-
-    while (!done) {
-      try {
-        val metadata = TopicMetadataCache.getTopicMetadata(
-          streams.toSet,
-          systemName,
-          getTopicMetadata)
-
-        debug("Got metadata for streams: %s" format metadata)
-
-        val brokersToTopicPartitions = getTopicsAndPartitionsByBroker(metadata)
-
-        // Get next offsets for each topic and partition.
-        for ((broker, topicsAndPartitions) <- brokersToTopicPartitions) {
-          debug("Fetching offsets for %s:%s: %s" format (broker.host, broker.port, topicsAndPartitions))
-
-          consumer = new SimpleConsumer(broker.host, broker.port, timeout, bufferSize, clientId)
-
-          val offsetsForBroker = topicsAndPartitions
-            .map(topicAndPartition => {
-              val systemStreamPartition = new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition))
-              val offset = offsets
-                .getOrElse(systemStreamPartition, throw new SamzaException("Expected to find an offset for topic/partition %s, but was missing. Can't fetch next offsets without current offset." format topicAndPartition))
-                .toLong
-              (topicAndPartition, offset)
-            }).toMap
-
-          offsetsAfter ++= getBrokerOffsetsAfter(consumer, offsetsForBroker)
-            .map {
-              case (topicAndPartition, offset) =>
-                val systemStreamPartition = new SystemStreamPartition(systemName, topicAndPartition.topic, new Partition(topicAndPartition.partition))
-                (systemStreamPartition, offset.toString)
-            }.toMap
-
-          debug("Shutting down consumer for %s:%s." format (broker.host, broker.port))
-
-          consumer.close
-        }
-        done = true
-      } catch {
-        case e: InterruptedException =>
-          info("Interrupted while fetching last offsets, so forwarding.")
-          if (consumer != null) {
-            consumer.close
-          }
-          throw e
-        case e: Exception =>
-          // Retry.
-          warn("Unable to fetch last offsets for streams due to: %s, %s. Retrying. Turn on debugging to get a full stack trace." format (e.getMessage, streams))
-          debug(e)
-          retryBackoff.sleep
-      }
-    }
-
-    // TODO write this method
-    Map[SystemStreamPartition, String]()
+  /**
+   * Returns the offset for the message after the specified offset for each
+   * SystemStreamPartition that was passed in.
+   */
+  def getOffsetsAfter(offsets: java.util.Map[SystemStreamPartition, String]) = {
+    // This is safe to do with Kafka, even if a topic is key-deduped. If the 
+    // offset doesn't exist on a compacted topic, Kafka will return the first 
+    // message AFTER the offset that was specified in the fetch request.
+    offsets.mapValues(offset => (offset.toLong + 1).toString)
   }
 
   def getSystemStreamMetadata(streams: java.util.Set[String]) =
