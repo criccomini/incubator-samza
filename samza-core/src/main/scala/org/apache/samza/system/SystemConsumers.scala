@@ -98,6 +98,7 @@ class SystemConsumers(
 
   debug("Got stream consumers: %s" format consumers)
 
+  // TODO add more metrics here
   metrics.setUnprocessedMessages(() => totalUnprocessedMessages)
 
   def start {
@@ -202,6 +203,7 @@ class SystemConsumers(
 
     val sspAndEnvelopeIterator = systemStreamPartitionEnvelopes.entrySet.iterator
 
+    // TODO maybe more logging here?
     while (sspAndEnvelopeIterator.hasNext) {
       val sspAndEnvelope = sspAndEnvelopeIterator.next
       val systemStreamPartition = sspAndEnvelope.getKey
