@@ -142,8 +142,6 @@ class SystemConsumers(
       } else {
         emptySystemStreamPartitionsBySystem.get(systemStreamPartition.getSystem).add(systemStreamPartition)
       }
-
-//      metrics.systemStreamMessagesChosen(systemStreamPartition.getSystemStream).inc
     }
 
     // TODO should make refresh threshold configurable
