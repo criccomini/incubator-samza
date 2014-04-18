@@ -20,7 +20,7 @@
 package org.apache.samza.system;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * <p>
@@ -167,5 +167,5 @@ public interface SystemConsumer {
    *         SystemStreamPartitions that were supplied during the invocation.
    * @throws InterruptedException
    */
-  List<IncomingMessageEnvelope> poll(Map<SystemStreamPartition, Integer> systemStreamPartitions, long timeout) throws InterruptedException;
+  List<IncomingMessageEnvelope> poll(Set<SystemStreamPartition> systemStreamPartitions, long timeout) throws InterruptedException;
 }

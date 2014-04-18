@@ -26,7 +26,6 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.metrics.ReadableMetricsRegistry
-
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.metrics.MetricsHelper
 

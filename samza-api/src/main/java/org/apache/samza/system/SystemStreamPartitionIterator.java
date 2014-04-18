@@ -20,28 +20,24 @@
 package org.apache.samza.system;
 
 import java.util.ArrayDeque;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
+import java.util.Set;
 
 import org.apache.samza.SamzaException;
 
 public class SystemStreamPartitionIterator implements Iterator<IncomingMessageEnvelope> {
   private final SystemConsumer systemConsumer;
-  private final Map<SystemStreamPartition, Integer> fetchMap;
+  private final Set<SystemStreamPartition> fetchSet;
   private Queue<IncomingMessageEnvelope> peeks;
 
   public SystemStreamPartitionIterator(SystemConsumer systemConsumer, SystemStreamPartition systemStreamPartition) {
-    this(systemConsumer, systemStreamPartition, 1000);
-  }
-
-  public SystemStreamPartitionIterator(SystemConsumer systemConsumer, SystemStreamPartition systemStreamPartition, int fetchSize) {
     this.systemConsumer = systemConsumer;
-    this.fetchMap = new HashMap<SystemStreamPartition, Integer>();
-    this.fetchMap.put(systemStreamPartition, fetchSize);
+    this.fetchSet = new HashSet<SystemStreamPartition>();
+    this.fetchSet.add(systemStreamPartition);
     this.peeks = new ArrayDeque<IncomingMessageEnvelope>();
   }
 
@@ -70,7 +66,7 @@ public class SystemStreamPartitionIterator implements Iterator<IncomingMessageEn
   private void refresh() {
     if (peeks.size() == 0) {
       try {
-        List<IncomingMessageEnvelope> envelopes = systemConsumer.poll(fetchMap, SystemConsumer.BLOCK_ON_OUTSTANDING_MESSAGES);
+        List<IncomingMessageEnvelope> envelopes = systemConsumer.poll(fetchSet, SystemConsumer.BLOCK_ON_OUTSTANDING_MESSAGES);
 
         if (envelopes != null && envelopes.size() > 0) {
           peeks.addAll(envelopes);

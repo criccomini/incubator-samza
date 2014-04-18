@@ -75,7 +75,7 @@ class TestSamzaContainerPerformance extends Logging{
   val partitionsPerStreamCount = System.getProperty("samza.mock.partitions.per.stream", "4").toInt
   val brokerSleepMs = System.getProperty("samza.mock.broker.sleep.ms", "1").toInt
   var logInterval = System.getProperty("samza.task.log.interval", "10000").toInt
-  var maxMessages = System.getProperty("samza.task.max.messages", "100000").toInt
+  var maxMessages = System.getProperty("samza.task.max.messages", "10000000").toInt
 
   val jobConfig = Map(
     "job.factory.class" -> "org.apache.samza.job.local.LocalJobFactory",
@@ -130,11 +130,11 @@ class TestPerformanceTask extends StreamTask with InitableTask with Logging {
   /**
    * How many messages to process before shutting down.
    */
-  var maxMessages = 100000
+  var maxMessages = 10000000
 
   def init(config: Config, context: TaskContext) {
     logInterval = config.getInt("task.log.interval", 10000)
-    maxMessages = config.getInt("task.max.messages", 100000)
+    maxMessages = config.getInt("task.max.messages", 10000000)
   }
 
   def process(envelope: IncomingMessageEnvelope, collector: MessageCollector, coordinator: TaskCoordinator) {
