@@ -22,11 +22,10 @@ package org.apache.samza.system;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
-
 import org.apache.samza.SamzaException;
 
 public class SystemStreamPartitionIterator implements Iterator<IncomingMessageEnvelope> {
@@ -66,10 +65,10 @@ public class SystemStreamPartitionIterator implements Iterator<IncomingMessageEn
   private void refresh() {
     if (peeks.size() == 0) {
       try {
-        List<IncomingMessageEnvelope> envelopes = systemConsumer.poll(fetchSet, SystemConsumer.BLOCK_ON_OUTSTANDING_MESSAGES);
+        Map<SystemStreamPartition, Queue<IncomingMessageEnvelope>> envelopes = systemConsumer.poll(fetchSet, SystemConsumer.BLOCK_ON_OUTSTANDING_MESSAGES);
 
-        if (envelopes != null && envelopes.size() > 0) {
-          peeks.addAll(envelopes);
+        for (Queue<IncomingMessageEnvelope> systemStreamPartitionEnvelopes : envelopes.values()) {
+          peeks.addAll(systemStreamPartitionEnvelopes);
         }
       } catch (InterruptedException e) {
         throw new SamzaException(e);

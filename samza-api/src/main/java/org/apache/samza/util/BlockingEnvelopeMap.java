@@ -19,7 +19,9 @@
 
 package org.apache.samza.util;
 
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -28,7 +30,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.samza.metrics.Counter;
 import org.apache.samza.metrics.Gauge;
 import org.apache.samza.metrics.MetricsRegistry;
@@ -97,16 +98,19 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
     return new LinkedBlockingQueue<IncomingMessageEnvelope>();
   }
 
-  public List<IncomingMessageEnvelope> poll(Set<SystemStreamPartition> systemStreamPartitions, long timeout) throws InterruptedException {
+  public Map<SystemStreamPartition, Queue<IncomingMessageEnvelope>> poll(Set<SystemStreamPartition> systemStreamPartitions, long timeout) throws InterruptedException {
     long stopTime = clock.currentTimeMillis() + timeout;
-    List<IncomingMessageEnvelope> messagesToReturn = new ArrayList<IncomingMessageEnvelope>();
+    Map<SystemStreamPartition, Queue<IncomingMessageEnvelope>> messagesToReturn = new HashMap<SystemStreamPartition, Queue<IncomingMessageEnvelope>>();
 
     metrics.incPoll();
 
     for (SystemStreamPartition systemStreamPartition : systemStreamPartitions) {
+      Queue<IncomingMessageEnvelope> outgoingQueue = new ArrayDeque<IncomingMessageEnvelope>();
       BlockingQueue<IncomingMessageEnvelope> queue = bufferedMessages.get(systemStreamPartition);
 
-      if (timeout != 0) {
+      if (queue.size() > 0) {
+        queue.drainTo(outgoingQueue);
+      } else if (timeout != 0) {
         IncomingMessageEnvelope envelope = null;
 
         // How long we can legally block (if timeout > 0)
@@ -127,12 +131,13 @@ public abstract class BlockingEnvelopeMap implements SystemConsumer {
 
         // If we got a message, add it.
         if (envelope != null) {
-          messagesToReturn.add(envelope);
+          outgoingQueue.offer(envelope);
+          // Drain any remaining messages without blocking.
+          queue.drainTo(outgoingQueue);
         }
       }
 
-      // Drain any remaining messages from the queue without blocking.
-      messagesToReturn.addAll(queue);
+      messagesToReturn.put(systemStreamPartition, outgoingQueue);
     }
 
     return messagesToReturn;

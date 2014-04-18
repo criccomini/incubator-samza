@@ -60,11 +60,11 @@ class SystemConsumers(
   /**
    * A buffer of incoming messages grouped by SystemStreamPartition.
    */
-  var unprocessedMessages = Map[SystemStreamPartition, Queue[IncomingMessageEnvelope]]()
+  val unprocessedMessages = new java.util.HashMap[SystemStreamPartition, java.util.Queue[IncomingMessageEnvelope]]()
 
   var totalUnprocessedMessages = 0
 
-  var emptySystemStreamPartitionsBySystem = Map[String, java.util.Set[SystemStreamPartition]]()
+  val emptySystemStreamPartitionsBySystem = new java.util.HashMap[String, java.util.Set[SystemStreamPartition]]()
 
   /**
    * Default timeout to noNewMessagesTimeout. Every time SystemConsumers
@@ -101,14 +101,17 @@ class SystemConsumers(
   def register(systemStreamPartition: SystemStreamPartition, offset: String) {
     debug("Registering stream: %s, %s" format (systemStreamPartition, offset))
     metrics.registerSystemStream(systemStreamPartition.getSystemStream)
-    unprocessedMessages += systemStreamPartition -> Queue[IncomingMessageEnvelope]()
+    unprocessedMessages.put(systemStreamPartition, new java.util.ArrayDeque[IncomingMessageEnvelope]())
     consumers(systemStreamPartition.getSystem).register(systemStreamPartition, offset)
     chooser.register(systemStreamPartition, offset)
 
     val systemName = systemStreamPartition.getSystem
-    val emptySystemStreamPartitions = emptySystemStreamPartitionsBySystem.getOrElse(systemName, new java.util.HashSet[SystemStreamPartition])
+    var emptySystemStreamPartitions = emptySystemStreamPartitionsBySystem.get(systemName)
+    if (emptySystemStreamPartitions == null) {
+      emptySystemStreamPartitions = new java.util.HashSet[SystemStreamPartition]
+    }
     emptySystemStreamPartitions.add(systemStreamPartition)
-    emptySystemStreamPartitionsBySystem += systemName -> emptySystemStreamPartitions
+    emptySystemStreamPartitionsBySystem.put(systemName, emptySystemStreamPartitions)
   }
 
   def choose: IncomingMessageEnvelope = {
@@ -132,15 +135,15 @@ class SystemConsumers(
       totalUnprocessedMessages -= 1
 
       // Ok to give the chooser a new message from this stream.
-      val q = unprocessedMessages(systemStreamPartition)
+      val q = unprocessedMessages.get(systemStreamPartition)
 
       if (q.size > 0) {
-        chooser.update(q.dequeue)
+        chooser.update(q.poll)
       } else {
-        emptySystemStreamPartitionsBySystem(systemStreamPartition.getSystem).add(systemStreamPartition)
+        emptySystemStreamPartitionsBySystem.get(systemStreamPartition.getSystem).add(systemStreamPartition)
       }
 
-      metrics.systemStreamMessagesChosen(systemStreamPartition.getSystemStream).inc
+//      metrics.systemStreamMessagesChosen(systemStreamPartition.getSystemStream).inc
     }
 
     // TODO should make refresh threshold configurable
@@ -165,36 +168,35 @@ class SystemConsumers(
 
     debug("Getting fetch map for system: %s" format systemName)
 
-    val systemFetchSet = emptySystemStreamPartitionsBySystem(systemName)
+    val systemFetchSet = emptySystemStreamPartitionsBySystem.get(systemName)
 
     debug("Fetching: %s" format systemFetchSet)
 
     metrics.systemStreamPartitionFetchesPerPoll(systemName).inc(systemFetchSet.size)
 
-    val incomingEnvelopes = consumer.poll(systemFetchSet, timeout)
+    val systemStreamPartitionEnvelopes = consumer.poll(systemFetchSet, timeout)
 
-    debug("Got incoming message envelopes: %s" format incomingEnvelopes)
+    debug("Got incoming message envelopes: %s" format systemStreamPartitionEnvelopes)
 
     metrics.systemMessagesPerPoll(systemName).inc
 
-    totalUnprocessedMessages += incomingEnvelopes.size
+    val sspAndEnvelopeIterator = systemStreamPartitionEnvelopes.entrySet.iterator
 
-    // We have new un-processed envelopes, so update maps accordingly.
-    val it = incomingEnvelopes.iterator
+    while (sspAndEnvelopeIterator.hasNext) {
+      val sspAndEnvelope = sspAndEnvelopeIterator.next
+      val systemStreamPartition = sspAndEnvelope.getKey
+      val envelopes = sspAndEnvelope.getValue
+      val numEnvelopes = envelopes.size
 
-    while (it.hasNext) {
-      val envelope = it.next
-      val systemStreamPartition = envelope.getSystemStreamPartition
+      if (numEnvelopes > 0) {
+        totalUnprocessedMessages += numEnvelopes
 
-      debug("Got message for: %s, %s" format (systemStreamPartition, envelope))
+        if (emptySystemStreamPartitionsBySystem.get(systemStreamPartition.getSystem).remove(systemStreamPartition)) {
+          chooser.update(envelopes.poll)
+        }
 
-      if (emptySystemStreamPartitionsBySystem(systemStreamPartition.getSystem).remove(systemStreamPartition)) {
-        chooser.update(envelope)
-      } else {
-        unprocessedMessages(envelope.getSystemStreamPartition).enqueue(serdeManager.fromBytes(envelope))
+        unprocessedMessages.put(systemStreamPartition, envelopes)
       }
-
-      debug("Updated unprocessed messages for: %s, %s" format (systemStreamPartition, unprocessedMessages))
     }
   }
 
