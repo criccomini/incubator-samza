@@ -19,11 +19,15 @@
 
 package org.apache.samza.system
 
-import scala.collection.mutable.Queue
 import org.apache.samza.serializers.SerdeManager
 import grizzled.slf4j.Logging
 import org.apache.samza.system.chooser.MessageChooser
-import org.apache.samza.util.DoublingBackOff
+import java.util.Queue
+import java.util.Set
+import java.util.HashMap
+import java.util.ArrayDeque
+import java.util.HashSet
+import scala.collection.JavaConversions._
 
 /**
  * The SystemConsumers class coordinates between all SystemConsumers, the
@@ -55,16 +59,34 @@ class SystemConsumers(
    */
   metrics: SystemConsumersMetrics = new SystemConsumersMetrics,
 
+  /**
+   * If MessageChooser returns null when it's polled, SystemConsumers will
+   * poll each SystemConsumer with a timeout next time it tries to poll for
+   * messages. Setting the timeout to 0 means that SamzaContainer's main
+   * thread will sit in a tight loop polling every SystemConsumer over and
+   * over again if no new messages are available.
+   */
   noNewMessagesTimeout: Int = 10) extends Logging {
 
   /**
    * A buffer of incoming messages grouped by SystemStreamPartition.
    */
-  val unprocessedMessages = new java.util.HashMap[SystemStreamPartition, java.util.Queue[IncomingMessageEnvelope]]()
+  val unprocessedMessages = new HashMap[SystemStreamPartition, Queue[IncomingMessageEnvelope]]()
 
+  /**
+   * A simple count of all unprocessed messages that are currently sitting in
+   * either the MessageChooser or the unprocessedMessages buffer. The count is
+   * used to determine when to refresh the buffer with more messages by
+   * fetching from underlying systems.
+   */
   var totalUnprocessedMessages = 0
 
-  val emptySystemStreamPartitionsBySystem = new java.util.HashMap[String, java.util.Set[SystemStreamPartition]]()
+  /**
+   * A set of SystemStreamPartitions grouped by systemName. This is used as a
+   * cache to figure out which SystemStreamPartitions we need to poll from the
+   * underlying system consumer.
+   */
+  val emptySystemStreamPartitionsBySystem = new HashMap[String, Set[SystemStreamPartition]]()
 
   /**
    * Default timeout to noNewMessagesTimeout. Every time SystemConsumers
@@ -80,6 +102,14 @@ class SystemConsumers(
 
   def start {
     debug("Starting consumers.")
+
+    unprocessedMessages
+      .keySet
+      .groupBy(_.getSystem)
+      .foreach {
+        case (systemName, systemStreamPartitions) =>
+          emptySystemStreamPartitionsBySystem.put(systemName, systemStreamPartitions)
+      }
 
     consumers
       .keySet
@@ -101,17 +131,9 @@ class SystemConsumers(
   def register(systemStreamPartition: SystemStreamPartition, offset: String) {
     debug("Registering stream: %s, %s" format (systemStreamPartition, offset))
     metrics.registerSystemStream(systemStreamPartition.getSystemStream)
-    unprocessedMessages.put(systemStreamPartition, new java.util.ArrayDeque[IncomingMessageEnvelope]())
+    unprocessedMessages.put(systemStreamPartition, new ArrayDeque[IncomingMessageEnvelope]())
     consumers(systemStreamPartition.getSystem).register(systemStreamPartition, offset)
     chooser.register(systemStreamPartition, offset)
-
-    val systemName = systemStreamPartition.getSystem
-    var emptySystemStreamPartitions = emptySystemStreamPartitionsBySystem.get(systemName)
-    if (emptySystemStreamPartitions == null) {
-      emptySystemStreamPartitions = new java.util.HashSet[SystemStreamPartition]
-    }
-    emptySystemStreamPartitions.add(systemStreamPartition)
-    emptySystemStreamPartitionsBySystem.put(systemName, emptySystemStreamPartitions)
   }
 
   def choose: IncomingMessageEnvelope = {
