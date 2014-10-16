@@ -45,6 +45,7 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
 
     state.rpcPort = rpcApp.start
     state.trackingPort = webApp.start
+
     if (state.rpcPort > 0 && state.trackingPort > 0) {
       info("Webapp is started at rpc %d, tracking port %d" format (state.rpcPort, state.trackingPort))
     } else {
