@@ -19,11 +19,13 @@
 
 package org.apache.samza.job.yarn
 
+import javax.servlet.Servlet;
 import org.apache.samza.util.Logging
 import org.apache.samza.webapp._
 import org.apache.samza.config.Config
 import org.apache.samza.metrics.ReadableMetricsRegistry
 import org.apache.samza.SamzaException
+import scala.collection.JavaConversions._
 
 /**
  * Samza's application master runs a very basic HTTP/JSON service to allow
@@ -38,16 +40,11 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     // try starting the samza AM dashboard at a random rpc and tracking port
     info("Starting webapp at a random rpc and tracking port")
 
-    rpcApp = new WebAppServer("/")
-    rpcApp.addServlet("/*", new ApplicationMasterRestServlet(config, state, registry))
-    rpcApp.start
+    rpcApp = new WebAppServer(Map[String, Servlet]("/*" -> new ApplicationMasterRestServlet(config, state, registry)), "/")
+    webApp = new WebAppServer(Map[String, Servlet]("/*" -> new ApplicationMasterWebServlet(config, state)), "/")
 
-    webApp = new WebAppServer("/")
-    webApp.addServlet("/*", new ApplicationMasterWebServlet(config, state))
-    webApp.start
-
-    state.rpcPort = rpcApp.port
-    state.trackingPort = webApp.port
+    state.rpcPort = rpcApp.start
+    state.trackingPort = webApp.start
     if (state.rpcPort > 0 && state.trackingPort > 0) {
       info("Webapp is started at rpc %d, tracking port %d" format (state.rpcPort, state.trackingPort))
     } else {
@@ -57,13 +54,11 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
 
   override def onShutdown() {
     if (rpcApp != null) {
-      rpcApp.context.stop
-      rpcApp.server.stop
+      rpcApp.stop
     }
 
     if (webApp != null) {
-      webApp.context.stop
-      webApp.server.stop
+      webApp.stop
     }
   }
 }
