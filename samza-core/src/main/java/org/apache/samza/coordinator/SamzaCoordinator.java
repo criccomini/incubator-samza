@@ -23,15 +23,17 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.servlet.Servlet;
 import org.apache.samza.config.Config;
+import org.apache.samza.container.TaskName;
 import org.apache.samza.webapp.WebAppServer;
 
 public class SamzaCoordinator {
   private final WebAppServer coordinatorWebApp;
   private int webAppServerPort = 0;
 
-  public SamzaCoordinator(Config config) {
+  public SamzaCoordinator(Config config, Map<TaskName, Integer> taskToPartitionMapping) {
     Map<String, Servlet> servlets = new HashMap<String, Servlet>();
     servlets.put("/config/*", new SamzaCoordinatorConfigServlet(config));
+    servlets.put("/tasks/*", new SamzaCoordinatorTaskMappingServlet(taskToPartitionMapping));
     this.coordinatorWebApp = new WebAppServer(servlets);
   }
 

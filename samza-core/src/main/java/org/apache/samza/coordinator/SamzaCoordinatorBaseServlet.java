@@ -19,17 +19,22 @@
 
 package org.apache.samza.coordinator;
 
-import org.apache.samza.config.Config;
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.codehaus.jackson.map.ObjectMapper;
 
 @SuppressWarnings("serial")
-public class SamzaCoordinatorConfigServlet extends SamzaCoordinatorBaseServlet {
-  private final Config config;
+public abstract class SamzaCoordinatorBaseServlet extends HttpServlet {
+  private final static ObjectMapper JSON_MAPPER = new ObjectMapper();
 
-  public SamzaCoordinatorConfigServlet(Config config) {
-    this.config = config;
+  protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    response.setContentType("application/json");
+    response.setStatus(HttpServletResponse.SC_OK);
+    JSON_MAPPER.writeValue(response.getWriter(), getObjectToWrite());
   }
 
-  protected Object getObjectToWrite() {
-    return config;
-  }
+  abstract protected Object getObjectToWrite();
 }

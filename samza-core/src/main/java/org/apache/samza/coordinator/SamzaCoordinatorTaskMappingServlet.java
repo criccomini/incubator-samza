@@ -19,17 +19,24 @@
 
 package org.apache.samza.coordinator;
 
-import org.apache.samza.config.Config;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.samza.container.TaskName;
 
 @SuppressWarnings("serial")
-public class SamzaCoordinatorConfigServlet extends SamzaCoordinatorBaseServlet {
-  private final Config config;
+public class SamzaCoordinatorTaskMappingServlet extends SamzaCoordinatorBaseServlet {
+  private final Map<String, Integer> mapping;
 
-  public SamzaCoordinatorConfigServlet(Config config) {
-    this.config = config;
+  public SamzaCoordinatorTaskMappingServlet(Map<TaskName, Integer> mapping) {
+    this.mapping = new HashMap<String, Integer>();
+
+    for (Map.Entry<TaskName, Integer> taskToPartition : mapping.entrySet()) {
+      this.mapping.put(taskToPartition.getKey().toString(), taskToPartition.getValue());
+    }
   }
 
   protected Object getObjectToWrite() {
-    return config;
+    return mapping;
   }
 }
