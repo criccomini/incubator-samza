@@ -118,6 +118,17 @@ project(':samza-api') {
   }
 }
 
+project(':samza-coordinator') {
+  apply plugin: 'java'
+
+  dependencies {
+    compile project(':samza-api')
+    compile "org.codehaus.jackson:jackson-mapper-asl:$jacksonVersion"
+    compile "org.slf4j:slf4j-api:$slf4jVersion"
+    testCompile "junit:junit:$junitVersion"
+  }
+}
+
 project(":samza-core_$scalaVersion") {
   apply plugin: 'scala'
 
@@ -126,7 +137,7 @@ project(":samza-core_$scalaVersion") {
     compile "org.scala-lang:scala-library:$scalaLibVersion"
     compile "org.slf4j:slf4j-api:$slf4jVersion"
     compile "net.sf.jopt-simple:jopt-simple:$joptSimpleVersion"
-    compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+    compile "org.codehaus.jackson:jackson-mapper-asl:$jacksonVersion"
 
     // Temporary workaround to reduce config size via compression (SAMZA-337). Remove this
     // once we figure out a clean way to do this.
@@ -154,9 +165,8 @@ project(":samza-kafka_$scalaVersion") {
     compile "org.scala-lang:scala-library:$scalaLibVersion"
     compile "com.101tec:zkclient:$zkClientVersion"
     compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
-    compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+    compile "org.codehaus.jackson:jackson-mapper-asl:$jacksonVersion"
     compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
-    compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
     testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
     testCompile "junit:junit:$junitVersion"
     testCompile "org.mockito:mockito-all:$mockitoVersion"
@@ -189,7 +199,7 @@ project(":samza-serializers_$scalaVersion") {
     compile project(':samza-api')
     compile project(":samza-core_$scalaVersion")
     compile "org.scala-lang:scala-library:$scalaLibVersion"
-    compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+    compile "org.codehaus.jackson:jackson-mapper-asl:$jacksonVersion"
     testCompile "junit:junit:$junitVersion"
   }
 }
@@ -203,7 +213,7 @@ project(":samza-yarn_$scalaVersion") {
     compile project(":samza-core_$scalaVersion")
     compile "org.scala-lang:scala-library:$scalaLibVersion"
     compile "org.scala-lang:scala-compiler:$scalaLibVersion"
-    compile "org.codehaus.jackson:jackson-jaxrs:$jacksonVersion"
+    compile "org.codehaus.jackson:jackson-mapper-asl:$jacksonVersion"
     compile "commons-httpclient:commons-httpclient:$commonsHttpClientVersion"
     compile "org.eclipse.jetty:jetty-webapp:$jettyVersion"
     compile("org.apache.hadoop:hadoop-yarn-api:$yarnVersion") {
