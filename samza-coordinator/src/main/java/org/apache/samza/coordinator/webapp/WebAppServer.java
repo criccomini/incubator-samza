@@ -23,6 +23,7 @@ import java.util.Map;
 
 import javax.servlet.Servlet;
 
+import org.apache.samza.SamzaException;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -41,6 +42,7 @@ public class WebAppServer {
   private final ServletContextHandler context;
   private final Map<String, Servlet> servlets;
   private final String resourceBasePath;
+  private int port;
 
   public WebAppServer(Map<String, Servlet> servlets) {
     this(servlets, 0);
@@ -66,7 +68,7 @@ public class WebAppServer {
     this.context = new ServletContextHandler(ServletContextHandler.SESSIONS);
   }
 
-  public int start() throws Exception {
+  public void start() {
     context.setContextPath(rootPath);
     server.setHandler(context);
     context.addServlet(DEFAULT_HOLDER, "/css/*");
@@ -83,13 +85,25 @@ public class WebAppServer {
       context.addServlet(new ServletHolder(servlet), path);
     }
 
-    server.start();
+    try {
+      server.start();
+    } catch (Exception e) {
+      throw new SamzaException(e);
+    }
 
-    return ((Connector) server.getConnectors()[0]).getLocalPort();
+    port = ((Connector) server.getConnectors()[0]).getLocalPort();
   }
 
-  public void stop() throws Exception {
-    context.stop();
-    server.stop();
+  public void stop() {
+    try {
+      context.stop();
+      server.stop();
+    } catch (Exception e) {
+      throw new SamzaException(e);
+    }
+  }
+
+  public int getPort() {
+    return port;
   }
 }

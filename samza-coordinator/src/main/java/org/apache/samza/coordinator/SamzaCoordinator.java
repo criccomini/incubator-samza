@@ -19,6 +19,28 @@
 
 package org.apache.samza.coordinator;
 
-public class SamzaCoordinator {
+import org.apache.samza.coordinator.webapp.WebAppServer;
 
+public class SamzaCoordinator {
+  private final WebAppServer restServer;
+
+  public SamzaCoordinator(WebAppServer restServer) {
+    this.restServer = restServer;
+  }
+
+  public void run() {
+    try {
+      startRestServer();
+    } finally {
+      shutdownRestServer();
+    }
+  }
+
+  public void startRestServer() {
+    restServer.start();
+  }
+
+  public void shutdownRestServer() {
+    restServer.stop();
+  }
 }
