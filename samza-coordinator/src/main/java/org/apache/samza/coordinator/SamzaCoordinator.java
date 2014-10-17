@@ -19,13 +19,16 @@
 
 package org.apache.samza.coordinator;
 
-import org.apache.samza.coordinator.server.HttpServer;
+import org.apache.samza.coordinator.model.SamzaJobModel;
+import org.apache.samza.coordinator.server.SamzaCoordinatorServer;
 
 public class SamzaCoordinator {
+  private final SamzaJobModel jobModel;
   private final SamzaCoordinatorScheduler scheduler;
-  private final HttpServer server;
+  private final SamzaCoordinatorServer server;
 
-  public SamzaCoordinator(SamzaCoordinatorScheduler scheduler, HttpServer server) {
+  public SamzaCoordinator(SamzaJobModel jobModel, SamzaCoordinatorScheduler scheduler, SamzaCoordinatorServer server) {
+    this.jobModel = jobModel;
     this.scheduler = scheduler;
     this.server = server;
   }
@@ -33,14 +36,12 @@ public class SamzaCoordinator {
   public void run() {
     try {
       // startConfigStream();
-      // startContainerManager(); // task and container assignments
       startScheduler();
       startServer();
       awaitShutdown();
     } finally {
       shutdownServer();
       shutdownScheduler();
-      // shutdownContainerManager();
       // shutdownConfigStream();
     }
   }

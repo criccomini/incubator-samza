@@ -19,7 +19,7 @@
 package org.apache.samza.container.grouper.task
 
 import org.apache.samza.container.TaskNamesToSystemStreamPartitions
-
+TODO DELETE THIS CLASS
 /**
  * After the input SystemStreamPartitions have been mapped to their TaskNames by an implementation of
  * {@link org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouper}, we can then map those groupings onto
