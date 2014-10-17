@@ -19,6 +19,7 @@
 
 package org.apache.samza.coordinator.server;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.servlet.Servlet;
@@ -44,28 +45,32 @@ public class HttpServer {
   private final String resourceBasePath;
   private int port;
 
-  public HttpServer(Map<String, Servlet> servlets) {
-    this(servlets, 0);
+  public HttpServer() {
+    this(0);
   }
 
-  public HttpServer(Map<String, Servlet> servlets, int port) {
-    this(servlets, "/", null, port);
+  public HttpServer(int port) {
+    this("/", null, port);
   }
 
-  public HttpServer(Map<String, Servlet> servlets, String rootPath) {
-    this(servlets, rootPath, null);
+  public HttpServer(String rootPath) {
+    this(rootPath, null);
   }
 
-  public HttpServer(Map<String, Servlet> servlets, String rootPath, String resourceBasePath) {
-    this(servlets, rootPath, resourceBasePath, 0);
+  public HttpServer(String rootPath, String resourceBasePath) {
+    this(rootPath, resourceBasePath, 0);
   }
 
-  public HttpServer(Map<String, Servlet> servlets, String rootPath, String resourceBasePath, int port) {
-    this.servlets = servlets;
+  public HttpServer(String rootPath, String resourceBasePath, int port) {
+    this.servlets = new HashMap<String, Servlet>();
     this.rootPath = rootPath;
     this.resourceBasePath = resourceBasePath;
     this.server = new Server(port);
     this.context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+  }
+
+  public void addServlet(String path, Servlet servlet) {
+    servlets.put(path, servlet);
   }
 
   public void start() {

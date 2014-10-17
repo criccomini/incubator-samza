@@ -32,27 +32,38 @@ public class SamzaCoordinator {
 
   public void run() {
     try {
+      // startConfigStream();
+      // startContainerManager(); // task and container assignments
       startScheduler();
       startServer();
+      awaitShutdown();
     } finally {
       shutdownServer();
       shutdownScheduler();
+      // shutdownContainerManager();
+      // shutdownConfigStream();
     }
   }
 
   public void startScheduler() {
+    // TODO register
     scheduler.start();
   }
 
-  public void shutdownScheduler() {
-    scheduler.stop();
+  public void startServer() {
+    // TODO register
+    server.start();
   }
 
-  public void startServer() {
-    server.start();
+  public void awaitShutdown() {
+    scheduler.awaitShutdown();
   }
 
   public void shutdownServer() {
     server.stop();
+  }
+
+  public void shutdownScheduler() {
+    scheduler.stop();
   }
 }
