@@ -19,28 +19,40 @@
 
 package org.apache.samza.coordinator;
 
-import org.apache.samza.coordinator.webapp.WebAppServer;
+import org.apache.samza.coordinator.server.HttpServer;
 
 public class SamzaCoordinator {
-  private final WebAppServer restServer;
+  private final SamzaCoordinatorScheduler scheduler;
+  private final HttpServer server;
 
-  public SamzaCoordinator(WebAppServer restServer) {
-    this.restServer = restServer;
+  public SamzaCoordinator(SamzaCoordinatorScheduler scheduler, HttpServer server) {
+    this.scheduler = scheduler;
+    this.server = server;
   }
 
   public void run() {
     try {
-      startRestServer();
+      startScheduler();
+      startServer();
     } finally {
-      shutdownRestServer();
+      shutdownServer();
+      shutdownScheduler();
     }
   }
 
-  public void startRestServer() {
-    restServer.start();
+  public void startScheduler() {
+    scheduler.start();
   }
 
-  public void shutdownRestServer() {
-    restServer.stop();
+  public void shutdownScheduler() {
+    scheduler.stop();
+  }
+
+  public void startServer() {
+    server.start();
+  }
+
+  public void shutdownServer() {
+    server.stop();
   }
 }

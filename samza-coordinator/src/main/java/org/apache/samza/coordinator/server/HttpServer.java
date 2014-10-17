@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.samza.coordinator.webapp;
+package org.apache.samza.coordinator.server;
 
 import java.util.Map;
 
@@ -30,7 +30,7 @@ import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-public class WebAppServer {
+public class HttpServer {
   private static final ServletHolder DEFAULT_HOLDER = new ServletHolder(DefaultServlet.class);
 
   static {
@@ -44,23 +44,23 @@ public class WebAppServer {
   private final String resourceBasePath;
   private int port;
 
-  public WebAppServer(Map<String, Servlet> servlets) {
+  public HttpServer(Map<String, Servlet> servlets) {
     this(servlets, 0);
   }
 
-  public WebAppServer(Map<String, Servlet> servlets, int port) {
+  public HttpServer(Map<String, Servlet> servlets, int port) {
     this(servlets, "/", null, port);
   }
 
-  public WebAppServer(Map<String, Servlet> servlets, String rootPath) {
+  public HttpServer(Map<String, Servlet> servlets, String rootPath) {
     this(servlets, rootPath, null);
   }
 
-  public WebAppServer(Map<String, Servlet> servlets, String rootPath, String resourceBasePath) {
+  public HttpServer(Map<String, Servlet> servlets, String rootPath, String resourceBasePath) {
     this(servlets, rootPath, resourceBasePath, 0);
   }
 
-  public WebAppServer(Map<String, Servlet> servlets, String rootPath, String resourceBasePath, int port) {
+  public HttpServer(Map<String, Servlet> servlets, String rootPath, String resourceBasePath, int port) {
     this.servlets = servlets;
     this.rootPath = rootPath;
     this.resourceBasePath = resourceBasePath;

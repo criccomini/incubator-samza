@@ -17,26 +17,19 @@
  * under the License.
  */
 
-package org.apache.samza.coordinator.webapp;
+package org.apache.samza.coordinator.server;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.apache.samza.container.TaskName;
+import org.apache.samza.config.Config;
 
 @SuppressWarnings("serial")
-public class SamzaCoordinatorTaskMappingServlet extends SamzaCoordinatorBaseServlet {
-  private final Map<String, Integer> mapping;
+public class ServletConfig extends ServletBase {
+  private final Config config;
 
-  public SamzaCoordinatorTaskMappingServlet(Map<TaskName, Integer> mapping) {
-    this.mapping = new HashMap<String, Integer>();
-
-    for (Map.Entry<TaskName, Integer> taskToPartition : mapping.entrySet()) {
-      this.mapping.put(taskToPartition.getKey().toString(), taskToPartition.getValue());
-    }
+  public ServletConfig(Config config) {
+    this.config = config;
   }
 
   protected Object getObjectToWrite() {
-    return mapping;
+    return config;
   }
 }

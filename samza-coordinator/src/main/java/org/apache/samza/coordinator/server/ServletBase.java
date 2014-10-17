@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.samza.coordinator.webapp;
+package org.apache.samza.coordinator.server;
 
 import java.io.IOException;
 import javax.servlet.ServletException;
@@ -27,7 +27,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.codehaus.jackson.map.ObjectMapper;
 
 @SuppressWarnings("serial")
-public abstract class SamzaCoordinatorBaseServlet extends HttpServlet {
+public abstract class ServletBase extends HttpServlet {
   private final static ObjectMapper JSON_MAPPER = new ObjectMapper();
 
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
