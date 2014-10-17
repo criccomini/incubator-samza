@@ -37,7 +37,6 @@ import scala.collection.JavaConversions._
 import scala.collection
 import org.apache.samza.container.TaskName
 import org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouperFactory
-import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 
 object Util extends Logging {
   val random = new Random
