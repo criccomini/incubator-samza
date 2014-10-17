@@ -22,17 +22,21 @@ package org.apache.samza.coordinator.server;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.samza.container.TaskName;
+import org.apache.samza.coordinator.model.SamzaModelContainer;
+import org.apache.samza.coordinator.model.SamzaModelJob;
+import org.apache.samza.coordinator.model.SamzaModelTask;
 
 @SuppressWarnings("serial")
 public class ServletTaskMapping extends ServletBase {
   private final Map<String, Integer> mapping;
 
-  public ServletTaskMapping(Map<TaskName, Integer> mapping) {
+  public ServletTaskMapping(SamzaModelJob jobModel) {
     this.mapping = new HashMap<String, Integer>();
 
-    for (Map.Entry<TaskName, Integer> taskToPartition : mapping.entrySet()) {
-      this.mapping.put(taskToPartition.getKey().toString(), taskToPartition.getValue());
+    for (SamzaModelContainer contianer : jobModel.getContainers()) {
+      for (SamzaModelTask task : contianer.getTasks()) {
+        this.mapping.put(task.getTaskName().toString(), task.getChangelogPartition().getPartitionId());
+      }
     }
   }
 

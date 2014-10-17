@@ -19,15 +19,15 @@
 
 package org.apache.samza.coordinator;
 
-import org.apache.samza.coordinator.model.SamzaJobModel;
-import org.apache.samza.coordinator.server.SamzaCoordinatorServer;
+import org.apache.samza.coordinator.model.SamzaModelJob;
+import org.apache.samza.coordinator.server.HttpServer;
 
 public class SamzaCoordinator {
-  private final SamzaJobModel jobModel;
+  private final SamzaModelJob jobModel;
   private final SamzaCoordinatorScheduler scheduler;
-  private final SamzaCoordinatorServer server;
+  private final HttpServer server;
 
-  public SamzaCoordinator(SamzaJobModel jobModel, SamzaCoordinatorScheduler scheduler, SamzaCoordinatorServer server) {
+  public SamzaCoordinator(SamzaModelJob jobModel, SamzaCoordinatorScheduler scheduler, HttpServer server) {
     this.jobModel = jobModel;
     this.scheduler = scheduler;
     this.server = server;
@@ -35,36 +35,33 @@ public class SamzaCoordinator {
 
   public void run() {
     try {
-      // startConfigStream();
-      startScheduler();
       startServer();
+      startScheduler();
       awaitShutdown();
     } finally {
-      shutdownServer();
       shutdownScheduler();
-      // shutdownConfigStream();
+      shutdownServer();
     }
   }
 
-  public void startScheduler() {
-    // TODO register
-    scheduler.start();
+  public void startServer() {
+    server.start();
   }
 
-  public void startServer() {
-    // TODO register
-    server.start();
+  public void startScheduler() {
+    scheduler.register(server.getUri(), jobModel.getContainers().size());
+    scheduler.start();
   }
 
   public void awaitShutdown() {
     scheduler.awaitShutdown();
   }
 
-  public void shutdownServer() {
-    server.stop();
-  }
-
   public void shutdownScheduler() {
     scheduler.stop();
+  }
+
+  public void shutdownServer() {
+    server.stop();
   }
 }

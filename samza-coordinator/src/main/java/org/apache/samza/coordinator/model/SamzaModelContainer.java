@@ -3,11 +3,11 @@ package org.apache.samza.coordinator.model;
 import java.util.Collections;
 import java.util.Set;
 
-public class SamzaContainerModel {
+public class SamzaModelContainer {
   private final int id;
-  private final Set<SamzaTaskModel> tasks;
+  private final Set<SamzaModelTask> tasks;
 
-  public SamzaContainerModel(int id, Set<SamzaTaskModel> tasks) {
+  public SamzaModelContainer(int id, Set<SamzaModelTask> tasks) {
     this.id = id;
     this.tasks = Collections.unmodifiableSet(tasks);
   }
@@ -16,7 +16,7 @@ public class SamzaContainerModel {
     return id;
   }
 
-  public Set<SamzaTaskModel> getTasks() {
+  public Set<SamzaModelTask> getTasks() {
     return tasks;
   }
 }

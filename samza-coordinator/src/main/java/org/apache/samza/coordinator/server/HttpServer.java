@@ -19,6 +19,9 @@
 
 package org.apache.samza.coordinator.server;
 
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -110,5 +113,13 @@ public class HttpServer {
 
   public int getPort() {
     return port;
+  }
+
+  public URI getUri() {
+    try {
+      return URI.create("http://" + InetAddress.getLocalHost().getHostName() + ":" + port + "/" + rootPath);
+    } catch (UnknownHostException e) {
+      throw new SamzaException(e);
+    }
   }
 }
