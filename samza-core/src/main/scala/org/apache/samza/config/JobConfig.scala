@@ -35,7 +35,7 @@ object JobConfig {
   val CONFIG_REWRITER_CLASS = "job.config.rewriter.%s.class" // streaming.job_config_rewriter_class - regex, system, config
   val JOB_NAME = "job.name" // streaming.job_name
   val JOB_ID = "job.id" // streaming.job_id
-
+  val JOB_CONTAINER_COUNT = "job.container.count"
   val SSP_GROUPER_FACTORY = "job.systemstreampartition.grouper.factory"
 
   implicit def Config2Job(config: Config) = new JobConfig(config)
@@ -53,4 +53,6 @@ class JobConfig(config: Config) extends ScalaMapConfig(config) {
   def getConfigRewriterClass(name: String) = getOption(JobConfig.CONFIG_REWRITER_CLASS format name)
 
   def getSystemStreamPartitionGrouperFactory = getOption(JobConfig.SSP_GROUPER_FACTORY).getOrElse(classOf[GroupByPartitionFactory].getCanonicalName)
+
+  def getContainerCount = getOption(JobConfig.JOB_CONTAINER_COUNT)
 }
