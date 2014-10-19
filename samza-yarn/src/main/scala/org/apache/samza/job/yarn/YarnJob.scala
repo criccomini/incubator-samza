@@ -57,7 +57,7 @@ class YarnJob(config: Config, hadoopConfig: Configuration) extends StreamJob {
       config.getAMContainerMaxMemoryMb.getOrElse(DEFAULT_AM_CONTAINER_MEM),
       1,
       List(
-        "export SAMZA_LOG_DIR=%s && ln -sfn %s logs && exec ./__package/bin/run-am.sh 1>logs/%s 2>logs/%s"
+        "export SAMZA_LOG_DIR=%s && ln -sfn %s logs && exec ./__package/bin/run-coordinator.sh 1>logs/%s 2>logs/%s"
           format (ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.STDOUT, ApplicationConstants.STDERR)),
       Some(Map(
         ShellCommandConfig.ENV_CONFIG -> Util.envVarEscape(JsonConfigSerializer.toJson(config)),
