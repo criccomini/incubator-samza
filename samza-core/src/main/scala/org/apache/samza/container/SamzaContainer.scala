@@ -20,7 +20,6 @@
 package org.apache.samza.container
 
 import java.io.File
-
 import org.apache.samza.Partition
 import org.apache.samza.SamzaException
 import org.apache.samza.checkpoint.{CheckpointManagerFactory, OffsetManager}
@@ -33,7 +32,6 @@ import org.apache.samza.config.StreamConfig.Config2Stream
 import org.apache.samza.config.SystemConfig.Config2System
 import org.apache.samza.config.TaskConfig.Config2Task
 import org.apache.samza.config.serializers.JsonConfigSerializer
-import org.apache.samza.job.ShellCommandBuilder
 import org.apache.samza.metrics.JmxServer
 import org.apache.samza.metrics.JvmMetrics
 import org.apache.samza.metrics.MetricsRegistryMap
@@ -61,8 +59,8 @@ import org.apache.samza.task.TaskLifecycleListener
 import org.apache.samza.task.TaskLifecycleListenerFactory
 import org.apache.samza.util.Logging
 import org.apache.samza.util.Util
-
 import scala.collection.JavaConversions._
+import org.apache.samza.util.JsonHelpers
 
 object SamzaContainer extends Logging {
 
@@ -113,7 +111,7 @@ object SamzaContainer extends Logging {
 
   def getTaskNameToSystemStreamPartition(SSPTaskNamesJSON: String) = {
     // Convert into a standard Java map
-    val sspTaskNamesAsJava: Map[TaskName, Set[SystemStreamPartition]] = ShellCommandBuilder.deserializeSystemStreamPartitionSetFromJSON(SSPTaskNamesJSON)
+    val sspTaskNamesAsJava: Map[TaskName, Set[SystemStreamPartition]] = JsonHelpers.deserializeSystemStreamPartitionSetFromJSON(SSPTaskNamesJSON)
 
     // From that map build the TaskNamesToSystemStreamPartitions
     val sspTaskNames = TaskNamesToSystemStreamPartitions(sspTaskNamesAsJava)
@@ -127,7 +125,7 @@ object SamzaContainer extends Logging {
 
   def getTaskNameToChangeLogPartitionMapping(taskNameToChangeLogPartitionMappingJSON: String) = {
     // Convert that mapping into a Map
-    val taskNameToChangeLogPartitionMapping = ShellCommandBuilder.deserializeTaskNameToChangeLogPartitionMapping(taskNameToChangeLogPartitionMappingJSON).map(kv => kv._1 -> Integer.valueOf(kv._2))
+    val taskNameToChangeLogPartitionMapping = JsonHelpers.deserializeTaskNameToChangeLogPartitionMapping(taskNameToChangeLogPartitionMappingJSON).map(kv => kv._1 -> Integer.valueOf(kv._2))
 
     taskNameToChangeLogPartitionMapping
   }
