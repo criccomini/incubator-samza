@@ -18,7 +18,6 @@
  */
 include \
   'samza-api',
-  'samza-coordinator',
   'samza-core',
   'samza-kafka',
   'samza-kv',
