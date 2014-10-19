@@ -11,7 +11,6 @@ import org.apache.samza.system.SystemStreamPartition
 import scala.collection.JavaConversions._
 import org.apache.samza.util.Logging
 import org.apache.samza.config.JobConfig._
-import org.apache.samza.container.grouper.task.GroupByContainerCount
 import org.apache.samza.container.TaskName
 import org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouper
 import org.apache.samza.container.grouper.task.TaskGrouper
@@ -24,6 +23,7 @@ import org.apache.samza.job.StreamJobFactory
 import org.apache.samza.config.MapConfig
 import org.apache.samza.config.serializers.JsonConfigSerializer
 import org.apache.samza.config.ShellCommandConfig
+import org.apache.samza.container.grouper.task.GroupByContainerCount
 
 object SamzaCoordinatorRunner extends Logging {
   def main(args: Array[String]) {

@@ -26,8 +26,18 @@ import org.apache.samza.job.ApplicationStatus.New
 import org.apache.samza.job.ApplicationStatus.Running
 import org.apache.samza.job.ApplicationStatus.SuccessfulFinish
 import org.apache.samza.job.ApplicationStatus.UnsuccessfulFinish
+import org.apache.samza.coordinator.SamzaCoordinator
 
-class ThreadJob(runnable: Runnable) extends StreamJob with Logging {
+class ThreadJob(coordinator: SamzaCoordinator) extends StreamJob with Logging {
+  // TODO start executor
+  def submit: StreamJob = null
+  def kill: StreamJob = null
+  def waitForFinish(timeoutMs: Long) = null
+  def waitForStatus(status: ApplicationStatus, timeoutMs: Long) = null
+  def getStatus = null
+}
+
+class ThreadJobExecutor(runnable: Runnable) extends StreamJob with Logging {
   @volatile var jobStatus: Option[ApplicationStatus] = None
   var thread: Thread = null
 
@@ -53,13 +63,12 @@ class ThreadJob(runnable: Runnable) extends StreamJob with Logging {
     thread.setName("ThreadJob")
     thread.start
     jobStatus = Some(Running)
-
-    ThreadJob.this
+    this
   }
 
   def kill: StreamJob = {
     thread.interrupt
-    ThreadJob.this
+    this
   }
 
   def waitForFinish(timeoutMs: Long) = {

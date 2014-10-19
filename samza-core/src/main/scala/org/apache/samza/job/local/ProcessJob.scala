@@ -36,6 +36,11 @@ import org.apache.samza.coordinator.SamzaCoordinator
 
 class ProcessJob(coordinator: SamzaCoordinator) extends StreamJob {
   // TODO start executors here
+  def submit: StreamJob = null
+  def kill: StreamJob = null
+  def waitForFinish(timeoutMs: Long) = null
+  def waitForStatus(status: ApplicationStatus, timeoutMs: Long) = null
+  def getStatus = null
 }
 
 class ProcessJobExecutor(processBuilder: ProcessBuilder) extends StreamJob with Logging {
@@ -67,14 +72,13 @@ class ProcessJobExecutor(processBuilder: ProcessBuilder) extends StreamJob with 
     procThread.start
     waitForThreadStart.await
     jobStatus = Some(Running)
-
-    ProcessJob.this
+    this
   }
 
   def kill: StreamJob = {
     process.destroy
-    jobStatus = Some(UnsuccessfulFinish); 
-    ProcessJob.this
+    jobStatus = Some(UnsuccessfulFinish);
+    this
   }
 
   def waitForFinish(timeoutMs: Long) = {

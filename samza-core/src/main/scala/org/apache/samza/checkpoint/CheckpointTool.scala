@@ -133,6 +133,8 @@ class CheckpointTool(config: Config, newOffsets: TaskNameToCheckpointMap) extend
   // the manager. TODO figure out some way of avoiding duplicated work.
 
   def run {
+    // TODO make this work.
+    /*
     info("Using %s" format manager)
 
     // Find all the TaskNames that would be generated for this job config
@@ -154,6 +156,7 @@ class CheckpointTool(config: Config, newOffsets: TaskNameToCheckpointMap) extend
     }
 
     manager.stop
+    */
   }
 
   /** Load the most recent checkpoint state for all a specified TaskName. */

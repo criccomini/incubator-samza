@@ -32,4 +32,7 @@ class ProcessJobFactory extends StreamJobFactory with Logging {
   def getJob(config: Config): StreamJob = {
     new ProcessJob(SamzaCoordinatorRunner(config))
   }
+
+  // TODO
+  def getScheduler(config: Config) = null;
 }

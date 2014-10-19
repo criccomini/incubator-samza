@@ -23,7 +23,7 @@ import java.io.File
 
 import org.apache.samza.Partition
 import org.apache.samza.SamzaException
-import org.apache.samza.checkpoint.{CheckpointManagerFactory, OffsetManager}
+import org.apache.samza.checkpoint.{ CheckpointManagerFactory, OffsetManager }
 import org.apache.samza.config.Config
 import org.apache.samza.config.MetricsConfig.Config2Metrics
 import org.apache.samza.config.SerializerConfig.Config2Serializer
@@ -71,7 +71,7 @@ object SamzaContainer extends Logging {
    * @param param The parameter which is to be decompressed (if necessary)
    * @return A valid parameter value
    */
-  def getParameter(param: String, isCompressed: Boolean) : String = {
+  def getParameter(param: String, isCompressed: Boolean): String = {
     if (isCompressed) {
       info("Compression is ON !")
       val decomressedParam = Util.decompress(param)
@@ -115,14 +115,11 @@ object SamzaContainer extends Logging {
     // Convert into a standard Java map
     val sspTaskNamesAsJava: Map[TaskName, Set[SystemStreamPartition]] = ShellCommandBuilder.deserializeSystemStreamPartitionSetFromJSON(SSPTaskNamesJSON)
 
-    // From that map build the TaskNamesToSystemStreamPartitions
-    val sspTaskNames = TaskNamesToSystemStreamPartitions(sspTaskNamesAsJava)
-
-    if (sspTaskNames.isEmpty) {
+    if (sspTaskNamesAsJava.isEmpty) {
       throw new SamzaException("No SystemStreamPartitions for this task. Can't run a task without SystemStreamPartition assignments.")
     }
 
-    sspTaskNames
+    sspTaskNamesAsJava
   }
 
   def getTaskNameToChangeLogPartitionMapping(taskNameToChangeLogPartitionMappingJSON: String) = {
@@ -132,7 +129,7 @@ object SamzaContainer extends Logging {
     taskNameToChangeLogPartitionMapping
   }
 
-  def apply(containerName: String, sspTaskNames: TaskNamesToSystemStreamPartitions, taskNameToChangeLogPartitionMapping: Map[TaskName, java.lang.Integer], config: Config) = {
+  def apply(containerName: String, sspTaskNames: Map[TaskName, Set[SystemStreamPartition]], taskNameToChangeLogPartitionMapping: Map[TaskName, java.lang.Integer], config: Config) = {
     val containerPID = Util.getContainerPID
 
     info("Setting up Samza container: %s" format containerName)
@@ -145,7 +142,18 @@ object SamzaContainer extends Logging {
     val systemProducersMetrics = new SystemProducersMetrics(registry)
     val systemConsumersMetrics = new SystemConsumersMetrics(registry)
 
-    val inputSystems = sspTaskNames.getAllSystems()
+    val inputSystemStreamPartitions = sspTaskNames
+      .values
+      .flatten
+      .toSet
+
+    val inputSystemStreams = inputSystemStreamPartitions
+      .map(_.getSystemStream)
+      .toSet
+
+    val inputSystems = inputSystemStreams
+      .map(_.getSystem)
+      .toSet
 
     val systemNames = config.getSystemNames
 
@@ -173,7 +181,7 @@ object SamzaContainer extends Logging {
     info("Got system factories: %s" format systemFactories.keys)
 
     val streamMetadataCache = new StreamMetadataCache(systemAdmins)
-    val inputStreamMetadata = streamMetadataCache.getStreamMetadata(sspTaskNames.getAllSystemStreams)
+    val inputStreamMetadata = streamMetadataCache.getStreamMetadata(inputSystemStreams)
 
     info("Got input stream metadata: %s" format inputStreamMetadata)
 
@@ -242,7 +250,7 @@ object SamzaContainer extends Logging {
      * A Helper function to build a Map[SystemStream, Serde] for streams defined in the config. This is useful to build both key and message serde maps.
      */
     val buildSystemStreamSerdeMap = (getSerdeName: (SystemStream) => Option[String]) => {
-      (serdeStreams ++ sspTaskNames.getAllSSPs())
+      (serdeStreams ++ inputSystemStreamPartitions)
         .filter(systemStream => getSerdeName(systemStream).isDefined)
         .map(systemStream => {
           val serdeName = getSerdeName(systemStream).get
