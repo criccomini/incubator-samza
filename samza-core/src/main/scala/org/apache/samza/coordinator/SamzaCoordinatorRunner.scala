@@ -10,7 +10,7 @@ import org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouperFac
 import org.apache.samza.system.SystemStreamPartition
 import scala.collection.JavaConversions._
 import org.apache.samza.util.Logging
-import org.apache.samza.config.JobConfig.Config2Job
+import org.apache.samza.config.JobConfig._
 import org.apache.samza.container.grouper.task.GroupByContainerCount
 import org.apache.samza.container.TaskName
 import org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouper
@@ -19,9 +19,17 @@ import org.apache.samza.Partition
 import java.util.Collections
 import org.apache.samza.coordinator.model.SamzaModelContainer
 import org.apache.samza.coordinator.model.SamzaModelTask
+import org.apache.samza.config.ConfigException
+import org.apache.samza.job.StreamJobFactory
+import org.apache.samza.config.MapConfig
+import org.apache.samza.config.serializers.JsonConfigSerializer
+import org.apache.samza.config.ShellCommandConfig
 
 object SamzaCoordinatorRunner extends Logging {
   def main(args: Array[String]) {
+    val config = new MapConfig(JsonConfigSerializer.fromJson(System.getenv(ShellCommandConfig.ENV_CONFIG)))
+    
+    SamzaCoordinatorRunner(config).run
   }
 
   def apply(config: Config) = {
@@ -29,6 +37,7 @@ object SamzaCoordinatorRunner extends Logging {
     val systemStreamPartitionGrouper = getSystemStreamPartitionGrouper(config)
     val taskGrouper = getTaskGrouper(config)
     val jobModel = getJobModel(systemStreamPartitionGrouper, taskGrouper, systemStreamPartitions, null)
+    val scheduler = getSamzaCoordinatorScheduler(config)
     val server = getHttpServer(jobModel, config)
     new SamzaCoordinator(jobModel, scheduler, server)
   }
@@ -82,6 +91,14 @@ object SamzaCoordinatorRunner extends Logging {
     }.toSet
 
     new SamzaModelJob(containers);
+  }
+
+  def getSamzaCoordinatorScheduler(config: Config) = {
+    val factoryString = config
+      .getStreamJobFactoryClass
+      .getOrElse(throw new ConfigException("Missing config for %s." format STREAM_JOB_FACTORY_CLASS))
+    val factory = Util.getObj[StreamJobFactory](factoryString)
+    factory.getScheduler(config)
   }
 
   def getHttpServer(jobModel: SamzaModelJob, config: Config) = {

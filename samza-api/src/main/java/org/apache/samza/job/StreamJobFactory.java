@@ -20,10 +20,13 @@
 package org.apache.samza.job;
 
 import org.apache.samza.config.Config;
+import org.apache.samza.coordinator.SamzaCoordinatorScheduler;
 
 /**
  * Build a {@link org.apache.samza.job.StreamJob}
  */
 public interface StreamJobFactory {
   StreamJob getJob(Config config);
+  
+  SamzaCoordinatorScheduler getScheduler(Config config);
 }
