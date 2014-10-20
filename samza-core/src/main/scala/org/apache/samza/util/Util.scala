@@ -344,4 +344,24 @@ object Util extends Logging {
     }
     builder.toString()
   }
+
+  /**
+   * Reads a URL and returns its body as a string. Does no error handling.
+   *
+   * @param url HTTP URL to read from.
+   * @return String payload of the body of the HTTP response.
+   */
+  def read(url: URL): String = {
+    val conn = url.openConnection();
+    val br = new BufferedReader(new InputStreamReader(conn.getInputStream));
+    var line: String = null;
+    var body = ""
+
+    do {
+      line = br.readLine
+      body += line
+    } while (line != null)
+    br.close
+    body
+  }
 }
