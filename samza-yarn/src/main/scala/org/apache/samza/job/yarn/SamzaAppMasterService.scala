@@ -24,6 +24,8 @@ import org.apache.samza.webapp._
 import org.apache.samza.config.Config
 import org.apache.samza.metrics.ReadableMetricsRegistry
 import org.apache.samza.SamzaException
+import org.apache.samza.coordinator.server.HttpServer
+import org.apache.samza.coordinator.server.JobServlet
 
 /**
  * Samza's application master runs a very basic HTTP/JSON service to allow
@@ -33,6 +35,7 @@ import org.apache.samza.SamzaException
 class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry: ReadableMetricsRegistry, clientHelper: ClientHelper) extends YarnAppMasterListener with Logging {
   var rpcApp: WebAppServer = null
   var webApp: WebAppServer = null
+  var coordinatorApp: HttpServer = null
 
   override def onInit() {
     // try starting the samza AM dashboard at a random rpc and tracking port
@@ -45,6 +48,10 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     webApp = new WebAppServer("/")
     webApp.addServlet("/*", new ApplicationMasterWebServlet(config, state))
     webApp.start
+
+    coordinatorApp = new HttpServer
+    coordinatorApp.addServlet("/*", new JobServlet(config, state.tasksToSSPTaskNames, state.taskNameToChangeLogPartitionMapping))
+    coordinatorApp.start
 
     state.rpcPort = rpcApp.port
     state.trackingPort = webApp.port
@@ -64,6 +71,10 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     if (webApp != null) {
       webApp.context.stop
       webApp.server.stop
+    }
+
+    if (coordinatorApp != null) {
+      coordinatorApp.stop
     }
   }
 }

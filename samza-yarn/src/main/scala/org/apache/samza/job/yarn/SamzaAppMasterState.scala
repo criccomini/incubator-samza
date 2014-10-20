@@ -24,6 +24,7 @@ import org.apache.hadoop.yarn.api.records.ContainerId
 import java.util
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.container.TaskName
+import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 
 /**
  * Samza's application master has state that is usually manipulated based on
@@ -40,7 +41,9 @@ class SamzaAppMasterState(val taskId: Int, val containerId: ContainerId, val nod
   var unclaimedTasks = Set[Int]()
   var finishedTasks = Set[Int]()
   var runningTasks = Map[Int, YarnContainer]()
-  var taskToTaskNames = Map[Int, util.Map[TaskName, util.Set[SystemStreamPartition]]]()
+  var runningTaskToTaskNames = Map[Int, util.Map[TaskName, util.Set[SystemStreamPartition]]]()
+  var tasksToSSPTaskNames = Map[Int, TaskNamesToSystemStreamPartitions]()
+  var taskNameToChangeLogPartitionMapping = Map[TaskName, Int]()
   var status = FinalApplicationStatus.UNDEFINED
   var jobHealthy = true
 

@@ -84,7 +84,7 @@ class ApplicationMasterRestServlet(config: Config, state: SamzaAppMasterState, r
       val containerMap = new HashMap[String, Object]
 
       val taskId = state.runningTasks.filter { case (_, container) => container.id.toString.equals(containerIdStr) }.keys.head
-      val taskNames = new java.util.ArrayList(state.taskToTaskNames.get(taskId).get.toList)
+      val taskNames = new java.util.ArrayList(state.runningTaskToTaskNames.get(taskId).get.toList)
 
       containerMap.put("yarn-address", c.nodeHttpAddress)
       containerMap.put("start-time", c.startTime.toString)
