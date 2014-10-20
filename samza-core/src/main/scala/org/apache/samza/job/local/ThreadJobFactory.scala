@@ -24,10 +24,12 @@ import org.apache.samza.SamzaException
 import org.apache.samza.config.Config
 import org.apache.samza.config.ShellCommandConfig._
 import org.apache.samza.config.TaskConfig._
-import org.apache.samza.container.{TaskNamesToSystemStreamPartitions, SamzaContainer}
-import org.apache.samza.job.{StreamJob, StreamJobFactory}
+import org.apache.samza.container.{ TaskNamesToSystemStreamPartitions, SamzaContainer }
+import org.apache.samza.job.{ StreamJob, StreamJobFactory }
 import org.apache.samza.util.Util
 import org.apache.samza.config.JobConfig._
+import org.apache.samza.coordinator.server.HttpServer
+import org.apache.samza.coordinator.server.JobServlet
 
 /**
  * Creates a new Thread job with the given config
@@ -38,7 +40,7 @@ class ThreadJobFactory extends StreamJobFactory with Logging {
 
     // Since we're local, there will only be a single task into which all the SSPs will be processed
     val taskToTaskNames: Map[Int, TaskNamesToSystemStreamPartitions] = Util.assignContainerToSSPTaskNames(config, 1)
-    if(taskToTaskNames.size != 1) {
+    if (taskToTaskNames.size != 1) {
       throw new SamzaException("Should only have a single task count but somehow got more " + taskToTaskNames.size)
     }
 
@@ -48,9 +50,12 @@ class ThreadJobFactory extends StreamJobFactory with Logging {
       throw new SamzaException("No SystemStreamPartitions to process were detected for your input streams. It's likely that the system(s) specified don't know about the input streams: %s" format config.getInputStreams)
     }
 
-    val taskNameToChangeLogPartitionMapping = Util.getTaskNameToChangeLogPartitionMapping(config, taskToTaskNames).map(kv => kv._1 -> Integer.valueOf(kv._2))
+    val taskNameToChangeLogPartitionMapping = Util.getTaskNameToChangeLogPartitionMapping(config, taskToTaskNames)
     info("got taskName for job %s" format sspTaskName)
     info("Creating a ThreadJob, which is only meant for debugging.")
+
+    val server = new HttpServer()
+    server.addServlet("/*", new JobServlet(config, taskToTaskNames, taskNameToChangeLogPartitionMapping))
 
     // Give developers a nice friendly warning if they've specified task.opts and are using a threaded job.
     config.getTaskOpts match {
@@ -60,6 +65,6 @@ class ThreadJobFactory extends StreamJobFactory with Logging {
 
     // No command class was specified, so execute the job in this process
     // using a threaded job.
-    new ThreadJob(SamzaContainer(jobName, sspTaskName, taskNameToChangeLogPartitionMapping, config))
+    new ThreadJob(server, SamzaContainer(jobName, sspTaskName, taskNameToChangeLogPartitionMapping.mapValues(Integer.valueOf(_)), config))
   }
 }

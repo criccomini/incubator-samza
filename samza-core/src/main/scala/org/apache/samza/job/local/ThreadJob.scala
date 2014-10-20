@@ -26,13 +26,15 @@ import org.apache.samza.job.ApplicationStatus.New
 import org.apache.samza.job.ApplicationStatus.Running
 import org.apache.samza.job.ApplicationStatus.SuccessfulFinish
 import org.apache.samza.job.ApplicationStatus.UnsuccessfulFinish
+import org.apache.samza.coordinator.server.HttpServer
 
-class ThreadJob(runnable: Runnable) extends StreamJob with Logging {
+class ThreadJob(server: HttpServer, runnable: Runnable) extends StreamJob with Logging {
   @volatile var jobStatus: Option[ApplicationStatus] = None
   var thread: Thread = null
 
   def submit: StreamJob = {
     jobStatus = Some(New)
+    server.start
 
     // create a non-daemon thread to make job runner block until the job finishes.
     // without this, the proc dies when job runner ends.
@@ -47,18 +49,20 @@ class ThreadJob(runnable: Runnable) extends StreamJob with Logging {
             jobStatus = Some(UnsuccessfulFinish)
             throw e
           }
+        } finally {
+          shutdown
         }
       }
     }
     thread.setName("ThreadJob")
     thread.start
     jobStatus = Some(Running)
-
     ThreadJob.this
   }
 
   def kill: StreamJob = {
     thread.interrupt
+    shutdown
     ThreadJob.this
   }
 
@@ -78,4 +82,8 @@ class ThreadJob(runnable: Runnable) extends StreamJob with Logging {
   }
 
   def getStatus = jobStatus.getOrElse(null)
+
+  private def shutdown {
+    server.stop
+  }
 }

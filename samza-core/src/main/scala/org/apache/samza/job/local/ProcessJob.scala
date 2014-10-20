@@ -32,14 +32,16 @@ import java.io.InputStreamReader
 import java.io.InputStream
 import java.io.OutputStream
 import org.apache.samza.SamzaException
+import org.apache.samza.coordinator.server.HttpServer
 
-class ProcessJob(processBuilder: ProcessBuilder) extends StreamJob with Logging {
+class ProcessJob(server: HttpServer, processBuilder: ProcessBuilder) extends StreamJob with Logging {
   var jobStatus: Option[ApplicationStatus] = None
   var process: Process = null
 
   def submit: StreamJob = {
     val waitForThreadStart = new CountDownLatch(1)
     jobStatus = Some(New)
+    server.start
 
     // create a non-daemon thread to make job runner block until the job finishes.
     // without this, the proc dies when job runner ends.
@@ -56,19 +58,20 @@ class ProcessJob(processBuilder: ProcessBuilder) extends StreamJob with Logging 
         errThread.start
         waitForThreadStart.countDown
         process.waitFor
+        shutdown
       }
     }
 
     procThread.start
     waitForThreadStart.await
     jobStatus = Some(Running)
-
     ProcessJob.this
   }
 
   def kill: StreamJob = {
     process.destroy
-    jobStatus = Some(UnsuccessfulFinish); 
+    jobStatus = Some(UnsuccessfulFinish);
+    shutdown
     ProcessJob.this
   }
 
@@ -79,7 +82,7 @@ class ProcessJob(processBuilder: ProcessBuilder) extends StreamJob with Logging 
         try {
           process.waitFor
         } catch {
-          case e: InterruptedException => None
+          case e: InterruptedException => shutdown
         }
       }
     }
@@ -101,6 +104,10 @@ class ProcessJob(processBuilder: ProcessBuilder) extends StreamJob with Logging 
   }
 
   def getStatus = jobStatus.getOrElse(null)
+
+  private def shutdown {
+    server.stop
+  }
 }
 
 /**
