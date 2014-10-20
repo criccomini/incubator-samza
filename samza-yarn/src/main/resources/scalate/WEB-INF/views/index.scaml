@@ -128,7 +128,7 @@
             %th SystemStreamPartitions
             %th Container
         %tbody
-          - for((taskId, taskNames) <- state.taskToTaskNames)
+          - for((taskId, taskNames) <- state.runningTaskToTaskNames)
             - for((taskName, ssps) <- taskNames)
               %tr
                 %td= taskId

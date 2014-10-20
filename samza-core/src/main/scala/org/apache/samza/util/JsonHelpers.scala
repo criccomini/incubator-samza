@@ -3,28 +3,29 @@ package org.apache.samza.util
 import org.apache.samza.container.TaskName
 import org.codehaus.jackson.map.ObjectMapper
 import org.apache.samza.system.SystemStreamPartition
-import scala.reflect.BeanProperty
 import org.codehaus.jackson.`type`.TypeReference
 import java.util
 import scala.collection.JavaConversions._
 import org.apache.samza.Partition
+import scala.reflect.BeanProperty
 
 object JsonHelpers {
   // Jackson really hates Scala's classes, so we need to wrap up the SSP in a form Jackson will take.
-  private class SSPWrapper(@BeanProperty var partition: java.lang.Integer = null,
+  class SSPWrapper(@BeanProperty var partition: java.lang.Integer = null,
     @BeanProperty var Stream: java.lang.String = null,
     @BeanProperty var System: java.lang.String = null) {
     def this() { this(null, null, null) }
     def this(ssp: SystemStreamPartition) { this(ssp.getPartition.getPartitionId, ssp.getSystemStream.getStream, ssp.getSystemStream.getSystem) }
   }
 
-  def convertSystemStreamPartitionSetToJSON(sspTaskNames: java.util.Map[TaskName, java.util.Set[SystemStreamPartition]]) = {
+  def convertSystemStreamPartitionSetToJSON(sspTaskNames: java.util.Map[TaskName, java.util.Set[SystemStreamPartition]]): util.HashMap[TaskName, util.ArrayList[SSPWrapper]] = {
     val map = new util.HashMap[TaskName, util.ArrayList[SSPWrapper]]()
     for ((key, ssps) <- sspTaskNames) {
       val al = new util.ArrayList[SSPWrapper](ssps.size)
       for (ssp <- ssps) { al.add(new SSPWrapper(ssp)) }
       map.put(key, al)
     }
+    map
   }
 
   def serializeSystemStreamPartitionSetToJSON(sspTaskNames: java.util.Map[TaskName, java.util.Set[SystemStreamPartition]]) = {
@@ -42,7 +43,7 @@ object JsonHelpers {
     taskName.toMap // to get an immutable map rather than mutable...
   }
 
-  def convertTaskNameToChangeLogPartitionMapping(mapping: Map[TaskName, Int]) = {
+  def convertTaskNameToChangeLogPartitionMapping(mapping: Map[TaskName, Int]): util.HashMap[TaskName, java.lang.Integer] = {
     val javaMap = new util.HashMap[TaskName, java.lang.Integer]()
     mapping.foreach(kv => javaMap.put(kv._1, Integer.valueOf(kv._2)))
     javaMap

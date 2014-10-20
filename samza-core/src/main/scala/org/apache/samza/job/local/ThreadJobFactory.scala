@@ -65,6 +65,6 @@ class ThreadJobFactory extends StreamJobFactory with Logging {
 
     // No command class was specified, so execute the job in this process
     // using a threaded job.
-    new ThreadJob(server, SamzaContainer(jobName, sspTaskName, taskNameToChangeLogPartitionMapping.mapValues(Integer.valueOf(_)), config))
+    new ThreadJob(SamzaContainer(jobName, sspTaskName, taskNameToChangeLogPartitionMapping.mapValues(Integer.valueOf(_)), config), server)
   }
 }

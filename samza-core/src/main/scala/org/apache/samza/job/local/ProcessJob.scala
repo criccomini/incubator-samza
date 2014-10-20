@@ -34,7 +34,7 @@ import java.io.OutputStream
 import org.apache.samza.SamzaException
 import org.apache.samza.coordinator.server.HttpServer
 
-class ProcessJob(server: HttpServer, processBuilder: ProcessBuilder) extends StreamJob with Logging {
+class ProcessJob(processBuilder: ProcessBuilder, server: HttpServer = new HttpServer) extends StreamJob with Logging {
   var jobStatus: Option[ApplicationStatus] = None
   var process: Process = null
 

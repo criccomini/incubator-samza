@@ -55,8 +55,9 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
 
     state.rpcPort = rpcApp.port
     state.trackingPort = webApp.port
+    state.coordinatorUri = coordinatorApp.getUri
     if (state.rpcPort > 0 && state.trackingPort > 0) {
-      info("Webapp is started at rpc %d, tracking port %d" format (state.rpcPort, state.trackingPort))
+      info("Webapp is started at rpc %d, tracking port %d, coordinator uri %s" format (state.rpcPort, state.trackingPort, state.coordinatorUri))
     } else {
       throw new SamzaException("Unable to start webapp, since the host is out of ports")
     }

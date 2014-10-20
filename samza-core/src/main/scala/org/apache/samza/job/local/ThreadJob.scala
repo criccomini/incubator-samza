@@ -28,7 +28,7 @@ import org.apache.samza.job.ApplicationStatus.SuccessfulFinish
 import org.apache.samza.job.ApplicationStatus.UnsuccessfulFinish
 import org.apache.samza.coordinator.server.HttpServer
 
-class ThreadJob(server: HttpServer, runnable: Runnable) extends StreamJob with Logging {
+class ThreadJob(runnable: Runnable, server: HttpServer = new HttpServer) extends StreamJob with Logging {
   @volatile var jobStatus: Option[ApplicationStatus] = None
   var thread: Thread = null
 

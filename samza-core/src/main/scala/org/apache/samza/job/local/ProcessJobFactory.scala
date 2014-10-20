@@ -82,6 +82,6 @@ class ProcessJobFactory extends StreamJobFactory with Logging {
       .environment
       .putAll(commandBuilder.buildEnvironment)
 
-    new ProcessJob(server, processBuilder)
+    new ProcessJob(processBuilder, server)
   }
 }
