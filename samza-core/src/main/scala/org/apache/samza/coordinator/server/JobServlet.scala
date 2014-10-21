@@ -25,10 +25,17 @@ import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 import org.apache.samza.util.JsonHelpers
 import org.apache.samza.container.TaskName
 
+object JobServlet {
+  val CONFIG = "config"
+  val CONTAINERS = "containers"
+  val TASK_CHANGELOG_MAPPING = "task-changelog-mappings"
+}
+
 class JobServlet(
   config: Config,
   containerToTaskMapping: Map[Int, TaskNamesToSystemStreamPartitions],
   taskToChangelogMapping: Map[TaskName, Int]) extends ServletBase {
+  import JobServlet._
   import JsonHelpers._
 
   val javaSafeContainerToTaskMapping = buildTasksToSSPs
@@ -50,9 +57,9 @@ class JobServlet(
 
   private def buildJsonMap = {
     val map = new HashMap[String, Object]()
-    map.put("config", config)
-    map.put("containers", javaSafeContainerToTaskMapping)
-    map.put("task-changelog-mappings", javaSafeTaskToChangelogMappings)
+    map.put(CONFIG, config)
+    map.put(CONTAINERS, javaSafeContainerToTaskMapping)
+    map.put(TASK_CHANGELOG_MAPPING, javaSafeTaskToChangelogMappings)
     map
   }
 }

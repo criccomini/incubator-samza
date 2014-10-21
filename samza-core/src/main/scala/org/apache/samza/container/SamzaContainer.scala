@@ -62,6 +62,7 @@ import org.apache.samza.util.Util
 import scala.collection.JavaConversions._
 import org.apache.samza.util.JsonHelpers
 import java.net.URL
+import org.apache.samza.coordinator.server.JobServlet
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -83,11 +84,19 @@ object SamzaContainer extends Logging {
     }
   }
 
+  /**
+   * Fetches config, task:SSP assignments, and task:changelog partition
+   * assignments, and returns objects to be used for SamzaContainer's
+   * constructor.
+   */
   def getCoordinatorObjects(coordinatorUrl: String) = {
     val rawCoordinatorObjects = JsonHelpers.deserializeCoordinatorBody(Util.read(new URL(coordinatorUrl)))
-    val config = JsonHelpers.convertCoordinatorConfig(rawCoordinatorObjects.get("config").asInstanceOf[java.util.Map[String, String]])
-    val sspTaskNames = JsonHelpers.convertCoordinatorSSPTaskNames(rawCoordinatorObjects.get("containers").asInstanceOf[java.util.Map[String, java.util.Map[String, java.util.List[java.util.Map[String, Object]]]]])
-    val taskNameToChangeLogPartitionMapping = JsonHelpers.convertCoordinatorTaskNameChangelogPartitions(rawCoordinatorObjects.get("task-changelog-mappings").asInstanceOf[java.util.Map[String, java.lang.Integer]])
+    val rawConfig = rawCoordinatorObjects.get(JobServlet.CONFIG).asInstanceOf[java.util.Map[String, String]]
+    val rawContainers = rawCoordinatorObjects.get(JobServlet.CONTAINERS).asInstanceOf[java.util.Map[String, java.util.Map[String, java.util.List[java.util.Map[String, Object]]]]]
+    val rawTaskChangelogMapping = rawCoordinatorObjects.get(JobServlet.TASK_CHANGELOG_MAPPING).asInstanceOf[java.util.Map[String, java.lang.Integer]]
+    val config = JsonHelpers.convertCoordinatorConfig(rawConfig)
+    val sspTaskNames = JsonHelpers.convertCoordinatorSSPTaskNames(rawContainers)
+    val taskNameToChangeLogPartitionMapping = JsonHelpers.convertCoordinatorTaskNameChangelogPartitions(rawTaskChangelogMapping)
     (config, sspTaskNames, taskNameToChangeLogPartitionMapping)
   }
 
