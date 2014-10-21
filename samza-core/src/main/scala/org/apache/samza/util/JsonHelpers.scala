@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.samza.util
 
 import org.apache.samza.container.TaskName
@@ -30,35 +49,10 @@ object JsonHelpers {
     map
   }
 
-  def serializeSystemStreamPartitionSetToJSON(sspTaskNames: java.util.Map[TaskName, java.util.Set[SystemStreamPartition]]) = {
-    new ObjectMapper().writeValueAsString(convertSystemStreamPartitionSetToJSON(sspTaskNames))
-  }
-
-  def deserializeSystemStreamPartitionSetFromJSON(sspsAsJSON: String): Map[TaskName, Set[SystemStreamPartition]] = {
-    val om = new ObjectMapper()
-    val asWrapper = om.readValue(sspsAsJSON, new TypeReference[util.HashMap[String, util.ArrayList[SSPWrapper]]]() {}).asInstanceOf[util.HashMap[String, util.ArrayList[SSPWrapper]]]
-    val taskName = for (
-      (key, sspsWrappers) <- asWrapper;
-      taskName = new TaskName(key);
-      ssps = sspsWrappers.map(w => new SystemStreamPartition(w.getSystem, w.getStream, new Partition(w.getPartition))).toSet
-    ) yield (taskName -> ssps)
-    taskName.toMap // to get an immutable map rather than mutable...
-  }
-
   def convertTaskNameToChangeLogPartitionMapping(mapping: Map[TaskName, Int]): util.HashMap[TaskName, java.lang.Integer] = {
     val javaMap = new util.HashMap[TaskName, java.lang.Integer]()
     mapping.foreach(kv => javaMap.put(kv._1, Integer.valueOf(kv._2)))
     javaMap
-  }
-
-  def serializeTaskNameToChangeLogPartitionMapping(mapping: Map[TaskName, Int]) = {
-    new ObjectMapper().writeValueAsString(convertTaskNameToChangeLogPartitionMapping(mapping))
-  }
-
-  def deserializeTaskNameToChangeLogPartitionMapping(taskNamesAsJSON: String): Map[TaskName, Int] = {
-    val om = new ObjectMapper()
-    val asMap = om.readValue(taskNamesAsJSON, new TypeReference[util.HashMap[String, java.lang.Integer]] {}).asInstanceOf[util.HashMap[String, java.lang.Integer]]
-    asMap.map(kv => new TaskName(kv._1) -> kv._2.intValue()).toMap
   }
 
   def deserializeCoordinatorBody(body: String) = new ObjectMapper().readValue(body, new TypeReference[util.HashMap[String, Object]] {}).asInstanceOf[util.HashMap[String, Object]]
