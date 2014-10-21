@@ -25,7 +25,7 @@ import java.util
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.container.TaskName
 import org.apache.samza.container.TaskNamesToSystemStreamPartitions
-import java.net.URI
+import java.net.URL
 
 /**
  * Samza's application master has state that is usually manipulated based on
@@ -49,9 +49,9 @@ class SamzaAppMasterState(val taskId: Int, val containerId: ContainerId, val nod
   var jobHealthy = true
 
   // controlled by the service
-  var trackingUri: URI = null
-  var rpcUri: URI = null
-  var coordinatorUri: URI = null
+  var trackingUrl: URL = null
+  var rpcUrl: URL = null
+  var coordinatorUrl: URL = null
 
   // controlled on startup
   var appAttemptId = containerId.getApplicationAttemptId

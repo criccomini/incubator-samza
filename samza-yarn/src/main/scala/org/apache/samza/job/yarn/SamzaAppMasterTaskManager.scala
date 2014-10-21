@@ -115,7 +115,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
         val cmdBuilder = Class.forName(cmdBuilderClassName).newInstance.asInstanceOf[CommandBuilder]
           .setConfig(config)
           .setId(taskId)
-          .setUrl(state.coordinatorUri.toURL)
+          .setUrl(state.coordinatorUrl)
         val command = cmdBuilder.buildCommand
         info("Task ID %s using command %s" format (taskId, command))
         val env = cmdBuilder.buildEnvironment.map { case (k, v) => (k, Util.envVarEscape(v)) }

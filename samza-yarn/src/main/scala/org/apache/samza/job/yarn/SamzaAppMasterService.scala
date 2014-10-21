@@ -54,11 +54,11 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     coordinatorApp.addServlet("/*", new JobServlet(config, state.tasksToSSPTaskNames, state.taskNameToChangeLogPartitionMapping))
     coordinatorApp.start
 
-    state.rpcUri = rpcApp.getUri
-    state.trackingUri = webApp.getUri
-    state.coordinatorUri = coordinatorApp.getUri
+    state.rpcUrl = rpcApp.getUrl
+    state.trackingUrl = webApp.getUrl
+    state.coordinatorUrl = coordinatorApp.getUrl
 
-    info("Webapp is started at (rpc %s, tracking %d, coordinator %s)" format (state.rpcUri, state.trackingUri, state.coordinatorUri))
+    info("Webapp is started at (rpc %s, tracking %d, coordinator %s)" format (state.rpcUrl, state.trackingUrl, state.coordinatorUrl))
   }
 
   override def onShutdown() {

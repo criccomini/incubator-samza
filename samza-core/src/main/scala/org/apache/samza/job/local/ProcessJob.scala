@@ -43,7 +43,7 @@ class ProcessJob(commandBuilder: CommandBuilder, server: HttpServer = new HttpSe
   def submit: StreamJob = {
     jobStatus = Some(New)
     server.start
-    commandBuilder.setUrl(server.getUri.toURL)
+    commandBuilder.setUrl(server.getUrl)
     val waitForThreadStart = new CountDownLatch(1)
     val processBuilder = new ProcessBuilder(commandBuilder.buildCommand.split(" ").toList)
 

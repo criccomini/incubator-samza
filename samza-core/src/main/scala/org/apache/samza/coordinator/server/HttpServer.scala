@@ -19,16 +19,17 @@
 
 package org.apache.samza.coordinator.server;
 
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
-import javax.servlet.Servlet;
-import org.apache.samza.SamzaException;
-import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.ServletContextHandler;
+import java.net.InetAddress
+import java.net.URI
+import java.net.UnknownHostException
+import javax.servlet.Servlet
+import org.apache.samza.SamzaException
+import org.eclipse.jetty.server.Connector
+import org.eclipse.jetty.server.Server
+import org.eclipse.jetty.servlet.DefaultServlet
+import org.eclipse.jetty.servlet.ServletContextHandler
 import org.eclipse.jetty.servlet.ServletHolder;
+import java.net.URL
 
 class HttpServer(
   rootPath: String = "/",
@@ -72,8 +73,8 @@ class HttpServer(
     server.stop()
   }
 
-  def getUri = {
+  def getUrl = {
     val runningPort = server.getConnectors()(0).asInstanceOf[Connector].getLocalPort()
-    URI.create("http://" + InetAddress.getLocalHost().getHostName() + ":" + runningPort + "/" + rootPath)
+    new URL("http://" + InetAddress.getLocalHost().getHostName() + ":" + runningPort + rootPath)
   }
 }

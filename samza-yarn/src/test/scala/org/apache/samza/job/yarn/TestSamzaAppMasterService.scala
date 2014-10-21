@@ -47,11 +47,11 @@ class TestSamzaAppMasterService {
 
     // start the dashboard
     service.onInit
-    assertTrue(state.rpcPort > 0)
-    assertTrue(state.trackingPort > 0)
+    assertTrue(state.rpcUrl.getPort > 0)
+    assertTrue(state.trackingUrl.getPort > 0)
 
     // check to see if it's running
-    val url = new URL("http://127.0.0.1:%d/am" format state.rpcPort)
+    val url = new URL(state.rpcUrl.toString + "am")
     val is = url.openConnection().getInputStream();
     val reader = new BufferedReader(new InputStreamReader(is));
     var line: String = null;
@@ -75,11 +75,11 @@ class TestSamzaAppMasterService {
 
     // start the dashboard
     service.onInit
-    assertTrue(state.rpcPort > 0)
-    assertTrue(state.trackingPort > 0)
+    assertTrue(state.rpcUrl.getPort > 0)
+    assertTrue(state.trackingUrl.getPort > 0)
 
     // Do a GET Request on the tracking port: This in turn will render index.scaml
-    val url = new URL("http://127.0.0.1:%d/" format state.trackingPort)
+    val url = state.trackingUrl
     val is = url.openConnection().getInputStream()
     val reader = new BufferedReader(new InputStreamReader(is))
     var line: String = null

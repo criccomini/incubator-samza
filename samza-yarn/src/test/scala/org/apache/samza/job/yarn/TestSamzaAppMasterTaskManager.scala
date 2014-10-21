@@ -38,10 +38,9 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.SinglePartitionWithoutOffsetsSystemAdmin
 import org.apache.samza.util.Util
 import org.junit.Test
-
 import scala.collection.JavaConversions._
-
 import TestSamzaAppMasterTaskManager._
+import java.net.URL
 
 object TestSamzaAppMasterTaskManager {
   def getContainer(containerId: ContainerId) = new Container {
@@ -174,6 +173,7 @@ class TestSamzaAppMasterTaskManager {
   def testAppMasterShouldRequestANewContainerWhenATaskFails {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
     val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    state.coordinatorUrl = new URL("http://localhost:1234")
     val taskManager = new SamzaAppMasterTaskManager(clock, config, state, amClient, new YarnConfiguration) {
       override def startContainer(packagePath: Path, container: Container, env: Map[String, String], cmds: String*) {
         // Do nothing.
@@ -208,6 +208,7 @@ class TestSamzaAppMasterTaskManager {
   def testAppMasterShouldRequestANewContainerWhenATaskIsReleased {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
     val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    state.coordinatorUrl = new URL("http://localhost:1234")
     state.taskCount = 2
     var containersRequested = 0
     var containersStarted = 0
@@ -288,6 +289,7 @@ class TestSamzaAppMasterTaskManager {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
     val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     state.taskCount = 2
+    state.coordinatorUrl = new URL("http://localhost:1234")
     var containersStarted = 0
     val taskManager = new SamzaAppMasterTaskManager(clock, newConfig, state, amClient, new YarnConfiguration) {
       override def startContainer(packagePath: Path, container: Container, env: Map[String, String], cmds: String*) {
@@ -354,6 +356,7 @@ class TestSamzaAppMasterTaskManager {
   def testAppMasterShouldReleaseExtraContainers {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
     val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    state.coordinatorUrl = new URL("http://localhost:1234")
     var containersRequested = 0
     var containersStarted = 0
     val taskManager = new SamzaAppMasterTaskManager(clock, config, state, amClient, new YarnConfiguration) {

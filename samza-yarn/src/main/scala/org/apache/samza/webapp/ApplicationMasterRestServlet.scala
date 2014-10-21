@@ -98,7 +98,7 @@ class ApplicationMasterRestServlet(config: Config, state: SamzaAppMasterState, r
       "app-attempt-id" -> state.appAttemptId.toString,
       "container-id" -> state.containerId.toString,
       "containers" -> containers,
-      "host" -> "%s:%s".format(state.nodeHost, state.rpcUri.getPort))
+      "host" -> "%s:%s".format(state.nodeHost, state.rpcUrl.getPort))
 
     jsonMapper.writeValueAsString(new HashMap[String, Object](status))
   }
