@@ -33,15 +33,23 @@ import java.io.InputStream
 import java.io.OutputStream
 import org.apache.samza.SamzaException
 import org.apache.samza.coordinator.server.HttpServer
+import org.apache.samza.job.CommandBuilder
+import scala.collection.JavaConversions._
 
-class ProcessJob(processBuilder: ProcessBuilder, server: HttpServer = new HttpServer) extends StreamJob with Logging {
+class ProcessJob(commandBuilder: CommandBuilder, server: HttpServer = new HttpServer) extends StreamJob with Logging {
   var jobStatus: Option[ApplicationStatus] = None
   var process: Process = null
 
   def submit: StreamJob = {
-    val waitForThreadStart = new CountDownLatch(1)
     jobStatus = Some(New)
     server.start
+    commandBuilder.setUrl(server.getUri.toURL)
+    val waitForThreadStart = new CountDownLatch(1)
+    val processBuilder = new ProcessBuilder(commandBuilder.buildCommand.split(" ").toList)
+
+    processBuilder
+      .environment
+      .putAll(commandBuilder.buildEnvironment)
 
     // create a non-daemon thread to make job runner block until the job finishes.
     // without this, the proc dies when job runner ends.

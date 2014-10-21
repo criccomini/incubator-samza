@@ -114,9 +114,8 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
         val cmdBuilderClassName = config.getCommandClass.getOrElse(classOf[ShellCommandBuilder].getName)
         val cmdBuilder = Class.forName(cmdBuilderClassName).newInstance.asInstanceOf[CommandBuilder]
           .setConfig(config)
-          .setName("samza-container-%s" format taskId)
-          .setTaskNameToSystemStreamPartitionsMapping(sspTaskNames.getJavaFriendlyType)
-          .setTaskNameToChangeLogPartitionMapping(state.taskNameToChangeLogPartitionMapping.map(kv => kv._1 -> Integer.valueOf(kv._2)).asJava)
+          .setId(taskId)
+          .setUrl(state.coordinatorUri.toURL)
         val command = cmdBuilder.buildCommand
         info("Task ID %s using command %s" format (taskId, command))
         val env = cmdBuilder.buildEnvironment.map { case (k, v) => (k, Util.envVarEscape(v)) }

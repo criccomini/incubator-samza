@@ -36,8 +36,6 @@ import org.apache.samza.coordinator.server.JobServlet
  */
 class ThreadJobFactory extends StreamJobFactory with Logging {
   def getJob(config: Config): StreamJob = {
-    val jobName = "local-thread-container"
-
     // Since we're local, there will only be a single task into which all the SSPs will be processed
     val taskToTaskNames: Map[Int, TaskNamesToSystemStreamPartitions] = Util.assignContainerToSSPTaskNames(config, 1)
     if (taskToTaskNames.size != 1) {
@@ -65,6 +63,6 @@ class ThreadJobFactory extends StreamJobFactory with Logging {
 
     // No command class was specified, so execute the job in this process
     // using a threaded job.
-    new ThreadJob(SamzaContainer(jobName, sspTaskName, taskNameToChangeLogPartitionMapping.mapValues(Integer.valueOf(_)), config), server)
+    new ThreadJob(SamzaContainer(0, sspTaskName, taskNameToChangeLogPartitionMapping.mapValues(Integer.valueOf(_)), config), server)
   }
 }

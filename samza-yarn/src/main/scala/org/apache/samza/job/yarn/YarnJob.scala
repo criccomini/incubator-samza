@@ -61,7 +61,6 @@ class YarnJob(config: Config, hadoopConfig: Configuration) extends StreamJob {
           format (ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.STDOUT, ApplicationConstants.STDERR)),
       Some(Map(
         ShellCommandConfig.ENV_CONFIG -> Util.envVarEscape(JsonConfigSerializer.toJson(config)),
-        ShellCommandConfig.ENV_CONTAINER_NAME -> Util.envVarEscape("application-master"),
         ShellCommandConfig.ENV_JAVA_OPTS -> Util.envVarEscape(config.getAmOpts.getOrElse("")),
         ShellCommandConfig.ENV_JAVA_HOME -> Util.envVarEscape(config.getAMJavaHome.getOrElse("")))),
       Some("%s_%s" format (config.getName.get, config.getJobId.getOrElse(1))))

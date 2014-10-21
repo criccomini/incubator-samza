@@ -26,7 +26,6 @@ import org.apache.samza.config.Config
 import org.apache.samza.config.TaskConfig._
 import org.apache.samza.job.{ CommandBuilder, ShellCommandBuilder, StreamJob, StreamJobFactory }
 import org.apache.samza.util.Util
-import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.JavaConversions._
 import org.apache.samza.coordinator.server.HttpServer
 import org.apache.samza.coordinator.server.JobServlet
@@ -36,8 +35,6 @@ import org.apache.samza.coordinator.server.JobServlet
  */
 class ProcessJobFactory extends StreamJobFactory with Logging {
   def getJob(config: Config): StreamJob = {
-    val jobName = "local-process-container"
-
     // Since we're local, there will only be a single task into which all the SSPs will be processed
     val taskToTaskNames: Map[Int, TaskNamesToSystemStreamPartitions] = Util.assignContainerToSSPTaskNames(config, 1)
     if (taskToTaskNames.size != 1) {
@@ -72,16 +69,8 @@ class ProcessJobFactory extends StreamJobFactory with Logging {
 
     commandBuilder
       .setConfig(config)
-      .setName(jobName)
-      .setTaskNameToSystemStreamPartitionsMapping(sspTaskName.getJavaFriendlyType)
-      .setTaskNameToChangeLogPartitionMapping(taskNameToChangeLogPartitionMapping.map(kv => kv._1 -> Integer.valueOf(kv._2)).asJava)
+      .setId(0)
 
-    val processBuilder = new ProcessBuilder(commandBuilder.buildCommand.split(" ").toList)
-
-    processBuilder
-      .environment
-      .putAll(commandBuilder.buildEnvironment)
-
-    new ProcessJob(processBuilder, server)
+    new ProcessJob(commandBuilder, server)
   }
 }

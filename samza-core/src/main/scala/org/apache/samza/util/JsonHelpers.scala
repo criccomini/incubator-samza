@@ -8,6 +8,8 @@ import java.util
 import scala.collection.JavaConversions._
 import org.apache.samza.Partition
 import scala.reflect.BeanProperty
+import org.apache.samza.config.MapConfig
+import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 
 object JsonHelpers {
   // Jackson really hates Scala's classes, so we need to wrap up the SSP in a form Jackson will take.
@@ -57,5 +59,34 @@ object JsonHelpers {
     val om = new ObjectMapper()
     val asMap = om.readValue(taskNamesAsJSON, new TypeReference[util.HashMap[String, java.lang.Integer]] {}).asInstanceOf[util.HashMap[String, java.lang.Integer]]
     asMap.map(kv => new TaskName(kv._1) -> kv._2.intValue()).toMap
+  }
+
+  def deserializeCoordinatorBody(body: String) = new ObjectMapper().readValue(body, new TypeReference[util.HashMap[String, Object]] {}).asInstanceOf[util.HashMap[String, Object]]
+
+  def convertCoordinatorConfig(config: util.Map[String, String]) = new MapConfig(config)
+
+  def convertCoordinatorTaskNameChangelogPartitions(taskNameToChangelogMapping: util.Map[String, java.lang.Integer]) = {
+    taskNameToChangelogMapping.map {
+      case (taskName, changelogPartitionId) =>
+        (new TaskName(taskName), changelogPartitionId.toInt)
+    }.toMap
+  }
+
+  // First key is containerId, second key is TaskName, third key is [system|stream|partition].
+  def convertCoordinatorSSPTaskNames(containers: util.Map[String, util.Map[String, util.List[util.Map[String, Object]]]]): Map[Int, TaskNamesToSystemStreamPartitions] = {
+    containers.map {
+      case (containerId, tasks) => {
+        containerId.toInt -> new TaskNamesToSystemStreamPartitions(tasks.map {
+          case (taskName, ssps) => {
+            new TaskName(taskName) -> ssps.map {
+              case (sspMap) => new SystemStreamPartition(
+                sspMap.get("system").toString,
+                sspMap.get("stream").toString,
+                new Partition(sspMap.get("partition").toString.toInt))
+            }.toSet
+          }
+        }.toMap)
+      }
+    }.toMap
   }
 }
