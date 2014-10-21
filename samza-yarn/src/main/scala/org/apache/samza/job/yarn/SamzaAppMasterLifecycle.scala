@@ -37,7 +37,7 @@ class SamzaAppMasterLifecycle(containerMem: Int, containerCpu: Int, state: Samza
   override def onInit() {
     val host = state.nodeHost
 
-    val response = amClient.registerApplicationMaster(host, state.rpcPort, "%s:%d" format (host, state.trackingPort))
+    val response = amClient.registerApplicationMaster(host, state.rpcUri.getPort, "%s:%d" format (host, state.trackingUri.getPort))
 
     // validate that the YARN cluster can handle our container resource requirements
     val maxCapability = response.getMaximumResourceCapability

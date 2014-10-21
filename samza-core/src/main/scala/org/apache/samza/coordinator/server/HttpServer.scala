@@ -52,8 +52,11 @@ class HttpServer(
     context.addServlet(defaultHolder, "/css/*")
     context.addServlet(defaultHolder, "/js/*")
 
+    // TODO This is where you'd add Hadoop's Kerberos security filters.
+    // context.addFilter(classOf[YourApplicationEndpointFilter], "/*", 0)
+
     if (resourceBasePath != null) {
-      context.setResourceBase(getClass().getClassLoader().getResource(resourceBasePath).toExternalForm())
+      context.setResourceBase(getClass.getClassLoader.getResource(resourceBasePath).toExternalForm())
     }
 
     servlets.foreach {

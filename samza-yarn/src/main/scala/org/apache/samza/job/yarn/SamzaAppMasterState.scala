@@ -49,8 +49,8 @@ class SamzaAppMasterState(val taskId: Int, val containerId: ContainerId, val nod
   var jobHealthy = true
 
   // controlled by the service
-  var trackingPort = 0
-  var rpcPort = 0
+  var trackingUri: URI = null
+  var rpcUri: URI = null
   var coordinatorUri: URI = null
 
   // controlled on startup

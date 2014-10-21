@@ -35,7 +35,7 @@ public class SamzaContainerContext {
   /**
    * An immutable context object that can passed to tasks to give them information
    * about the container in which they are executing.
-   * @param name The name of the container (either a YARN AM or SamzaContainer).
+   * @param id The id of the container.
    * @param config The job configuration.
    * @param taskNames The set of taskName keys for which this container is responsible.
    */
