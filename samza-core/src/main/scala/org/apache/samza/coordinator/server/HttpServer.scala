@@ -75,6 +75,6 @@ class HttpServer(
 
   def getUrl = {
     val runningPort = server.getConnectors()(0).asInstanceOf[Connector].getLocalPort()
-    new URL("http://" + InetAddress.getLocalHost().getHostName() + ":" + runningPort + rootPath)
+    new URL("http://" + InetAddress.getLocalHost().getHostAddress() + ":" + runningPort + rootPath)
   }
 }

@@ -319,17 +319,8 @@ object Util extends Logging {
     val conn = url.openConnection();
     val br = new BufferedReader(new InputStreamReader(conn.getInputStream));
     var line: String = null;
-    var body = ""
-
-    try {
-      do {
-        line = br.readLine
-        body += line
-      } while (line != null)
-    } finally {
-      br.close
-    }
-
+    val body = Iterator.continually(br.readLine()).takeWhile(_ != null).mkString
+    br.close
     body
   }
 }
