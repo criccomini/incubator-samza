@@ -58,7 +58,7 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     state.trackingUrl = webApp.getUrl
     state.coordinatorUrl = coordinatorApp.getUrl
 
-    info("Webapp is started at (rpc %s, tracking %d, coordinator %s)" format (state.rpcUrl, state.trackingUrl, state.coordinatorUrl))
+    info("Webapp is started at (rpc %s, tracking %s, coordinator %s)" format (state.rpcUrl, state.trackingUrl, state.coordinatorUrl))
   }
 
   override def onShutdown() {
