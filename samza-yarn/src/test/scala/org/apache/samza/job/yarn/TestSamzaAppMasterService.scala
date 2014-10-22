@@ -86,7 +86,6 @@ class TestSamzaAppMasterService {
 
     do {
       line = reader.readLine()
-      System.out.println(line)
     } while (line != null)
 
     reader.close

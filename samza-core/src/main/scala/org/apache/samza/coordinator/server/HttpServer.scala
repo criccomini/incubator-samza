@@ -28,14 +28,15 @@ import org.eclipse.jetty.server.Connector
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.DefaultServlet
 import org.eclipse.jetty.servlet.ServletContextHandler
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlet.ServletHolder
 import java.net.URL
+import org.apache.samza.util.Logging
 
 class HttpServer(
   rootPath: String = "/",
   port: Int = 0,
   resourceBasePath: String = null,
-  defaultHolder: ServletHolder = new ServletHolder(classOf[DefaultServlet])) {
+  defaultHolder: ServletHolder = new ServletHolder(classOf[DefaultServlet])) extends Logging {
 
   var servlets = Map[String, Servlet]()
   val server = new Server(port)
@@ -66,6 +67,8 @@ class HttpServer(
     }
 
     server.start()
+    
+    info("Started HttpServer on: %s" format getUrl)
   }
 
   def stop {
