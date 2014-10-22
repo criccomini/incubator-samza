@@ -24,6 +24,7 @@ import java.util.HashMap
 import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 import org.apache.samza.util.JsonHelpers
 import org.apache.samza.container.TaskName
+import org.apache.samza.util.Logging
 
 object JobServlet {
   val CONFIG = "config"
@@ -34,13 +35,15 @@ object JobServlet {
 class JobServlet(
   config: Config,
   containerToTaskMapping: Map[Int, TaskNamesToSystemStreamPartitions],
-  taskToChangelogMapping: Map[TaskName, Int]) extends ServletBase {
+  taskToChangelogMapping: Map[TaskName, Int]) extends ServletBase with Logging {
   import JobServlet._
   import JsonHelpers._
 
   val javaSafeContainerToTaskMapping = buildTasksToSSPs
   val javaSafeTaskToChangelogMappings = convertTaskNameToChangeLogPartitionMapping(taskToChangelogMapping)
   val jsonMap = buildJsonMap
+
+  debug("Built JSON map: %s" format jsonMap)
 
   protected def getObjectToWrite() = {
     jsonMap

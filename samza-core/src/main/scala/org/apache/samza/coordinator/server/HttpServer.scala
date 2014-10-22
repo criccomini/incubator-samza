@@ -45,10 +45,12 @@ class HttpServer(
   defaultHolder.setName("default")
 
   def addServlet(path: String, servlet: Servlet) {
+    debug("Adding servlet %s to path %s" format (servlet, path))
     servlets += path -> servlet
   }
 
   def start {
+    debug("Starting server with rootPath=%s port=%s resourceBasePath=%s" format (rootPath, port, resourceBasePath))
     context.setContextPath(rootPath)
     server.setHandler(context)
     context.addServlet(defaultHolder, "/css/*")
@@ -66,14 +68,16 @@ class HttpServer(
         context.addServlet(new ServletHolder(servlet), path);
     }
 
+    debug("Starting HttpServer.")
     server.start()
-    
     info("Started HttpServer on: %s" format getUrl)
   }
 
   def stop {
+    debug("Stopping server")
     context.stop()
     server.stop()
+    info("Stopped server")
   }
 
   def getUrl = {

@@ -90,6 +90,7 @@ object SamzaContainer extends Logging {
    * constructor.
    */
   def getCoordinatorObjects(coordinatorUrl: String) = {
+    info("Fetching configuration from: %s" format coordinatorUrl)
     val rawCoordinatorObjects = JsonHelpers.deserializeCoordinatorBody(Util.read(new URL(coordinatorUrl)))
     val rawConfig = rawCoordinatorObjects.get(JobServlet.CONFIG).asInstanceOf[java.util.Map[String, String]]
     val rawContainers = rawCoordinatorObjects.get(JobServlet.CONTAINERS).asInstanceOf[java.util.Map[String, java.util.Map[String, java.util.List[java.util.Map[String, Object]]]]]
@@ -105,9 +106,10 @@ object SamzaContainer extends Logging {
     val containerPID = Util.getContainerPID
 
     info("Setting up Samza container: %s" format containerName)
-    info("Using SystemStreamPartition taskNames %s" format sspTaskNames)
     info("Samza container PID: %s" format containerPID)
     info("Using configuration: %s" format config)
+    info("Using tasks: %s" format sspTaskNames)
+    info("Using task changelogs: %s" format taskNameToChangeLogPartitionMapping)
 
     val registry = new MetricsRegistryMap(containerName)
     val samzaContainerMetrics = new SamzaContainerMetrics(containerName, registry)
