@@ -30,8 +30,14 @@ import scala.reflect.BeanProperty
 import org.apache.samza.config.MapConfig
 import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 
+/**
+ * Working with Jackson and JSON in Scala is tricky. These helper methods are
+ * used to convert objects back and forth in SamzaContainer, and the
+ * JobServlet.
+ */
 object JsonHelpers {
-  // Jackson really hates Scala's classes, so we need to wrap up the SSP in a form Jackson will take.
+  // Jackson really hates Scala's classes, so we need to wrap up the SSP in a 
+  // form Jackson will take.
   class SSPWrapper(@BeanProperty var partition: java.lang.Integer = null,
     @BeanProperty var Stream: java.lang.String = null,
     @BeanProperty var System: java.lang.String = null) {
@@ -39,7 +45,7 @@ object JsonHelpers {
     def this(ssp: SystemStreamPartition) { this(ssp.getPartition.getPartitionId, ssp.getSystemStream.getStream, ssp.getSystemStream.getSystem) }
   }
 
-  def convertSystemStreamPartitionSetToJSON(sspTaskNames: java.util.Map[TaskName, java.util.Set[SystemStreamPartition]]): util.HashMap[TaskName, util.ArrayList[SSPWrapper]] = {
+  def convertSystemStreamPartitionSet(sspTaskNames: java.util.Map[TaskName, java.util.Set[SystemStreamPartition]]): util.HashMap[TaskName, util.ArrayList[SSPWrapper]] = {
     val map = new util.HashMap[TaskName, util.ArrayList[SSPWrapper]]()
     for ((key, ssps) <- sspTaskNames) {
       val al = new util.ArrayList[SSPWrapper](ssps.size)
@@ -66,7 +72,8 @@ object JsonHelpers {
     }.toMap
   }
 
-  // First key is containerId, second key is TaskName, third key is [system|stream|partition].
+  // First key is containerId, second key is TaskName, third key is 
+  // [system|stream|partition].
   def convertCoordinatorSSPTaskNames(containers: util.Map[String, util.Map[String, util.List[util.Map[String, Object]]]]): Map[Int, TaskNamesToSystemStreamPartitions] = {
     containers.map {
       case (containerId, tasks) => {

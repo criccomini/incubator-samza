@@ -50,7 +50,7 @@ class JobServlet(
     val map = new HashMap[java.lang.Integer, java.util.HashMap[TaskName, java.util.ArrayList[SSPWrapper]]]
     containerToTaskMapping.foreach {
       case (containerId, taskNameToSSPs) =>
-        map.put(Integer.valueOf(containerId), convertSystemStreamPartitionSetToJSON(taskNameToSSPs.getJavaFriendlyType))
+        map.put(Integer.valueOf(containerId), convertSystemStreamPartitionSet(taskNameToSSPs.getJavaFriendlyType))
     }
     map
   }
