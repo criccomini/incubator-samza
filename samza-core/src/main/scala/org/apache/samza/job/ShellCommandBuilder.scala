@@ -27,10 +27,16 @@ class ShellCommandBuilder extends CommandBuilder {
   def buildCommand() = config.getCommand
 
   def buildEnvironment(): java.util.Map[String, String] = {
-    Map(
+    val envMap = Map(
       ShellCommandConfig.ENV_CONTAINER_ID -> id.toString,
       ShellCommandConfig.ENV_COORDINATOR_URL -> url.toString,
-      ShellCommandConfig.ENV_JAVA_OPTS -> config.getTaskOpts.getOrElse(""),
-      ShellCommandConfig.ENV_JAVA_HOME -> config.getJavaHome.getOrElse(""))
+      ShellCommandConfig.ENV_JAVA_OPTS -> config.getTaskOpts.getOrElse(""))
+
+    val envMapWithJavaHome = config.getJavaHome match {
+      case Some(javaHome) => envMap + (ShellCommandConfig.ENV_JAVA_HOME -> javaHome)
+      case None => envMap
+    }
+
+    envMapWithJavaHome
   }
 }
