@@ -21,7 +21,6 @@ package org.apache.samza.job.model;
 
 import java.util.Collections;
 import java.util.Map;
-
 import org.apache.samza.config.Config;
 
 public class JobModel {

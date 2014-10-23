@@ -60,7 +60,6 @@ import org.apache.samza.task.TaskLifecycleListenerFactory
 import org.apache.samza.util.Logging
 import org.apache.samza.util.Util
 import scala.collection.JavaConversions._
-import org.apache.samza.util.JsonHelpers
 import java.net.URL
 import org.apache.samza.coordinator.server.JobServlet
 import org.apache.samza.job.model.ContainerModel

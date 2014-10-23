@@ -23,7 +23,7 @@ import org.apache.samza.Partition
 import org.apache.samza.config.Config
 import org.apache.samza.config.Config
 import org.apache.samza.config.MapConfig
-import org.apache.samza.container.{TaskName, TaskNamesToSystemStreamPartitions}
+import org.apache.samza.container.TaskName
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.system.SystemFactory

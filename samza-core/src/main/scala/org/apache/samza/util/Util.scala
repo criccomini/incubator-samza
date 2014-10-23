@@ -36,7 +36,6 @@ import scala.collection.JavaConversions._
 import scala.collection
 import org.apache.samza.container.TaskName
 import org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouperFactory
-import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 import org.apache.samza.container.grouper.task.GroupByContainerCount
 import org.apache.samza.coordinator.server.JobServlet
 import org.apache.samza.job.model.JobModel
@@ -122,42 +121,42 @@ object Util extends Logging {
    * @param containerCount How many tasks are we we working with
    * @return Map of int (taskId) to SSPTaskNameMap that taskID is responsible for
    */
-  def assignContainerToSSPTaskNames(config:Config, containerCount:Int): Map[Int, TaskNamesToSystemStreamPartitions] = {
-    import org.apache.samza.config.JobConfig.Config2Job
-
-    val allSystemStreamPartitions: Set[SystemStreamPartition] = Util.getInputStreamPartitions(config)
-
-    val sspTaskNamesAsJava: util.Map[TaskName, util.Set[SystemStreamPartition]] = {
-      val factoryString = config.getSystemStreamPartitionGrouperFactory
-
-      info("Instantiating type " + factoryString + " to build SystemStreamPartition groupings")
-
-      val factory = Util.getObj[SystemStreamPartitionGrouperFactory](factoryString)
-
-      val grouper = factory.getSystemStreamPartitionGrouper(config)
-
-      val groups = grouper.group(allSystemStreamPartitions)
-
-      info("SystemStreamPartitionGrouper " + grouper + " has grouped the SystemStreamPartitions into the following taskNames:")
-      groups.foreach(g => info("TaskName: " + g._1 + " => " + g._2))
-
-      groups
-    }
-
-    val sspTaskNames = TaskNamesToSystemStreamPartitions(sspTaskNamesAsJava)
-
-    info("Assigning " + sspTaskNames.keySet.size + " SystemStreamPartitions taskNames to " + containerCount + " containers.")
-
-    // Here is where we should put in a pluggable option for the SSPTaskNameGrouper for locality, load-balancing, etc.
-    val sspTaskNameGrouper = new GroupByContainerCount(containerCount)
-
-    val containersToTaskNames = sspTaskNameGrouper.groupTaskNames(sspTaskNames).toMap
-
-    info("Grouped SystemStreamPartition TaskNames (size = " + containersToTaskNames.size + "): ")
-    containersToTaskNames.foreach(t => info("Container number: " + t._1 + " => " + t._2))
-
-    containersToTaskNames
-  }
+//  def assignContainerToSSPTaskNames(config:Config, containerCount:Int): Map[Int, TaskNamesToSystemStreamPartitions] = {
+//    import org.apache.samza.config.JobConfig.Config2Job
+//
+//    val allSystemStreamPartitions: Set[SystemStreamPartition] = Util.getInputStreamPartitions(config)
+//
+//    val sspTaskNamesAsJava: util.Map[TaskName, util.Set[SystemStreamPartition]] = {
+//      val factoryString = config.getSystemStreamPartitionGrouperFactory
+//
+//      info("Instantiating type " + factoryString + " to build SystemStreamPartition groupings")
+//
+//      val factory = Util.getObj[SystemStreamPartitionGrouperFactory](factoryString)
+//
+//      val grouper = factory.getSystemStreamPartitionGrouper(config)
+//
+//      val groups = grouper.group(allSystemStreamPartitions)
+//
+//      info("SystemStreamPartitionGrouper " + grouper + " has grouped the SystemStreamPartitions into the following taskNames:")
+//      groups.foreach(g => info("TaskName: " + g._1 + " => " + g._2))
+//
+//      groups
+//    }
+//
+//    val sspTaskNames = TaskNamesToSystemStreamPartitions(sspTaskNamesAsJava)
+//
+//    info("Assigning " + sspTaskNames.keySet.size + " SystemStreamPartitions taskNames to " + containerCount + " containers.")
+//
+//    // Here is where we should put in a pluggable option for the SSPTaskNameGrouper for locality, load-balancing, etc.
+//    val sspTaskNameGrouper = new GroupByContainerCount(containerCount)
+//
+//    val containersToTaskNames = sspTaskNameGrouper.groupTaskNames(sspTaskNames).toMap
+//
+//    info("Grouped SystemStreamPartition TaskNames (size = " + containersToTaskNames.size + "): ")
+//    containersToTaskNames.foreach(t => info("Container number: " + t._1 + " => " + t._2))
+//
+//    containersToTaskNames
+//  }
 
   /**
    * Returns a SystemStream object based on the system stream name given. For
@@ -246,54 +245,54 @@ object Util extends Logging {
    * @param tasksToSSPTaskNames Current TaskNames for the current job run
    * @return Current mapping of TaskNames to changelog partitions
    */
-  def getTaskNameToChangeLogPartitionMapping(config: Config, tasksToSSPTaskNames: Map[Int, TaskNamesToSystemStreamPartitions]) = {
-    val taskNameMaps: Set[TaskNamesToSystemStreamPartitions] = tasksToSSPTaskNames.map(_._2).toSet
-    val currentTaskNames: Set[TaskName] = taskNameMaps.map(_.keys).toSet.flatten
-
-    // We need to oh so quickly instantiate a checkpoint manager and grab the partition mapping from the log, then toss the manager aside
-    val checkpointManager = config.getCheckpointManagerFactory match {
-      case Some(checkpointFactoryClassName) =>
-        Util
-          .getObj[CheckpointManagerFactory](checkpointFactoryClassName)
-          .getCheckpointManager(config, new MetricsRegistryMap)
-      case _ => null
-    }
-
-    if(checkpointManager == null) {
-      // Check if we have a changelog configured, which requires a checkpoint manager
-
-      if(!config.getStoreNames.isEmpty) {
-        throw new SamzaException("Storage factories configured, but no checkpoint manager has been specified.  " +
-          "Unable to start job as there would be no place to store changelog partition mapping.")
-      }
-      // No need to do any mapping, just use what has been provided
-      Util.resolveTaskNameToChangelogPartitionMapping(currentTaskNames, Map[TaskName, Int]())
-    } else {
-
-      info("Got checkpoint manager: %s" format checkpointManager)
-
-      // Always put in a call to create so the log is available for the tasks on startup.
-      // Reasonably lame to hide it in here.  TODO: Pull out to more visible location.
-      checkpointManager.start
-
-      val previousMapping: Map[TaskName, Int] = {
-        val fromCM = checkpointManager.readChangeLogPartitionMapping()
-
-        fromCM.map(kv => kv._1 -> kv._2.intValue()).toMap // Java to Scala interop!!!
-      }
-
-      checkpointManager.stop
-
-      val newMapping = Util.resolveTaskNameToChangelogPartitionMapping(currentTaskNames, previousMapping)
-
-      if (newMapping != null) {
-        info("Writing new changelog partition mapping to checkpoint manager.")
-        checkpointManager.writeChangeLogPartitionMapping(newMapping.map(kv => kv._1 -> new java.lang.Integer(kv._2))) //Java to Scala interop!!!
-      }
-
-      newMapping
-    }
-  }
+//  def getTaskNameToChangeLogPartitionMapping(config: Config, tasksToSSPTaskNames: Map[Int, TaskNamesToSystemStreamPartitions]) = {
+//    val taskNameMaps: Set[TaskNamesToSystemStreamPartitions] = tasksToSSPTaskNames.map(_._2).toSet
+//    val currentTaskNames: Set[TaskName] = taskNameMaps.map(_.keys).toSet.flatten
+//
+//    // We need to oh so quickly instantiate a checkpoint manager and grab the partition mapping from the log, then toss the manager aside
+//    val checkpointManager = config.getCheckpointManagerFactory match {
+//      case Some(checkpointFactoryClassName) =>
+//        Util
+//          .getObj[CheckpointManagerFactory](checkpointFactoryClassName)
+//          .getCheckpointManager(config, new MetricsRegistryMap)
+//      case _ => null
+//    }
+//
+//    if(checkpointManager == null) {
+//      // Check if we have a changelog configured, which requires a checkpoint manager
+//
+//      if(!config.getStoreNames.isEmpty) {
+//        throw new SamzaException("Storage factories configured, but no checkpoint manager has been specified.  " +
+//          "Unable to start job as there would be no place to store changelog partition mapping.")
+//      }
+//      // No need to do any mapping, just use what has been provided
+//      Util.resolveTaskNameToChangelogPartitionMapping(currentTaskNames, Map[TaskName, Int]())
+//    } else {
+//
+//      info("Got checkpoint manager: %s" format checkpointManager)
+//
+//      // Always put in a call to create so the log is available for the tasks on startup.
+//      // Reasonably lame to hide it in here.  TODO: Pull out to more visible location.
+//      checkpointManager.start
+//
+//      val previousMapping: Map[TaskName, Int] = {
+//        val fromCM = checkpointManager.readChangeLogPartitionMapping()
+//
+//        fromCM.map(kv => kv._1 -> kv._2.intValue()).toMap // Java to Scala interop!!!
+//      }
+//
+//      checkpointManager.stop
+//
+//      val newMapping = Util.resolveTaskNameToChangelogPartitionMapping(currentTaskNames, previousMapping)
+//
+//      if (newMapping != null) {
+//        info("Writing new changelog partition mapping to checkpoint manager.")
+//        checkpointManager.writeChangeLogPartitionMapping(newMapping.map(kv => kv._1 -> new java.lang.Integer(kv._2))) //Java to Scala interop!!!
+//      }
+//
+//      newMapping
+//    }
+//  }
 
   /**
    * Makes sure that an object is not null, and throws a NullPointerException
@@ -333,6 +332,7 @@ object Util extends Logging {
    */
   def readJobModel(url: String): JobModel = {
     info("Fetching configuration from: %s" format url)
+    null
     // TODO new ObjectMapper().readValue(Util.read(new URL(url)))
   }
 }

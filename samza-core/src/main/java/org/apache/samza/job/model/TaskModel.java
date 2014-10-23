@@ -27,12 +27,12 @@ import org.apache.samza.system.SystemStreamPartition;
 
 public class TaskModel implements Comparable<TaskModel> {
   private final TaskName taskName;
-  private final Set<SystemStreamPartition> inputSystemStreamPartitions;
+  private final Set<SystemStreamPartition> systemStreamPartitions;
   private final Partition changelogPartition;
 
-  public TaskModel(TaskName taskName, Set<SystemStreamPartition> inputSystemStreamPartitions, Partition changelogPartition) {
+  public TaskModel(TaskName taskName, Set<SystemStreamPartition> systemStreamPartitions, Partition changelogPartition) {
     this.taskName = taskName;
-    this.inputSystemStreamPartitions = Collections.unmodifiableSet(inputSystemStreamPartitions);
+    this.systemStreamPartitions = Collections.unmodifiableSet(systemStreamPartitions);
     this.changelogPartition = changelogPartition;
   }
 
@@ -40,8 +40,8 @@ public class TaskModel implements Comparable<TaskModel> {
     return taskName;
   }
 
-  public Set<SystemStreamPartition> getInputSystemStreamPartitions() {
-    return inputSystemStreamPartitions;
+  public Set<SystemStreamPartition> getSystemStreamPartitions() {
+    return systemStreamPartitions;
   }
 
   public Partition getChangelogPartition() {
@@ -50,13 +50,15 @@ public class TaskModel implements Comparable<TaskModel> {
 
   @Override
   public String toString() {
-    return "TaskModel [taskName=" + taskName + ", inputSystemStreamPartitions=" + inputSystemStreamPartitions + ", changeLogPartition=" + changelogPartition + "]";
+    return "TaskModel [taskName=" + taskName + ", systemStreamPartitions=" + systemStreamPartitions + ", changeLogPartition=" + changelogPartition + "]";
   }
 
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
+    result = prime * result + ((changelogPartition == null) ? 0 : changelogPartition.hashCode());
+    result = prime * result + ((systemStreamPartitions == null) ? 0 : systemStreamPartitions.hashCode());
     result = prime * result + ((taskName == null) ? 0 : taskName.hashCode());
     return result;
   }
@@ -70,6 +72,16 @@ public class TaskModel implements Comparable<TaskModel> {
     if (getClass() != obj.getClass())
       return false;
     TaskModel other = (TaskModel) obj;
+    if (changelogPartition == null) {
+      if (other.changelogPartition != null)
+        return false;
+    } else if (!changelogPartition.equals(other.changelogPartition))
+      return false;
+    if (systemStreamPartitions == null) {
+      if (other.systemStreamPartitions != null)
+        return false;
+    } else if (!systemStreamPartitions.equals(other.systemStreamPartitions))
+      return false;
     if (taskName == null) {
       if (other.taskName != null)
         return false;

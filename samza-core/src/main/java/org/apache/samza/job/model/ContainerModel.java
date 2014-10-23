@@ -21,7 +21,6 @@ package org.apache.samza.job.model;
 
 import java.util.Collections;
 import java.util.Map;
-
 import org.apache.samza.container.TaskName;
 
 public class ContainerModel implements Comparable<ContainerModel> {
@@ -51,6 +50,7 @@ public class ContainerModel implements Comparable<ContainerModel> {
     final int prime = 31;
     int result = 1;
     result = prime * result + containerId;
+    result = prime * result + ((tasks == null) ? 0 : tasks.hashCode());
     return result;
   }
 
@@ -64,6 +64,11 @@ public class ContainerModel implements Comparable<ContainerModel> {
       return false;
     ContainerModel other = (ContainerModel) obj;
     if (containerId != other.containerId)
+      return false;
+    if (tasks == null) {
+      if (other.tasks != null)
+        return false;
+    } else if (!tasks.equals(other.tasks))
       return false;
     return true;
   }
