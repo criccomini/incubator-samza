@@ -63,6 +63,7 @@ import scala.collection.JavaConversions._
 import org.apache.samza.util.JsonHelpers
 import java.net.URL
 import org.apache.samza.coordinator.server.JobServlet
+import org.apache.samza.job.model.ContainerModel
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -76,47 +77,44 @@ object SamzaContainer extends Logging {
     try {
       val containerId = System.getenv(ShellCommandConfig.ENV_CONTAINER_ID).toInt
       val coordinatorUrl = System.getenv(ShellCommandConfig.ENV_COORDINATOR_URL)
-      val (config, sspTaskNames, taskNameToChangeLogPartitionMapping) = getCoordinatorObjects(coordinatorUrl)
+      val jobModel = Util.readJobModel(coordinatorUrl)
+      val containerModel = jobModel.getContainers()(containerId.toInt)
+      val config = jobModel.getConfig
 
-      SamzaContainer(containerId, sspTaskNames(containerId), taskNameToChangeLogPartitionMapping, config).run
+      SamzaContainer(containerModel, config).run
     } finally {
       jmxServer.stop
     }
   }
 
-  /**
-   * Fetches config, task:SSP assignments, and task:changelog partition
-   * assignments, and returns objects to be used for SamzaContainer's
-   * constructor.
-   */
-  def getCoordinatorObjects(coordinatorUrl: String) = {
-    info("Fetching configuration from: %s" format coordinatorUrl)
-    val rawCoordinatorObjects = JsonHelpers.deserializeCoordinatorBody(Util.read(new URL(coordinatorUrl)))
-    val rawConfig = rawCoordinatorObjects.get(JobServlet.CONFIG).asInstanceOf[java.util.Map[String, String]]
-    val rawContainers = rawCoordinatorObjects.get(JobServlet.CONTAINERS).asInstanceOf[java.util.Map[String, java.util.Map[String, java.util.List[java.util.Map[String, Object]]]]]
-    val rawTaskChangelogMapping = rawCoordinatorObjects.get(JobServlet.TASK_CHANGELOG_MAPPING).asInstanceOf[java.util.Map[String, java.lang.Integer]]
-    val config = JsonHelpers.convertCoordinatorConfig(rawConfig)
-    val sspTaskNames = JsonHelpers.convertCoordinatorSSPTaskNames(rawContainers)
-    val taskNameToChangeLogPartitionMapping = JsonHelpers.convertCoordinatorTaskNameChangelogPartitions(rawTaskChangelogMapping)
-    (config, sspTaskNames, taskNameToChangeLogPartitionMapping)
-  }
-
-  def apply(containerId: Int, sspTaskNames: TaskNamesToSystemStreamPartitions, taskNameToChangeLogPartitionMapping: Map[TaskName, Int], config: Config) = {
+  def apply(containerModel: ContainerModel, config: Config) = {
+    val containerId = containerModel.getContainerId
     val containerName = "samza-container-%s" format containerId
     val containerPID = Util.getContainerPID
 
     info("Setting up Samza container: %s" format containerName)
     info("Samza container PID: %s" format containerPID)
     info("Using configuration: %s" format config)
-    info("Using tasks: %s" format sspTaskNames)
-    info("Using task changelogs: %s" format taskNameToChangeLogPartitionMapping)
+    info("Using container model: %s" format containerModel)
 
     val registry = new MetricsRegistryMap(containerName)
     val samzaContainerMetrics = new SamzaContainerMetrics(containerName, registry)
     val systemProducersMetrics = new SystemProducersMetrics(registry)
     val systemConsumersMetrics = new SystemConsumersMetrics(registry)
 
-    val inputSystems = sspTaskNames.getAllSystems()
+    val inputSystemStreamPartitions = containerModel
+      .getTasks
+      .values
+      .flatMap(_.getInputSystemStreamPartitions)
+      .toSet
+
+    val inputSystemStreams = inputSystemStreamPartitions
+      .map(_.getSystemStream)
+      .toSet
+
+    val inputSystems = inputSystemStreams
+      .map(_.getSystem)
+      .toSet
 
     val systemNames = config.getSystemNames
 
@@ -144,7 +142,7 @@ object SamzaContainer extends Logging {
     info("Got system factories: %s" format systemFactories.keys)
 
     val streamMetadataCache = new StreamMetadataCache(systemAdmins)
-    val inputStreamMetadata = streamMetadataCache.getStreamMetadata(sspTaskNames.getAllSystemStreams)
+    val inputStreamMetadata = streamMetadataCache.getStreamMetadata(inputSystemStreams)
 
     info("Got input stream metadata: %s" format inputStreamMetadata)
 
@@ -213,7 +211,7 @@ object SamzaContainer extends Logging {
      * A Helper function to build a Map[SystemStream, Serde] for streams defined in the config. This is useful to build both key and message serde maps.
      */
     val buildSystemStreamSerdeMap = (getSerdeName: (SystemStream) => Option[String]) => {
-      (serdeStreams ++ sspTaskNames.getAllSSPs())
+      (serdeStreams ++ inputSystemStreamPartitions)
         .filter(systemStream => getSerdeName(systemStream).isDefined)
         .map(systemStream => {
           val serdeName = getSerdeName(systemStream).get
@@ -380,12 +378,18 @@ object SamzaContainer extends Logging {
 
     // Wire up all task-instance-level (unshared) objects.
 
-    val taskNames = sspTaskNames.keys.toSet
+    val taskNames = containerModel
+      .getTasks
+      .values
+      .map(_.getTaskName)
+      .toSet
 
     val containerContext = new SamzaContainerContext(containerId, config, taskNames)
 
-    val taskInstances: Map[TaskName, TaskInstance] = taskNames.map(taskName => {
-      debug("Setting up task instance: %s" format taskName)
+    val taskInstances: Map[TaskName, TaskInstance] = containerModel.getTasks.values.map(taskModel => {
+      debug("Setting up task instance: %s" format taskModel)
+      
+      val taskName = taskModel.getTaskName
 
       val task = Util.getObj[StreamTask](taskClassName)
 
@@ -404,13 +408,11 @@ object SamzaContainer extends Logging {
 
       info("Got store consumers: %s" format storeConsumers)
 
-      val partitionForThisTaskName = new Partition(taskNameToChangeLogPartitionMapping(taskName))
-
       val taskStores = storageEngineFactories
         .map {
           case (storeName, storageEngineFactory) =>
             val changeLogSystemStreamPartition = if (changeLogSystemStreams.contains(storeName)) {
-              new SystemStreamPartition(changeLogSystemStreams(storeName), partitionForThisTaskName)
+              new SystemStreamPartition(changeLogSystemStreams(storeName), taskModel.getChangelogPartition)
             } else {
               null
             }
@@ -437,7 +439,7 @@ object SamzaContainer extends Logging {
 
       info("Got task stores: %s" format taskStores)
 
-      val changeLogOldestOffsets = getChangeLogOldestOffsetsForPartition(partitionForThisTaskName, changeLogMetadata)
+      val changeLogOldestOffsets = getChangeLogOldestOffsetsForPartition(taskModel.getChangelogPartition, changeLogMetadata)
 
       info("Assigning oldest change log offsets for taskName %s: %s" format (taskName, changeLogOldestOffsets))
 
@@ -448,9 +450,9 @@ object SamzaContainer extends Logging {
         changeLogSystemStreams = changeLogSystemStreams,
         changeLogOldestOffsets = changeLogOldestOffsets,
         storeBaseDir = storeBaseDir,
-        partitionForThisTaskName)
+        partition = taskModel.getChangelogPartition)
 
-      val systemStreamPartitions: Set[SystemStreamPartition] = sspTaskNames.getOrElse(taskName, throw new SamzaException("Can't find taskName " + taskName + " in map of SystemStreamPartitions: " + sspTaskNames))
+      val systemStreamPartitions = taskModel.getInputSystemStreamPartitions.toSet
 
       info("Retrieved SystemStreamPartitions " + systemStreamPartitions + " for " + taskName)
 

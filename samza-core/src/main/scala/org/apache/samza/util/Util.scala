@@ -38,6 +38,8 @@ import org.apache.samza.container.TaskName
 import org.apache.samza.container.grouper.stream.SystemStreamPartitionGrouperFactory
 import org.apache.samza.container.TaskNamesToSystemStreamPartitions
 import org.apache.samza.container.grouper.task.GroupByContainerCount
+import org.apache.samza.coordinator.server.JobServlet
+import org.apache.samza.job.model.JobModel
 
 object Util extends Logging {
   val random = new Random
@@ -322,5 +324,15 @@ object Util extends Logging {
     val body = Iterator.continually(br.readLine()).takeWhile(_ != null).mkString
     br.close
     body
+  }
+
+  /**
+   * Fetches config, task:SSP assignments, and task:changelog partition
+   * assignments, and returns objects to be used for SamzaContainer's
+   * constructor.
+   */
+  def readJobModel(url: String): JobModel = {
+    info("Fetching configuration from: %s" format url)
+    // TODO new ObjectMapper().readValue(Util.read(new URL(url)))
   }
 }

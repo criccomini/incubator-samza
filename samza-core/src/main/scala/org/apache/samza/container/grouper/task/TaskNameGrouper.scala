@@ -18,7 +18,10 @@
  */
 package org.apache.samza.container.grouper.task
 
-import org.apache.samza.container.TaskNamesToSystemStreamPartitions
+import org.apache.samza.job.model.TaskModel
+import org.apache.samza.job.model.ContainerModel
+
+// TODO update docs
 
 /**
  * After the input SystemStreamPartitions have been mapped to their TaskNames by an implementation of
@@ -36,5 +39,5 @@ trait TaskNameGrouper {
    * @param taskNames Pre-grouped SSPs
    * @return Mapping of container ID to set if TaskNames it will run
    */
-  def groupTaskNames(taskNames: TaskNamesToSystemStreamPartitions): Map[Int, TaskNamesToSystemStreamPartitions]
+  def group(tasks: Set[TaskModel]): Set[ContainerModel]
 }
