@@ -40,6 +40,7 @@ class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
     require(tasks.size > 0, "No tasks found. Likely due to no input partitions. Can't run a job with no tasks.")
     require(tasks.size >= numContainers, "Your container count (%s) larger than your task count (%s). Can't have containers with nothing to do, so aborting." format (numContainers, tasks.size))
 
+    // TODO there has to be a better way to do this in Scala
     tasks
       .toList
       // Sort tasks by taskName.
@@ -49,7 +50,7 @@ class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
       // Map every task to a container using its task ID.
       .groupBy(_._2 % numContainers)
       // Take just TaskModel and remove task IDs.
-      .mapValues(_.map(_._1).toSet)
+      .mapValues(_.map { case (task, taskId) => (task.getTaskName, task) }.toMap)
       .map { case (containerId, tasks) => new ContainerModel(containerId, tasks) }
       .toSet
   }
