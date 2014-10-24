@@ -29,12 +29,12 @@ import scala.collection.JavaConversions._
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.codehaus.jackson.map.ObjectMapper
 import java.util.HashMap
-import org.apache.samza.util.JsonSerializers
+import org.apache.samza.serializers.model.SamzaObjectMapper
 
 class ApplicationMasterRestServlet(config: Config, state: SamzaAppMasterState, registry: ReadableMetricsRegistry) extends ScalatraServlet with ScalateSupport {
   val yarnConfig = new YarnConfiguration
   val client = new ClientHelper(yarnConfig)
-  val jsonMapper = JsonSerializers.getObjectMapper
+  val jsonMapper = SamzaObjectMapper.getObjectMapper
 
   before() {
     contentType = "application/json"

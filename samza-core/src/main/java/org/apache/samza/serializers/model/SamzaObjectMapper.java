@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.samza.util;
+package org.apache.samza.serializers.model;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import org.apache.samza.Partition;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.MapConfig;
@@ -40,28 +39,46 @@ import org.codehaus.jackson.Version;
 import org.codehaus.jackson.map.DeserializationContext;
 import org.codehaus.jackson.map.JsonDeserializer;
 import org.codehaus.jackson.map.JsonSerializer;
+import org.codehaus.jackson.map.MapperConfig;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.PropertyNamingStrategy;
 import org.codehaus.jackson.map.SerializerProvider;
+import org.codehaus.jackson.map.introspect.AnnotatedField;
+import org.codehaus.jackson.map.introspect.AnnotatedMethod;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.type.TypeReference;
 
-public class JsonSerializers {
+public class SamzaObjectMapper {
   private static final ObjectMapper OBJECT_MAPPER = getObjectMapper();
 
   public static ObjectMapper getObjectMapper() {
-    ObjectMapper objectMapper = new ObjectMapper();
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.setPropertyNamingStrategy(new CamelCaseToDashesStrategy());
     SimpleModule module = new SimpleModule("host-thing", new Version(1, 0, 0, ""));
-    module.addDeserializer(Partition.class, new PartitionDeserializer());
-    module.addSerializer(Partition.class, new PartitionSerializer());
-    module.addDeserializer(TaskName.class, new TaskNameDeserializer());
     module.addSerializer(TaskName.class, new TaskNameSerializer());
     module.addDeserializer(SystemStreamPartition.class, new SystemStreamPartitionDeserializer());
+    module.addDeserializer(Config.class, new ConfigDeserializer());
+    module.addDeserializer(Partition.class, new PartitionDeserializer());
+    module.addSerializer(Partition.class, new PartitionSerializer());
     module.addSerializer(SystemStreamPartition.class, new SystemStreamPartitionSerializer());
-    module.addDeserializer(TaskModel.class, new TaskModelDeserializer());
-    module.addDeserializer(ContainerModel.class, new ContainerModelDeserializer());
-    module.addDeserializer(JobModel.class, new JobModelDeserializer());
-    objectMapper.registerModule(module);
-    return objectMapper;
+    mapper.getSerializationConfig().addMixInAnnotations(TaskModel.class, JsonTaskModelMixIn.class);
+    mapper.getDeserializationConfig().addMixInAnnotations(TaskModel.class, JsonTaskModelMixIn.class);
+    mapper.getSerializationConfig().addMixInAnnotations(ContainerModel.class, JsonContainerModelMixIn.class);
+    mapper.getDeserializationConfig().addMixInAnnotations(ContainerModel.class, JsonContainerModelMixIn.class);
+    mapper.getSerializationConfig().addMixInAnnotations(JobModel.class, JsonJobModelMixIn.class);
+    mapper.getDeserializationConfig().addMixInAnnotations(JobModel.class, JsonJobModelMixIn.class);
+    mapper.registerModule(module);
+    return mapper;
+  }
+
+  public static class ConfigDeserializer extends JsonDeserializer<Config> {
+    @Override
+    public Config deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JsonProcessingException {
+      ObjectCodec oc = jsonParser.getCodec();
+      JsonNode node = oc.readTree(jsonParser);
+      return new MapConfig(OBJECT_MAPPER.<Map<String, String>> readValue(node, new TypeReference<Map<String, String>>() {
+      }));
+    }
   }
 
   public static class PartitionSerializer extends JsonSerializer<Partition> {
@@ -92,7 +109,7 @@ public class JsonSerializers {
     public TaskName deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JsonProcessingException {
       ObjectCodec oc = jsonParser.getCodec();
       JsonNode node = oc.readTree(jsonParser);
-      return new TaskName(node.get("taskName").getTextValue());
+      return new TaskName(node.getTextValue());
     }
   }
 
@@ -119,41 +136,33 @@ public class JsonSerializers {
     }
   }
 
-  public static class TaskModelDeserializer extends JsonDeserializer<TaskModel> {
+  public static class CamelCaseToDashesStrategy extends PropertyNamingStrategy {
     @Override
-    public TaskModel deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JsonProcessingException {
-      ObjectCodec oc = jsonParser.getCodec();
-      JsonNode node = oc.readTree(jsonParser);
-      TaskName taskName = OBJECT_MAPPER.readValue(node, TaskName.class);
-      Set<SystemStreamPartition> systemStreamPartitions = OBJECT_MAPPER.readValue(node.get("systemStreamPartitions"), new TypeReference<Set<SystemStreamPartition>>() {
-      });
-      Partition changelogPartition = OBJECT_MAPPER.readValue(node.get("changelogPartition"), Partition.class);
-      return new TaskModel(taskName, systemStreamPartitions, changelogPartition);
+    public String nameForField(MapperConfig<?> config, AnnotatedField field, String defaultName) {
+      return convert(defaultName);
     }
-  }
 
-  public static class ContainerModelDeserializer extends JsonDeserializer<ContainerModel> {
     @Override
-    public ContainerModel deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JsonProcessingException {
-      ObjectCodec oc = jsonParser.getCodec();
-      JsonNode node = oc.readTree(jsonParser);
-      int containerId = node.get("containerId").getIntValue();
-      Map<TaskName, TaskModel> tasks = OBJECT_MAPPER.readValue(node.get("tasks"), new TypeReference<Map<TaskName, TaskModel>>() {
-      });
-      return new ContainerModel(containerId, tasks);
+    public String nameForGetterMethod(MapperConfig<?> config, AnnotatedMethod method, String defaultName) {
+      return convert(defaultName);
     }
-  }
 
-  public static class JobModelDeserializer extends JsonDeserializer<JobModel> {
     @Override
-    public JobModel deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JsonProcessingException {
-      ObjectCodec oc = jsonParser.getCodec();
-      JsonNode node = oc.readTree(jsonParser);
-      Config config = new MapConfig(OBJECT_MAPPER.<Map<String, String>> readValue(node.get("config"), new TypeReference<Map<String, String>>() {
-      }));
-      Map<Integer, ContainerModel> containers = OBJECT_MAPPER.readValue(node.get("containers"), new TypeReference<Map<Integer, ContainerModel>>() {
-      });
-      return new JobModel(config, containers);
+    public String nameForSetterMethod(MapperConfig<?> config, AnnotatedMethod method, String defaultName) {
+      return convert(defaultName);
+    }
+
+    public String convert(String defaultName) {
+      StringBuilder builder = new StringBuilder();
+      char[] arr = defaultName.toCharArray();
+      for (int i = 0; i < arr.length; ++i) {
+        if (Character.isUpperCase(arr[i])) {
+          builder.append("-" + Character.toLowerCase(arr[i]));
+        } else {
+          builder.append(arr[i]);
+        }
+      }
+      return builder.toString();
     }
   }
 }

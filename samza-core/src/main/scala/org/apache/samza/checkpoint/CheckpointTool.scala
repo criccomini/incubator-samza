@@ -32,6 +32,7 @@ import org.apache.samza.util.{CommandLine, Util}
 import org.apache.samza.{Partition, SamzaException}
 import scala.collection.JavaConversions._
 import org.apache.samza.util.Logging
+import org.apache.samza.coordinator.JobCoordinator
 
 /**
  * Command-line tool for inspecting and manipulating the checkpoints for a job.
@@ -133,27 +134,28 @@ class CheckpointTool(config: Config, newOffsets: TaskNameToCheckpointMap) extend
   // the manager. TODO figure out some way of avoiding duplicated work.
 
   def run {
-//    info("Using %s" format manager)
-//
-//    // Find all the TaskNames that would be generated for this job config
-//    val taskNames = Util.assignContainerToSSPTaskNames(config, 1).get(0).get.keys.toSet
-//
-//    taskNames.foreach(manager.register)
-//    manager.start
-//
-//    val lastCheckpoints = taskNames.map(tn => tn -> readLastCheckpoint(tn)).toMap
-//
-//    lastCheckpoints.foreach(lcp => logCheckpoint(lcp._1, lcp._2, "Current checkpoint for taskname "+ lcp._1))
-//
-//    if (newOffsets != null) {
-//      newOffsets.foreach(no => {
-//        logCheckpoint(no._1, no._2, "New offset to be written for taskname " + no._1)
-//        writeNewCheckpoint(no._1, no._2)
-//        info("Ok, new checkpoint has been written for taskname " + no._1)
-//      })
-//    }
-//
-//    manager.stop
+    info("Using %s" format manager)
+
+    // Find all the TaskNames that would be generated for this job config
+    val coordinator = JobCoordinator(config, 1)
+    val taskNames = coordinator.jobModel.getContainers.values.flatMap(_.getTasks.keys).toSet
+
+    taskNames.foreach(manager.register)
+    manager.start
+
+    val lastCheckpoints = taskNames.map(tn => tn -> readLastCheckpoint(tn)).toMap
+
+    lastCheckpoints.foreach(lcp => logCheckpoint(lcp._1, lcp._2, "Current checkpoint for taskname "+ lcp._1))
+
+    if (newOffsets != null) {
+      newOffsets.foreach(no => {
+        logCheckpoint(no._1, no._2, "New offset to be written for taskname " + no._1)
+        writeNewCheckpoint(no._1, no._2)
+        info("Ok, new checkpoint has been written for taskname " + no._1)
+      })
+    }
+
+    manager.stop
   }
 
   /** Load the most recent checkpoint state for all a specified TaskName. */

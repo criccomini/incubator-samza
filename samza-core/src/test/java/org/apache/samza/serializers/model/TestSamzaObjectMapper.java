@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.samza.util;
+package org.apache.samza.serializers.model;
 
 import static org.junit.Assert.*;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,14 +32,13 @@ import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
 import org.apache.samza.job.model.TaskModel;
 import org.apache.samza.system.SystemStreamPartition;
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 
-public class TestJsonSerializers {
+public class TestSamzaObjectMapper {
   @Test
-  public void testTaskModelJson() throws JsonGenerationException, JsonMappingException, IOException {
+  public void testJsonTaskModel() throws Exception {
+    ObjectMapper mapper = SamzaObjectMapper.getObjectMapper();
     Map<String, String> configMap = new HashMap<String, String>();
     configMap.put("a", "b");
     Config config = new MapConfig(configMap);
@@ -54,7 +52,6 @@ public class TestJsonSerializers {
     Map<Integer, ContainerModel> containerMap = new HashMap<Integer, ContainerModel>();
     containerMap.put(Integer.valueOf(1), containerModel);
     JobModel jobModel = new JobModel(config, containerMap);
-    ObjectMapper mapper = JsonSerializers.getObjectMapper();
     String str = mapper.writeValueAsString(jobModel);
     JobModel obj = mapper.readValue(str, JobModel.class);
     assertEquals(jobModel, obj);

@@ -64,7 +64,7 @@ import java.net.URL
 import org.apache.samza.coordinator.server.JobServlet
 import org.apache.samza.job.model.ContainerModel
 import org.apache.samza.coordinator.JobCoordinator
-import org.apache.samza.util.JsonSerializers
+import org.apache.samza.serializers.model.SamzaObjectMapper
 import org.apache.samza.job.model.JobModel
 
 object SamzaContainer extends Logging {
@@ -96,7 +96,7 @@ object SamzaContainer extends Logging {
    */
   def readJobModel(url: String) = {
     info("Fetching configuration from: %s" format url)
-    JsonSerializers
+    SamzaObjectMapper
       .getObjectMapper
       .readValue(Util.read(new URL(url)), classOf[JobModel])
   }

@@ -40,7 +40,7 @@ import org.apache.samza.Partition
 import org.apache.samza.job.model.TaskModel
 import org.apache.samza.system.StreamMetadataCache
 import org.apache.samza.system.SystemStreamPartition
-import org.apache.samza.util.JsonSerializers
+import org.apache.samza.serializers.model.SamzaObjectMapper
 import java.net.URL
 import org.apache.samza.system.SystemFactory
 import org.apache.samza.coordinator.server.HttpServer
