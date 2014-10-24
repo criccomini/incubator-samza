@@ -48,26 +48,47 @@ import org.codehaus.jackson.map.introspect.AnnotatedMethod;
 import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.type.TypeReference;
 
+/**
+ * A collection of utility classes and (de)serializers to make Samza's job model
+ * work with Jackson. Rather than annotating Samza's job model directly, the
+ * Jackson-specific code is isolated so that Samza's core data model does not
+ * require a direct dependency on Jackson.
+ * 
+ * To use Samza's job data model, use the SamzaObjectMapper.getObjectMapper()
+ * method.
+ */
 public class SamzaObjectMapper {
   private static final ObjectMapper OBJECT_MAPPER = getObjectMapper();
 
+  /**
+   * @return Returns a new ObjectMapper that's been configured to (de)serialize
+   *         Samza's job data model, and simple data types such as TaskName,
+   *         Partition, Config, and SystemStreamPartition.
+   */
   public static ObjectMapper getObjectMapper() {
     ObjectMapper mapper = new ObjectMapper();
-    mapper.setPropertyNamingStrategy(new CamelCaseToDashesStrategy());
-    SimpleModule module = new SimpleModule("host-thing", new Version(1, 0, 0, ""));
+    SimpleModule module = new SimpleModule("SamzaModule", new Version(1, 0, 0, ""));
+
+    // Setup custom serdes for simple data types.
     module.addSerializer(TaskName.class, new TaskNameSerializer());
     module.addDeserializer(SystemStreamPartition.class, new SystemStreamPartitionDeserializer());
     module.addDeserializer(Config.class, new ConfigDeserializer());
     module.addDeserializer(Partition.class, new PartitionDeserializer());
     module.addSerializer(Partition.class, new PartitionSerializer());
     module.addSerializer(SystemStreamPartition.class, new SystemStreamPartitionSerializer());
+
+    // Setup mixins for data models.
     mapper.getSerializationConfig().addMixInAnnotations(TaskModel.class, JsonTaskModelMixIn.class);
     mapper.getDeserializationConfig().addMixInAnnotations(TaskModel.class, JsonTaskModelMixIn.class);
     mapper.getSerializationConfig().addMixInAnnotations(ContainerModel.class, JsonContainerModelMixIn.class);
     mapper.getDeserializationConfig().addMixInAnnotations(ContainerModel.class, JsonContainerModelMixIn.class);
     mapper.getSerializationConfig().addMixInAnnotations(JobModel.class, JsonJobModelMixIn.class);
     mapper.getDeserializationConfig().addMixInAnnotations(JobModel.class, JsonJobModelMixIn.class);
+
+    // Convert camel case to hyphenated field names, and register the module.
+    mapper.setPropertyNamingStrategy(new CamelCaseToDashesStrategy());
     mapper.registerModule(module);
+
     return mapper;
   }
 
@@ -136,6 +157,11 @@ public class SamzaObjectMapper {
     }
   }
 
+  /**
+   * A Jackson property naming strategy that converts camel case JSON fields to
+   * hyphenated names. For example, myVariableName would be converted to
+   * my-variable-name.
+   */
   public static class CamelCaseToDashesStrategy extends PropertyNamingStrategy {
     @Override
     public String nameForField(MapperConfig<?> config, AnnotatedField field, String defaultName) {

@@ -23,6 +23,10 @@ import java.util.Collections;
 import java.util.Map;
 import org.apache.samza.config.Config;
 
+/**
+ * The data model used to represent a Samza job. The model is used in the job
+ * coordinator and SamzaContainer to determine how to execute Samza jobs.
+ */
 public class JobModel {
   private final Config config;
   private final Map<Integer, ContainerModel> containers;

@@ -25,6 +25,9 @@ import org.apache.samza.job.model.TaskModel;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+/**
+ * A mix-in Jackson class to convert Samza's ContainerModel to/from JSON.
+ */
 public abstract class JsonContainerModelMixIn {
   @JsonCreator
   public JsonContainerModelMixIn(@JsonProperty("container-id") int containerId, @JsonProperty("tasks") Map<TaskName, TaskModel> tasks) {

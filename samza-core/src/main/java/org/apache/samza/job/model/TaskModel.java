@@ -25,6 +25,10 @@ import org.apache.samza.Partition;
 import org.apache.samza.container.TaskName;
 import org.apache.samza.system.SystemStreamPartition;
 
+/**
+ * The data model used to represent a task. The model is used in the job
+ * coordinator and SamzaContainer to determine how to execute Samza jobs.
+ */
 public class TaskModel implements Comparable<TaskModel> {
   private final TaskName taskName;
   private final Set<SystemStreamPartition> systemStreamPartitions;

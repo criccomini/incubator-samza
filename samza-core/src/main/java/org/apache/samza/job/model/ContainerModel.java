@@ -23,6 +23,10 @@ import java.util.Collections;
 import java.util.Map;
 import org.apache.samza.container.TaskName;
 
+/**
+ * The data model used to represent a SamzaContainer. The model is used in the
+ * job coordinator and SamzaContainer to determine how to execute Samza jobs.
+ */
 public class ContainerModel implements Comparable<ContainerModel> {
   private final int containerId;
   private final Map<TaskName, TaskModel> tasks;

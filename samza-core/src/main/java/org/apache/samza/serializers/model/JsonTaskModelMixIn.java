@@ -26,6 +26,9 @@ import org.apache.samza.system.SystemStreamPartition;
 import org.codehaus.jackson.annotate.JsonCreator;
 import org.codehaus.jackson.annotate.JsonProperty;
 
+/**
+ * A mix-in Jackson class to convert Samza's TaskModel to/from JSON.
+ */
 public abstract class JsonTaskModelMixIn {
   @JsonCreator
   public JsonTaskModelMixIn(@JsonProperty("task-name") TaskName taskName, @JsonProperty("system-stream-partitions") Set<SystemStreamPartition> systemStreamPartitions, @JsonProperty("changelog-partition") Partition changelogPartition) {
