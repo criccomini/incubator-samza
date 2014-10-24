@@ -42,6 +42,13 @@ import org.apache.samza.job.model.ContainerModel
 import org.apache.samza.job.model.TaskModel
 
 class TestJobCoordinator {
+  /**
+   * Builds a coordinator from config, and then compares it with what was 
+   * expected. We simulate having a checkpoint manager that has 2 task 
+   * changelog entries, and our model adds a third task. Expectation is that 
+   * the JobCoordinator will assign the new task with a new changelog 
+   * partition.
+   */
   @Test
   def testJobCoordinator {
     val containerCount = 2

@@ -160,9 +160,15 @@ object JobCoordinator extends Logging {
 
     // Save the changelog mapping back to the checkpoint manager.
     if (checkpointManager != null) {
+      // newChangelogMapping is the merging of all current task:changelog 
+      // assignments with whatever we had before (previousChangelogeMapping).
+      // We must persist legacy changelog assignments so that 
+      // maxChangelogPartitionId always has the absolute max, not the current 
+      // max (in case the task with the highest changelog partition mapping 
+      // disappears.
       val newChangelogMapping = taskModels.map(taskModel => {
         taskModel.getTaskName -> Integer.valueOf(taskModel.getChangelogPartition.getPartitionId)
-      }).toMap
+      }).toMap ++ previousChangelogeMapping
       info("Saving task-to-changelog partition mapping: %s" format newChangelogMapping)
       checkpointManager.writeChangeLogPartitionMapping(newChangelogMapping)
       checkpointManager.stop
