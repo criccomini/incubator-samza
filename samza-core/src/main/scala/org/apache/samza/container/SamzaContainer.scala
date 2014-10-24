@@ -104,7 +104,7 @@ object SamzaContainer extends Logging {
     val inputSystemStreamPartitions = containerModel
       .getTasks
       .values
-      .flatMap(_.getInputSystemStreamPartitions)
+      .flatMap(_.getSystemStreamPartitions)
       .toSet
 
     val inputSystemStreams = inputSystemStreamPartitions
@@ -451,7 +451,9 @@ object SamzaContainer extends Logging {
         storeBaseDir = storeBaseDir,
         partition = taskModel.getChangelogPartition)
 
-      val systemStreamPartitions = taskModel.getInputSystemStreamPartitions.toSet
+      val systemStreamPartitions = taskModel
+        .getSystemStreamPartitions
+        .toSet
 
       info("Retrieved SystemStreamPartitions " + systemStreamPartitions + " for " + taskName)
 

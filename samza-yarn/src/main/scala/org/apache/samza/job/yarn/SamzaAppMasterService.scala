@@ -51,7 +51,7 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     webApp.start
 
     coordinatorApp = new HttpServer
-    coordinatorApp.addServlet("/*", new JobServlet(config, state.tasksToSSPTaskNames, state.taskNameToChangeLogPartitionMapping))
+    coordinatorApp.addServlet("/*", new JobServlet(state.jobModel))
     coordinatorApp.start
 
     state.rpcUrl = rpcApp.getUrl

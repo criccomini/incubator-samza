@@ -20,7 +20,6 @@ package org.apache.samza.container.grouper.stream;
 
 import org.apache.samza.container.TaskName;
 import org.apache.samza.system.SystemStreamPartition;
-
 import java.util.Map;
 import java.util.Set;
 

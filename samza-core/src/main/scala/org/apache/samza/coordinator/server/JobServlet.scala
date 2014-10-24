@@ -22,10 +22,6 @@ package org.apache.samza.coordinator.server
 import org.apache.samza.job.model.JobModel
 import org.apache.samza.util.Logging
 
-class JobServlet(
-  jobModel: JobModel) extends ServletBase with Logging {
-
-  protected def getObjectToWrite() = {
-    jobModel
-  }
+class JobServlet(jobModel: JobModel) extends ServletBase with Logging {
+  protected def getObjectToWrite() = jobModel
 }
