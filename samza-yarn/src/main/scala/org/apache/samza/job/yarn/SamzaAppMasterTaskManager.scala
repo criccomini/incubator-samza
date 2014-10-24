@@ -43,6 +43,7 @@ import org.apache.samza.job.CommandBuilder
 import org.apache.samza.job.ShellCommandBuilder
 import org.apache.samza.util.Util
 import org.apache.samza.util.Logging
+import org.apache.samza.coordinator.JobCoordinator
 
 object SamzaAppMasterTaskManager {
   val DEFAULT_CONTAINER_MEM = 1024
@@ -68,7 +69,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
       info("No %s specified. Defaulting to one container." format YarnConfig.TASK_COUNT)
       1
     })
-  state.jobModel = Util.buildJobModel(config, state.taskCount)
+  state.jobCoordinator = new JobCoordinator(config, state.taskCount)
 
   var taskFailures = Map[Int, TaskFailure]()
   var tooManyFailedContainers = false
@@ -79,7 +80,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
 
   override def onInit() {
     state.neededContainers = state.taskCount
-    state.unclaimedTasks = state.jobModel.getContainers.keySet.map(_.toInt).toSet
+    state.unclaimedTasks = state.jobCoordinator.jobModel.getContainers.keySet.map(_.toInt).toSet
     containerManager = NMClient.createNMClient()
     containerManager.init(conf)
     containerManager.start
@@ -103,7 +104,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
     state.unclaimedTasks.headOption match {
       case Some(taskId) => {
         info("Got available task id (%d) for container: %s" format (taskId, container))
-        val sspTaskNames = state.jobModel.getContainers.get(taskId)
+        val sspTaskNames = state.jobCoordinator.jobModel.getContainers.get(taskId)
         info("Claimed SSP taskNames %s for container ID %s" format (sspTaskNames, taskId))
         val cmdBuilderClassName = config.getCommandClass.getOrElse(classOf[ShellCommandBuilder].getName)
         val cmdBuilder = Class.forName(cmdBuilderClassName).newInstance.asInstanceOf[CommandBuilder]

@@ -63,6 +63,9 @@ import scala.collection.JavaConversions._
 import java.net.URL
 import org.apache.samza.coordinator.server.JobServlet
 import org.apache.samza.job.model.ContainerModel
+import org.apache.samza.coordinator.JobCoordinator
+import org.apache.samza.util.JsonSerializers
+import org.apache.samza.job.model.JobModel
 
 object SamzaContainer extends Logging {
   def main(args: Array[String]) {
@@ -76,7 +79,7 @@ object SamzaContainer extends Logging {
     try {
       val containerId = System.getenv(ShellCommandConfig.ENV_CONTAINER_ID).toInt
       val coordinatorUrl = System.getenv(ShellCommandConfig.ENV_COORDINATOR_URL)
-      val jobModel = Util.readJobModel(coordinatorUrl)
+      val jobModel = readJobModel(coordinatorUrl)
       val containerModel = jobModel.getContainers()(containerId.toInt)
       val config = jobModel.getConfig
 
@@ -84,6 +87,18 @@ object SamzaContainer extends Logging {
     } finally {
       jmxServer.stop
     }
+  }
+
+  /**
+   * Fetches config, task:SSP assignments, and task:changelog partition
+   * assignments, and returns objects to be used for SamzaContainer's
+   * constructor.
+   */
+  def readJobModel(url: String) = {
+    info("Fetching configuration from: %s" format url)
+    JsonSerializers
+      .getObjectMapper
+      .readValue(Util.read(new URL(url)), classOf[JobModel])
   }
 
   def apply(containerModel: ContainerModel, config: Config) = {

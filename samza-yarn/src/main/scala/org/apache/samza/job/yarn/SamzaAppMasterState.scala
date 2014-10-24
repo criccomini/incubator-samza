@@ -26,6 +26,7 @@ import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.container.TaskName
 import java.net.URL
 import org.apache.samza.job.model.JobModel
+import org.apache.samza.coordinator.JobCoordinator
 
 /**
  * Samza's application master has state that is usually manipulated based on
@@ -42,7 +43,7 @@ class SamzaAppMasterState(val taskId: Int, val containerId: ContainerId, val nod
   var unclaimedTasks = Set[Int]()
   var finishedTasks = Set[Int]()
   var runningTasks = Map[Int, YarnContainer]()
-  var jobModel: JobModel = null
+  var jobCoordinator: JobCoordinator = null
   var status = FinalApplicationStatus.UNDEFINED
   var jobHealthy = true
 

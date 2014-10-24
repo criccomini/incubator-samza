@@ -129,7 +129,7 @@
             %th Container
         %tbody
           - for((containerId, container) <- state.runningTasks)
-            - val containerModel = state.jobModel.getContainers.get(containerId)
+            - val containerModel = state.jobCoordinator.jobModel.getContainers.get(containerId)
             - for((taskName, taskModel) <- containerModel.getTasks)
               %tr
                 %td= containerId
