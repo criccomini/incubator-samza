@@ -38,7 +38,7 @@ class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
 
   override def group(tasks: Set[TaskModel]): Set[ContainerModel] = {
     require(tasks.size > 0, "No tasks found. Likely due to no input partitions. Can't run a job with no tasks.")
-    require(tasks.size >= numContainers, "Your container count (%s) larger than your task count (%s). Can't have containers with nothing to do, so aborting." format (numContainers, tasks.size))
+    require(tasks.size >= numContainers, "Your container count (%s) is larger than your task count (%s). Can't have containers with nothing to do, so aborting." format (numContainers, tasks.size))
 
     // TODO there has to be a better way to do this in Scala
     tasks

@@ -49,10 +49,7 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
     webApp.addServlet("/*", new ApplicationMasterWebServlet(config, state))
     webApp.start
 
-    if (state.jobCoordinator != null) {
-      state.jobCoordinator.start
-    }
-
+    state.jobCoordinator.start
     state.rpcUrl = rpcApp.getUrl
     state.trackingUrl = webApp.getUrl
     state.coordinatorUrl = state.jobCoordinator.server.getUrl
@@ -69,8 +66,6 @@ class SamzaAppMasterService(config: Config, state: SamzaAppMasterState, registry
       webApp.stop
     }
 
-    if (state.jobCoordinator != null) {
-      state.jobCoordinator.stop
-    }
+    state.jobCoordinator.stop
   }
 }
