@@ -47,20 +47,15 @@ import org.apache.samza.coordinator.server.HttpServer
 import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.coordinator.server.JobServlet
 
-class JobCoordinator(config: Config, containerCount: Int, rootPath: String = "/*") extends Logging {
-  val jobModel = buildJobModel
-  val server = new HttpServer
-
-  def start {
-    server.addServlet(rootPath, new JobServlet(jobModel))
-    server.start
+object JobCoordinator extends Logging {
+  def apply(config: Config, containerCount: Int) = {
+    val jobModel = buildJobModel(config, containerCount)
+    val server = new HttpServer
+    server.addServlet("/*", new JobServlet(jobModel))
+    new JobCoordinator(jobModel, server)
   }
 
-  def stop {
-    server.stop
-  }
-
-  private def getCheckpointManager = {
+  def getCheckpointManager(config: Config) = {
     config.getCheckpointManagerFactory match {
       case Some(checkpointFactoryClassName) =>
         Util
@@ -75,28 +70,24 @@ class JobCoordinator(config: Config, containerCount: Int, rootPath: String = "/*
     }
   }
 
-  private def getSystemStreamPartitionGrouper = {
+  def getSystemStreamPartitionGrouper(config: Config) = {
     val factoryString = config.getSystemStreamPartitionGrouperFactory
     val factory = Util.getObj[SystemStreamPartitionGrouperFactory](factoryString)
     factory.getSystemStreamPartitionGrouper(config)
   }
 
-  private def fetchChangelogPartitionMapping(checkpointManager: CheckpointManager) = {
-    if (checkpointManager != null) {
+  // TODO containerCount should go away when we generalize the job coordinator, 
+  // and have a non-yarn-specific way of specifying container count.
+  def buildJobModel(config: Config, containerCount: Int) = {
+    val checkpointManager = getCheckpointManager(config)
+    val allSystemStreamPartitions = getInputStreamPartitions(config)
+    val grouper = getSystemStreamPartitionGrouper(config)
+    val previousChangelogeMapping = if (checkpointManager != null) {
       checkpointManager.start
       checkpointManager.readChangeLogPartitionMapping
     } else {
       new util.HashMap[TaskName, java.lang.Integer]()
     }
-  }
-
-  // TODO containerCount should go away when we generalize the job coordinator, 
-  // and have a non-yarn-specific way of specifying container count.
-  private def buildJobModel = {
-    val checkpointManager = getCheckpointManager
-    val previousChangelogeMapping = fetchChangelogPartitionMapping(checkpointManager)
-    val allSystemStreamPartitions = getInputStreamPartitions
-    val grouper = getSystemStreamPartitionGrouper
     var maxChangelogPartitionId = previousChangelogeMapping
       .values
       .map(_.toInt)
@@ -154,7 +145,7 @@ class JobCoordinator(config: Config, containerCount: Int, rootPath: String = "/*
    * @param config Source of truth for systems and inputStreams
    * @return Set of SystemStreamPartitions, one for each unique system, stream and partition
    */
-  private def getInputStreamPartitions = {
+  def getInputStreamPartitions(config: Config) = {
     val inputSystemStreams = config.getInputStreams
     val systemNames = config.getSystemNames.toSet
 
@@ -177,5 +168,24 @@ class JobCoordinator(config: Config, containerCount: Int, rootPath: String = "/*
             .keys
             .map(new SystemStreamPartition(systemStream, _))
       }.toSet
+  }
+}
+
+class JobCoordinator(
+  val jobModel: JobModel,
+  val server: HttpServer) extends Logging {
+
+  debug("Got job model: %s." format jobModel)
+
+  def start {
+    debug("Starting HTTP server.")
+    server.start
+    info("Startd HTTP server: %s" format server.getUrl)
+  }
+
+  def stop {
+    debug("Stopping HTTP server.")
+    server.stop
+    info("Stopped HTTP server.")
   }
 }

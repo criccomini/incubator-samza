@@ -44,7 +44,7 @@ class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
     tasks
       .toList
       // Sort tasks by taskName.
-      .sortWith { case (task1, task2) => task1.compareTo(task2) >= 0 }
+      .sortWith { case (task1, task2) => task1.compareTo(task2) < 0 }
       // Assign every task an ID.
       .zip(0 until tasks.size)
       // Map every task to a container using its task ID.

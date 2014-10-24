@@ -69,7 +69,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
       info("No %s specified. Defaulting to one container." format YarnConfig.TASK_COUNT)
       1
     })
-  state.jobCoordinator = new JobCoordinator(config, state.taskCount)
+  state.jobCoordinator = JobCoordinator(config, state.taskCount)
 
   var taskFailures = Map[Int, TaskFailure]()
   var tooManyFailedContainers = false
