@@ -138,7 +138,12 @@ class CheckpointTool(config: Config, newOffsets: TaskNameToCheckpointMap) extend
 
     // Find all the TaskNames that would be generated for this job config
     val coordinator = JobCoordinator(config, 1)
-    val taskNames = coordinator.jobModel.getContainers.values.flatMap(_.getTasks.keys).toSet
+    val taskNames = coordinator
+      .jobModel
+      .getContainers
+      .values
+      .flatMap(_.getTasks.keys)
+      .toSet
 
     taskNames.foreach(manager.register)
     manager.start

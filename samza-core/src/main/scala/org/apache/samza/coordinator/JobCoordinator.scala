@@ -48,6 +48,8 @@ import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.coordinator.server.JobServlet
 
 object JobCoordinator extends Logging {
+  // TODO containerCount will go away once we move away from 
+  // yarn.container.count to a generalized container count config property.
   def apply(config: Config, containerCount: Int) = {
     val jobModel = buildJobModel(config, containerCount)
     val server = new HttpServer
@@ -68,6 +70,38 @@ object JobCoordinator extends Logging {
         }
         null
     }
+  }
+
+  /**
+   * For each input stream specified in config, exactly determine its partitions, returning a set of SystemStreamPartitions
+   * containing them all
+   *
+   * @param config Source of truth for systems and inputStreams
+   * @return Set of SystemStreamPartitions, one for each unique system, stream and partition
+   */
+  def getInputStreamPartitions(config: Config) = {
+    val inputSystemStreams = config.getInputStreams
+    val systemNames = config.getSystemNames.toSet
+
+    // Map the name of each system to the corresponding SystemAdmin
+    val systemAdmins = systemNames.map(systemName => {
+      val systemFactoryClassName = config
+        .getSystemFactory(systemName)
+        .getOrElse(throw new SamzaException("A stream uses system %s, which is missing from the configuration." format systemName))
+      val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
+      systemName -> systemFactory.getAdmin(systemName, config)
+    }).toMap
+
+    // Get the set of partitions for each SystemStream from the stream metadata
+    new StreamMetadataCache(systemAdmins)
+      .getStreamMetadata(inputSystemStreams)
+      .flatMap {
+        case (systemStream, metadata) =>
+          metadata
+            .getSystemStreamPartitionMetadata
+            .keys
+            .map(new SystemStreamPartition(systemStream, _))
+      }.toSet
   }
 
   def getSystemStreamPartitionGrouper(config: Config) = {
@@ -136,38 +170,6 @@ object JobCoordinator extends Logging {
       .toMap
 
     new JobModel(config, containerModels)
-  }
-
-  /**
-   * For each input stream specified in config, exactly determine its partitions, returning a set of SystemStreamPartitions
-   * containing them all
-   *
-   * @param config Source of truth for systems and inputStreams
-   * @return Set of SystemStreamPartitions, one for each unique system, stream and partition
-   */
-  def getInputStreamPartitions(config: Config) = {
-    val inputSystemStreams = config.getInputStreams
-    val systemNames = config.getSystemNames.toSet
-
-    // Map the name of each system to the corresponding SystemAdmin
-    val systemAdmins = systemNames.map(systemName => {
-      val systemFactoryClassName = config
-        .getSystemFactory(systemName)
-        .getOrElse(throw new SamzaException("A stream uses system %s, which is missing from the configuration." format systemName))
-      val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
-      systemName -> systemFactory.getAdmin(systemName, config)
-    }).toMap
-
-    // Get the set of partitions for each SystemStream from the stream metadata
-    new StreamMetadataCache(systemAdmins)
-      .getStreamMetadata(inputSystemStreams)
-      .flatMap {
-        case (systemStream, metadata) =>
-          metadata
-            .getSystemStreamPartitionMetadata
-            .keys
-            .map(new SystemStreamPartition(systemStream, _))
-      }.toSet
   }
 }
 

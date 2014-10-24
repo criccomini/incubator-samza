@@ -39,3 +39,4 @@ public abstract class JsonContainerModelMixIn {
   @JsonProperty("tasks")
   abstract Map<TaskName, TaskModel> getTasks();
 }
+

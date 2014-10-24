@@ -402,7 +402,7 @@ object SamzaContainer extends Logging {
 
     val taskInstances: Map[TaskName, TaskInstance] = containerModel.getTasks.values.map(taskModel => {
       debug("Setting up task instance: %s" format taskModel)
-      
+
       val taskName = taskModel.getTaskName
 
       val task = Util.getObj[StreamTask](taskClassName)

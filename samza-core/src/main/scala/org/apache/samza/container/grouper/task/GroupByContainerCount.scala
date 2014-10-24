@@ -25,13 +25,13 @@ import org.apache.samza.job.model.ContainerModel
 import org.apache.samza.system.SystemStreamPartition
 import scala.collection.JavaConversions._
 
-// TODO update docs
-
 /**
- * Group the SSP taskNames by dividing the number of taskNames into the number of containers (n) and assigning n taskNames
- * to each container as returned by iterating over the keys in the map of taskNames (whatever that ordering happens to be).
- * No consideration is given towards locality, even distribution of aggregate SSPs within a container, even distribution
- * of the number of taskNames between containers, etc.
+ * Group the SSP taskNames by dividing the number of taskNames into the number
+ * of containers (n) and assigning n taskNames to each container as returned by
+ * iterating over the keys in the map of taskNames (whatever that ordering
+ * happens to be). No consideration is given towards locality, even distribution
+ * of aggregate SSPs within a container, even distribution of the number of
+ * taskNames between containers, etc.
  */
 class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
   require(numContainers > 0, "Must have at least one container")
@@ -40,7 +40,6 @@ class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
     require(tasks.size > 0, "No tasks found. Likely due to no input partitions. Can't run a job with no tasks.")
     require(tasks.size >= numContainers, "Your container count (%s) is larger than your task count (%s). Can't have containers with nothing to do, so aborting." format (numContainers, tasks.size))
 
-    // TODO there has to be a better way to do this in Scala
     tasks
       .toList
       // Sort tasks by taskName.
