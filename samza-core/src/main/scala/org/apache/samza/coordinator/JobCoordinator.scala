@@ -48,8 +48,9 @@ import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.coordinator.server.JobServlet
 
 object JobCoordinator extends Logging {
-  // TODO containerCount will go away once we move away from 
-  // yarn.container.count to a generalized container count config property.
+  /**
+   * Build a JobCoordinator using a Samza job's configuration.
+   */
   def apply(config: Config, containerCount: Int) = {
     val jobModel = buildJobModel(config, containerCount)
     val server = new HttpServer
@@ -57,6 +58,9 @@ object JobCoordinator extends Logging {
     new JobCoordinator(jobModel, server)
   }
 
+  /**
+   * Gets a CheckpointManager from the configuration.
+   */
   def getCheckpointManager(config: Config) = {
     config.getCheckpointManagerFactory match {
       case Some(checkpointFactoryClassName) =>
@@ -73,11 +77,8 @@ object JobCoordinator extends Logging {
   }
 
   /**
-   * For each input stream specified in config, exactly determine its partitions, returning a set of SystemStreamPartitions
-   * containing them all
-   *
-   * @param config Source of truth for systems and inputStreams
-   * @return Set of SystemStreamPartitions, one for each unique system, stream and partition
+   * For each input stream specified in config, exactly determine its
+   * partitions, returning a set of SystemStreamPartitions containing them all.
    */
   def getInputStreamPartitions(config: Config) = {
     val inputSystemStreams = config.getInputStreams
@@ -104,15 +105,21 @@ object JobCoordinator extends Logging {
       }.toSet
   }
 
+  /**
+   * Gets a SystemStreamPartitionGrouper object from the configuration.
+   */
   def getSystemStreamPartitionGrouper(config: Config) = {
     val factoryString = config.getSystemStreamPartitionGrouperFactory
     val factory = Util.getObj[SystemStreamPartitionGrouperFactory](factoryString)
     factory.getSystemStreamPartitionGrouper(config)
   }
 
-  // TODO containerCount should go away when we generalize the job coordinator, 
-  // and have a non-yarn-specific way of specifying container count.
+  /**
+   * Build a full Samza job model using the job configuration.
+   */
   def buildJobModel(config: Config, containerCount: Int) = {
+    // TODO containerCount should go away when we generalize the job coordinator, 
+    // and have a non-yarn-specific way of specifying container count.
     val checkpointManager = getCheckpointManager(config)
     val allSystemStreamPartitions = getInputStreamPartitions(config)
     val grouper = getSystemStreamPartitionGrouper(config)
@@ -173,8 +180,27 @@ object JobCoordinator extends Logging {
   }
 }
 
+/**
+ * <p>JobCoordinator is responsible for managing the lifecycle of a Samza job
+ * once it's been started. This includes starting and stopping containers,
+ * managing configuration, etc.</p>
+ *
+ * <p>Any new cluster manager that's integrated with Samza (YARN, Mesos, etc)
+ * must integrate with the job coordinator.</p>
+ *
+ * <p>This class' API is currently unstable, and likely to change. The
+ * coordinator's responsibility is simply to propagate the job model, and HTTP
+ * server right now.</p>
+ */
 class JobCoordinator(
+  /**
+   * The data model that describes the Samza job's containers and tasks.
+   */
   val jobModel: JobModel,
+
+  /**
+   * HTTP server used to serve a Samza job's container model to SamzaContainers when they start up.
+   */
   val server: HttpServer) extends Logging {
 
   debug("Got job model: %s." format jobModel)

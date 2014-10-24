@@ -77,8 +77,9 @@ object Util extends Logging {
    */
   def getSystemStreamFromNames(systemStreamNames: String): SystemStream = {
     val idx = systemStreamNames.indexOf('.')
-    if (idx < 0)
+    if (idx < 0) {
       throw new IllegalArgumentException("No '.' in stream name '" + systemStreamNames + "'. Stream names should be in the form 'system.stream'")
+    }
     new SystemStream(systemStreamNames.substring(0, idx), systemStreamNames.substring(idx + 1, systemStreamNames.length))
   }
 
@@ -110,10 +111,13 @@ object Util extends Logging {
    * Reads a URL and returns its body as a string. Does no error handling.
    *
    * @param url HTTP URL to read from.
+   * @param timeout How long to wait before timing out when connecting to or reading from the HTTP server.
    * @return String payload of the body of the HTTP response.
    */
-  def read(url: URL): String = {
+  def read(url: URL, timeout: Int = 30000): String = {
     val conn = url.openConnection();
+    conn.setConnectTimeout(timeout)
+    conn.setReadTimeout(timeout)
     val br = new BufferedReader(new InputStreamReader(conn.getInputStream));
     var line: String = null;
     val body = Iterator.continually(br.readLine()).takeWhile(_ != null).mkString

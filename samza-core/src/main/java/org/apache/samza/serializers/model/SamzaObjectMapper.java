@@ -49,13 +49,17 @@ import org.codehaus.jackson.map.module.SimpleModule;
 import org.codehaus.jackson.type.TypeReference;
 
 /**
+ * <p>
  * A collection of utility classes and (de)serializers to make Samza's job model
  * work with Jackson. Rather than annotating Samza's job model directly, the
  * Jackson-specific code is isolated so that Samza's core data model does not
  * require a direct dependency on Jackson.
+ * </p>
  * 
+ * <p>
  * To use Samza's job data model, use the SamzaObjectMapper.getObjectMapper()
  * method.
+ * </p>
  */
 public class SamzaObjectMapper {
   private static final ObjectMapper OBJECT_MAPPER = getObjectMapper();
@@ -70,12 +74,12 @@ public class SamzaObjectMapper {
     SimpleModule module = new SimpleModule("SamzaModule", new Version(1, 0, 0, ""));
 
     // Setup custom serdes for simple data types.
-    module.addSerializer(TaskName.class, new TaskNameSerializer());
-    module.addDeserializer(SystemStreamPartition.class, new SystemStreamPartitionDeserializer());
-    module.addDeserializer(Config.class, new ConfigDeserializer());
-    module.addDeserializer(Partition.class, new PartitionDeserializer());
     module.addSerializer(Partition.class, new PartitionSerializer());
     module.addSerializer(SystemStreamPartition.class, new SystemStreamPartitionSerializer());
+    module.addSerializer(TaskName.class, new TaskNameSerializer());
+    module.addDeserializer(Partition.class, new PartitionDeserializer());
+    module.addDeserializer(SystemStreamPartition.class, new SystemStreamPartitionDeserializer());
+    module.addDeserializer(Config.class, new ConfigDeserializer());
 
     // Setup mixins for data models.
     mapper.getSerializationConfig().addMixInAnnotations(TaskModel.class, JsonTaskModelMixIn.class);
