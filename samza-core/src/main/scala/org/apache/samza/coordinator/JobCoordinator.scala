@@ -55,6 +55,8 @@ import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage.SetConfi
 import org.apache.samza.config.MapConfig
 
 // TODO re-write config here (used to be in JobRunner)
+// TODO need to serve offsets from job coordinator
+// TODO need to remove checkpoint manager from SamzaContainer and use coordinator stream system producer instead
 
 object JobCoordinator extends Logging {
   def apply(coordinatorSystemConfig: Config) = {

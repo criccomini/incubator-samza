@@ -102,6 +102,7 @@ class JobRunner(config: Config) extends Logging with Runnable {
     systemProducer.start
     config.foreach {
       case (k, v) =>
+        // TODO need to clear out all config kv pairs in the stream that aren't in the config object anymore
         coordinatorSystemProducer.send(new CoordinatorStreamMessage.SetConfig(source, k, v))
     }
     systemProducer.stop
