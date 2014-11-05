@@ -28,6 +28,9 @@ import kafka.producer.Producer
 import org.apache.samza.system.SystemFactory
 import org.apache.samza.util.ExponentialSleepStrategy
 import org.apache.samza.util.ClientUtilTopicMetadataStore
+import org.I0Itec.zkclient.ZkClient
+import kafka.utils.ZKStringSerializer
+import org.apache.samza.checkpoint.kafka.KafkaCheckpointManagerFactory
 
 class KafkaSystemFactory extends SystemFactory {
   def getConsumer(systemName: String, config: Config, registry: MetricsRegistry) = {
@@ -95,10 +98,18 @@ class KafkaSystemFactory extends SystemFactory {
     val consumerConfig = config.getKafkaSystemConsumerConfig(systemName, clientId)
     val timeout = consumerConfig.socketTimeoutMs
     val bufferSize = consumerConfig.socketReceiveBufferBytes
+    val zkConnect = Option(consumerConfig.zkConnect)
+      .getOrElse(throw new SamzaException("no zookeeper.connect defined in config"))
+    val connectZk = () => {
+      new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer)
+    }
+    val checkpointTopicProperties = KafkaCheckpointManagerFactory.getCheckpointTopicProperties(config)
 
     new KafkaSystemAdmin(
       systemName,
       brokerListString,
+      connectZk,
+      checkpointTopicProperties,
       timeout,
       bufferSize,
       clientId)

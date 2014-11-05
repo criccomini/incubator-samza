@@ -23,10 +23,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Helper interface attached to an underlying system to fetch
- * information about streams, partitions, offsets, etc. This interface is useful
- * for providing utility methods that Samza needs in order to interact with a
- * system.
+ * Helper interface attached to an underlying system to fetch information about
+ * streams, partitions, offsets, etc. This interface is useful for providing
+ * utility methods that Samza needs in order to interact with a system.
  */
 public interface SystemAdmin {
 
@@ -50,4 +49,7 @@ public interface SystemAdmin {
    *         requested in the parameter set.
    */
   Map<String, SystemStreamMetadata> getSystemStreamMetadata(Set<String> streamNames);
+
+  // TODO javadocs
+  void createCoordinatorStream(String streamName);
 }

@@ -38,6 +38,10 @@ import java.util.UUID
 import scala.collection.JavaConversions._
 import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata
 import kafka.consumer.ConsumerConfig
+import kafka.common.TopicExistsException
+import kafka.admin.AdminUtils
+import org.I0Itec.zkclient.ZkClient
+import java.util.Properties
 
 object KafkaSystemAdmin extends Logging {
   /**
@@ -88,6 +92,12 @@ class KafkaSystemAdmin(
    * interact with. The format is host1:port1,host2:port2.
    */
   brokerListString: String,
+
+  // TODO javaodcs
+  connectZk: () => ZkClient,
+
+  // TODO javaodcs
+  checkpointTopicProperties: Properties = new Properties,
 
   /**
    * The timeout to use for the simple consumer when fetching metadata from
@@ -184,8 +194,39 @@ class KafkaSystemAdmin(
       (exception, loop) => {
         warn("Unable to fetch last offsets for streams %s due to %s. Retrying." format (streams, exception))
         debug("Exception detail:", exception)
-      }
-    ).getOrElse(throw new SamzaException("Failed to get system stream metadata"))
+      }).getOrElse(throw new SamzaException("Failed to get system stream metadata"))
+  }
+
+  def createCoordinatorStream(streamName: String) {
+    info("Attempting to create coordinator stream %s." format streamName)
+    new ExponentialSleepStrategy(initialDelayMs = 500).run(
+      loop => {
+        val zkClient = connectZk()
+        try {
+          AdminUtils.createTopic(
+            zkClient,
+            streamName,
+            1,
+            3, // TODO configurable?
+            checkpointTopicProperties)
+        } finally {
+          zkClient.close
+        }
+
+        info("Created coordinator stream %s." format streamName)
+        loop.done
+      },
+
+      (exception, loop) => {
+        exception match {
+          case e: TopicExistsException =>
+            info("Coordinator stream %s already exists." format streamName)
+            loop.done
+          case e: Exception =>
+            warn("Failed to create topic %s: %s. Retrying." format (streamName, e))
+            debug("Exception detail:", e)
+        }
+      })
   }
 
   /**

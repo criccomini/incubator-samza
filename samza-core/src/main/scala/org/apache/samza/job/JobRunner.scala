@@ -94,9 +94,10 @@ class JobRunner(config: Config) extends Logging with Runnable {
     val systemFactoryClassName = config.getSystemFactory(systemName).getOrElse("Missing " + SystemConfig.SYSTEM_FACTORY format systemName + " configuration.")
     val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
     val systemProducer = systemFactory.getProducer(systemName, config, new MetricsRegistryMap)
+    val systemAdmin = systemFactory.getAdmin(systemName, config)
     val source = "job-runner" // TODO
     val coordinatorSystemProducer = new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer)
-    // TODO create the topic if it doesn't exist.
+    systemAdmin.createCoordinatorStream(streamName)
     systemProducer.register(source)
     systemProducer.start
     config.foreach {

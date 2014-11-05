@@ -83,6 +83,10 @@ class FileReaderSystemAdmin extends SystemAdmin with Logging {
     mapAsJavaMap(offsetAfter)
   }
 
+  def createCoordinatorStream(streamName: String) {
+    throw new SamzaException(this.getClass.getCanonicalName + " does not support coordinator streams.");
+  }
+
   /**
    * Get the newest offset and upcoming offset from a file. The newest offset is the offset of
    * second-to-last \n in the file + 1. The upcoming offset is the offset of last \n + 1. If
