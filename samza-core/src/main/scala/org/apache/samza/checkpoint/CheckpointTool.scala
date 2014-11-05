@@ -137,7 +137,7 @@ class CheckpointTool(config: Config, newOffsets: TaskNameToCheckpointMap) extend
     info("Using %s" format manager)
 
     // Find all the TaskNames that would be generated for this job config
-    val coordinator = JobCoordinator(config, 1)
+    val coordinator = JobCoordinator(config)
     val taskNames = coordinator
       .jobModel
       .getContainers

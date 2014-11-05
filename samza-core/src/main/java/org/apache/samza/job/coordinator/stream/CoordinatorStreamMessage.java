@@ -63,9 +63,18 @@ public class CoordinatorStreamMessage {
   }
 
   @SuppressWarnings("unchecked")
+  protected Object getValueEntry(String key) {
+    return ((Map<String, Object>) this.valueMap.get("values")).get(key);
+  }
+
+  @SuppressWarnings("unchecked")
   protected void putValue(String key, String value) {
     Map<String, String> values = (Map<String, String>) valueMap.get("values");
     values.put(key, value);
+  }
+
+  public String getType() {
+    return (String) this.keyMap.get("type");
   }
 
   public Map<String, Object> getKey() {
@@ -83,12 +92,26 @@ public class CoordinatorStreamMessage {
     return (String) valueMap.get("source");
   }
 
+  public String getKeyEntry() {
+    return (String) this.keyMap.get("key");
+  }
+
   public static class SetConfig extends CoordinatorStreamMessage {
+    public static final String TYPE = "set-config";
+
+    public SetConfig(CoordinatorStreamMessage message) {
+      super(message.getKey(), message.getValue());
+    }
+
     public SetConfig(String source, String key, String value) {
       super(source);
-      setType("set-config");
+      setType(TYPE);
       setKey(key);
       putValue("value", value);
+    }
+
+    public String getConfigValue() {
+      return (String) getValueEntry("value");
     }
   }
 }

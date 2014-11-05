@@ -46,14 +46,67 @@ import org.apache.samza.system.SystemFactory
 import org.apache.samza.coordinator.server.HttpServer
 import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.coordinator.server.JobServlet
+import org.apache.samza.config.SystemConfig.Config2System
+import org.apache.samza.config.ConfigException
+import org.apache.samza.config.SystemConfig
+import org.apache.samza.system.SystemStreamPartitionIterator
+import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage
+import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage.SetConfig
+import org.apache.samza.config.MapConfig
 
 // TODO re-write config here (used to be in JobRunner)
 
 object JobCoordinator extends Logging {
+  def apply(coordinatorSystemConfig: Config) = {
+    val metrics = new MetricsRegistryMap // TODO use full blown registry
+    val systemNames = coordinatorSystemConfig.getSystemNames
+    val systemName = if (systemNames.size == 0) {
+      throw new ConfigException("Missing coordinator system configuration.")
+    } else if (systemNames.size > 1) {
+      throw new ConfigException("More than one system defined in coordinator system configuration. Don't know which to use.")
+    } else {
+      systemNames.head
+    }
+    val jobName = coordinatorSystemConfig.getName.getOrElse(throw new ConfigException("Missing required config: job.name"))
+    val jobId = coordinatorSystemConfig.getJobId.getOrElse("1")
+    val streamName = Util.getCoordinatorStreamName(jobName, jobId)
+    val systemFactoryClassName = coordinatorSystemConfig
+      .getSystemFactory(systemName)
+      .getOrElse(throw new SamzaException("Missing configuration: " + SystemConfig.SYSTEM_FACTORY format systemName))
+    val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
+    val systemAdmin = systemFactory.getAdmin(systemName, coordinatorSystemConfig)
+    val systemStreamMetadata = systemAdmin.getSystemStreamMetadata(Set(streamName))
+    val coordinatorSystemStreamPartition = new SystemStreamPartition(systemName, streamName, new Partition(0))
+    val startingOffset = systemStreamMetadata
+      .getOrElse(streamName, throw new SamzaException("Expected %s to be in system stream metadata." format streamName))
+      .getSystemStreamPartitionMetadata
+      .getOrElse(new Partition(0), throw new SamzaException("Expected metadata for %s to exist." format coordinatorSystemStreamPartition))
+      .getOldestOffset
+    val systemConsumer = systemFactory.getConsumer(systemName, coordinatorSystemConfig, metrics)
+    val iterator = new SystemStreamPartitionIterator(systemConsumer, coordinatorSystemStreamPartition)
+    systemConsumer.register(coordinatorSystemStreamPartition, startingOffset)
+    systemConsumer.start
+    var configMap = Map[String, String]()
+    while (iterator.hasNext) {
+      val envelope = iterator.next
+      val keyMap = envelope.getKey.asInstanceOf[java.util.Map[String, Object]]
+      val valueMap = envelope.getMessage.asInstanceOf[java.util.Map[String, Object]]
+      val coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap)
+      if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType)) {
+        val configKey = coordinatorStreamMessage.getKeyEntry
+        val configValue = new SetConfig(coordinatorStreamMessage).getConfigValue
+        configMap += configKey -> configValue
+      }
+    }
+    systemConsumer.stop
+    getJobCoordinator(new MapConfig(configMap))
+  }
+
   /**
    * Build a JobCoordinator using a Samza job's configuration.
    */
-  def apply(config: Config, containerCount: Int) = {
+  def getJobCoordinator(config: Config) = {
+    val containerCount = config.getContainerCount
     val jobModel = buildJobModel(config, containerCount)
     val server = new HttpServer
     server.addServlet("/*", new JobServlet(jobModel))

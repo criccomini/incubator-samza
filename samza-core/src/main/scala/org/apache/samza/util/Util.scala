@@ -126,7 +126,7 @@ object Util extends Logging {
   }
 
   /**
-   * Generates a coordinator stream name based off of the job name and job id 
+   * Generates a coordinator stream name based off of the job name and job id
    * for the jobd. The format is of the stream name will be
    * __samza_coordinator_&lt;JOBNAME&gt;_&lt;JOBID&gt;.
    */

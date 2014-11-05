@@ -86,17 +86,7 @@ class JobRunner(config: Config) extends Logging with Runnable {
 
   // TODO clean this up.
   def writeConfig(config: Config) = {
-    val systemName = config.getCoordinatorSystem.getOrElse({
-      // If no coordinator system is configured, try and guess it if there's just one system configured.
-      val systemNames = config.getSystemNames.toSet
-      if (systemNames.size == 1) {
-        val systemName = systemNames.iterator.next
-        info("No coorindator system defined, so defaulting to %s" format systemName)
-        systemName
-      } else {
-        throw new ConfigException("Missing job.coordinator.system configuration.")
-      }
-    })
+    val systemName = config.getCoordinatorSystemName
     val jobName = config.getName.getOrElse(throw new ConfigException("Missing required config: job.name"))
     val jobId = config.getJobId.getOrElse("1")
     val streamName = Util.getCoordinatorStreamName(jobName, jobId)
@@ -106,6 +96,7 @@ class JobRunner(config: Config) extends Logging with Runnable {
     val systemProducer = systemFactory.getProducer(systemName, config, new MetricsRegistryMap)
     val source = "job-runner" // TODO
     val coordinatorSystemProducer = new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer)
+    // TODO create the topic if it doesn't exist.
     systemProducer.register(source)
     systemProducer.start
     config.foreach {

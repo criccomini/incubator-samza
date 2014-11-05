@@ -24,6 +24,7 @@ import org.apache.hadoop.security.UserGroupInformation
 import org.apache.hadoop.yarn.api.records.ApplicationId
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.samza.config.Config
+import org.apache.samza.config.JobConfig
 import org.apache.samza.util.Util
 import org.apache.samza.job.ApplicationStatus
 import org.apache.samza.job.ApplicationStatus.Running
@@ -36,6 +37,8 @@ import org.apache.samza.config.YarnConfig
 import org.apache.samza.config.ShellCommandConfig
 import org.apache.samza.SamzaException
 import org.apache.samza.serializers.model.SamzaObjectMapper
+import org.apache.samza.config.JobConfig.Config2Job
+import scala.collection.JavaConversions._
 
 object YarnJob {
   val DEFAULT_AM_CONTAINER_MEM = 1024
@@ -59,8 +62,11 @@ class YarnJob(config: Config, hadoopConfig: Configuration) extends StreamJob {
         "export SAMZA_LOG_DIR=%s && ln -sfn %s logs && exec ./__package/bin/run-am.sh 1>logs/%s 2>logs/%s"
           format (ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.STDOUT, ApplicationConstants.STDERR)),
       Some({
+        // TODO clean this up
+        val coorindatorSystemConfig = config.subset(config.getCoordinatorSystemName, false) ++
+          Map(JobConfig.JOB_NAME -> config.getName, JobConfig.JOB_ID -> config.getJobId)
         val envMap = Map(
-          ShellCommandConfig.ENV_CONFIG -> Util.envVarEscape(SamzaObjectMapper.getObjectMapper.writeValueAsString(config)),
+          ShellCommandConfig.ENV_COORDINATOR_SYSTEM_CONFIG -> Util.envVarEscape(SamzaObjectMapper.getObjectMapper.writeValueAsString(coorindatorSystemConfig)),
           ShellCommandConfig.ENV_JAVA_OPTS -> Util.envVarEscape(config.getAmOpts.getOrElse("")))
         val envMapWithJavaHome = config.getAMJavaHome match {
           case Some(javaHome) => envMap + (ShellCommandConfig.ENV_JAVA_HOME -> javaHome)

@@ -38,6 +38,7 @@ import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.util.hadoop.HttpFileSystem
 import org.apache.samza.util.Logging
 import org.apache.samza.serializers.model.SamzaObjectMapper
+import org.apache.samza.coordinator.JobCoordinator
 
 /**
  * When YARN executes an application master, it needs a bash command to
@@ -67,8 +68,10 @@ object SamzaAppMaster extends Logging with AMRMClientAsync.CallbackHandler {
     info("got node manager port: %s" format nodePortString)
     val nodeHttpPortString = System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString)
     info("got node manager http port: %s" format nodeHttpPortString)
-    val config = new MapConfig(SamzaObjectMapper.getObjectMapper.readValue(System.getenv(ShellCommandConfig.ENV_CONFIG), classOf[Config]))
-    info("got config: %s" format config)
+    val coordinatorSystemConfig = new MapConfig(SamzaObjectMapper.getObjectMapper.readValue(System.getenv(ShellCommandConfig.ENV_COORDINATOR_SYSTEM_CONFIG), classOf[Config]))
+    info("got coordinator systme config: %s" format coordinatorSystemConfig)
+    val jobCoordinator = JobCoordinator(coordinatorSystemConfig)
+    val config = jobCoordinator.jobModel.getConfig
     val hConfig = new YarnConfiguration
     hConfig.set("fs.http.impl", classOf[HttpFileSystem].getName)
     val interval = config.getAMPollIntervalMs.getOrElse(DEFAULT_POLL_INTERVAL_MS)
@@ -81,7 +84,7 @@ object SamzaAppMaster extends Logging with AMRMClientAsync.CallbackHandler {
 
     try {
       // wire up all of the yarn event listeners
-      val state = new SamzaAppMasterState(-1, containerId, nodeHostString, nodePortString.toInt, nodeHttpPortString.toInt)
+      val state = new SamzaAppMasterState(jobCoordinator, -1, containerId, nodeHostString, nodePortString.toInt, nodeHttpPortString.toInt)
       val service = new SamzaAppMasterService(config, state, registry, clientHelper)
       val lifecycle = new SamzaAppMasterLifecycle(containerMem, containerCpu, state, amClient)
       val metrics = new SamzaAppMasterMetrics(config, state, registry)
