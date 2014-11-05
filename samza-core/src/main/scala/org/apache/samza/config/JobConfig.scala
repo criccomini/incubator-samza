@@ -35,6 +35,7 @@ object JobConfig {
   val CONFIG_REWRITER_CLASS = "job.config.rewriter.%s.class" // streaming.job_config_rewriter_class - regex, system, config
   val JOB_NAME = "job.name" // streaming.job_name
   val JOB_ID = "job.id" // streaming.job_id
+  val COORDINATOR_SYSTEM = "job.coordinator.system" // streaming.job_id
 
   val SSP_GROUPER_FACTORY = "job.systemstreampartition.grouper.factory"
 
@@ -43,6 +44,8 @@ object JobConfig {
 
 class JobConfig(config: Config) extends ScalaMapConfig(config) {
   def getName = getOption(JobConfig.JOB_NAME)
+
+  def getCoordinatorSystem = getOption(JobConfig.COORDINATOR_SYSTEM)
 
   def getStreamJobFactoryClass = getOption(JobConfig.STREAM_JOB_FACTORY_CLASS)
 

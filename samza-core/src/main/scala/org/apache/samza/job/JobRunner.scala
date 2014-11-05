@@ -20,16 +20,23 @@
 package org.apache.samza.job
 
 import org.apache.samza.SamzaException
-import org.apache.samza.config.{Config, ConfigRewriter}
+import org.apache.samza.config.Config
 import org.apache.samza.config.JobConfig.Config2Job
-import org.apache.samza.config.factories.PropertiesConfigFactory
 import org.apache.samza.job.ApplicationStatus.Running
 import org.apache.samza.util.Util
 import org.apache.samza.util.CommandLine
 import org.apache.samza.util.Logging
 import scala.collection.JavaConversions._
+import org.apache.samza.config.SystemConfig.Config2System
+import org.apache.samza.config.ConfigException
+import org.apache.samza.config.SystemConfig
+import org.apache.samza.system.SystemFactory
+import org.apache.samza.metrics.MetricsRegistryMap
+import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage
+import org.apache.samza.job.coordinator.stream.CoordinatorStreamSystemProducer
+import org.apache.samza.system.SystemStream
 
-object JobRunner extends Logging {
+object JobRunner {
   def main(args: Array[String]) {
     val cmdline = new CommandLine
     val options = cmdline.parser.parse(args: _*)
@@ -44,11 +51,10 @@ object JobRunner extends Logging {
  * and returns a Config, which is used to execute the job.
  */
 class JobRunner(config: Config) extends Logging with Runnable {
-
   def run() {
-    val conf = rewriteConfig(config)
+    val coordinatorSystemName = writeConfig(config)
 
-    val jobFactoryClass = conf.getStreamJobFactoryClass match {
+    val jobFactoryClass = config.getStreamJobFactoryClass match {
       case Some(factoryClass) => factoryClass
       case _ => throw new SamzaException("no job factory class defined")
     }
@@ -56,10 +62,10 @@ class JobRunner(config: Config) extends Logging with Runnable {
     val jobFactory = Class.forName(jobFactoryClass).newInstance.asInstanceOf[StreamJobFactory]
 
     info("job factory: %s" format (jobFactoryClass))
-    debug("config: %s" format (conf))
+    debug("config: %s" format (config))
 
     // Create the actual job, and submit it.
-    val job = jobFactory.getJob(conf).submit
+    val job = jobFactory.getJob(config).submit
 
     info("waiting for job to start")
 
@@ -78,20 +84,32 @@ class JobRunner(config: Config) extends Logging with Runnable {
     info("exiting")
   }
 
-  // Apply any and all config re-writer classes that the user has specified
-  def rewriteConfig(config: Config): Config = {
-    def rewrite(c: Config, rewriterName: String): Config = {
-      val klass = config
-        .getConfigRewriterClass(rewriterName)
-        .getOrElse(throw new SamzaException("Unable to find class config for config rewriter %s." format rewriterName))
-      val rewriter = Util.getObj[ConfigRewriter](klass)
-      info("Re-writing config file with " + rewriter)
-      rewriter.rewrite(rewriterName, c)
+  def writeConfig(config: Config) = {
+    val systemName = config.getCoordinatorSystem.getOrElse({
+      // If no coordinator system is configured, try and guess it if there's just one system configured.
+      val systemNames = config.getSystemNames.toSet
+      if (systemNames.size == 1) {
+        systemNames.iterator.next
+      } else {
+        throw new ConfigException("Missing job.coordinator.system configuration.")
+      }
+    })
+    val jobName = config.getName.getOrElse(throw new ConfigException("Missing required config: job.name"))
+    val jobId = config.getJobId.getOrElse("1")
+    val streamName = "__samza_coordinator_%s_%s" format (jobName.replaceAll("_", "-"), jobId.replaceAll("_", "-")) //TODO
+    val coordinatorSystemStream = new SystemStream(systemName, streamName)
+    val systemFactoryClassName = config.getSystemFactory(systemName).getOrElse("Missing " + SystemConfig.SYSTEM_FACTORY format systemName + " configuration.")
+    val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
+    val systemProducer = systemFactory.getProducer(systemName, config, new MetricsRegistryMap)
+    val source = "job-runner" // TODO
+    val coordinatorSystemProducer = new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer)
+    systemProducer.register(source)
+    systemProducer.start
+    config.foreach {
+      case (k, v) =>
+        coordinatorSystemProducer.send(new CoordinatorStreamMessage.SetConfig(source, k, v))
     }
-
-    config.getConfigRewriters match {
-      case Some(rewriters) => rewriters.split(",").foldLeft(config)(rewrite(_, _))
-      case None => config
-    }
+    systemProducer.stop
+    systemName
   }
 }

@@ -47,6 +47,8 @@ import org.apache.samza.coordinator.server.HttpServer
 import org.apache.samza.checkpoint.CheckpointManager
 import org.apache.samza.coordinator.server.JobServlet
 
+// TODO re-write config here (used to be in JobRunner)
+
 object JobCoordinator extends Logging {
   /**
    * Build a JobCoordinator using a Samza job's configuration.
