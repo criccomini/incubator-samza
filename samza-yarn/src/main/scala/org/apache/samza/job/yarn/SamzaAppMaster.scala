@@ -69,9 +69,10 @@ object SamzaAppMaster extends Logging with AMRMClientAsync.CallbackHandler {
     val nodeHttpPortString = System.getenv(ApplicationConstants.Environment.NM_HTTP_PORT.toString)
     info("got node manager http port: %s" format nodeHttpPortString)
     val coordinatorSystemConfig = new MapConfig(SamzaObjectMapper.getObjectMapper.readValue(System.getenv(ShellCommandConfig.ENV_COORDINATOR_SYSTEM_CONFIG), classOf[Config]))
-    info("got coordinator systme config: %s" format coordinatorSystemConfig)
+    info("got coordinator system config: %s" format coordinatorSystemConfig)
     val jobCoordinator = JobCoordinator(coordinatorSystemConfig)
     val config = jobCoordinator.jobModel.getConfig
+    info("got config: %s" format coordinatorSystemConfig)
     val hConfig = new YarnConfiguration
     hConfig.set("fs.http.impl", classOf[HttpFileSystem].getName)
     val interval = config.getAMPollIntervalMs.getOrElse(DEFAULT_POLL_INTERVAL_MS)

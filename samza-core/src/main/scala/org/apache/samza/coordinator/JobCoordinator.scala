@@ -89,8 +89,11 @@ object JobCoordinator extends Logging {
     var configMap = Map[String, String]()
     while (iterator.hasNext) {
       val envelope = iterator.next
-      val keyMap = envelope.getKey.asInstanceOf[java.util.Map[String, Object]]
-      val valueMap = envelope.getMessage.asInstanceOf[java.util.Map[String, Object]]
+      val keyStr = new String(envelope.getKey.asInstanceOf[Array[Byte]], "UTF-8")
+      val valueStr = new String(envelope.getMessage.asInstanceOf[Array[Byte]], "UTF-8")
+      val mapper = SamzaObjectMapper.getObjectMapper
+      val keyMap = mapper.readValue(keyStr, classOf[java.util.Map[String, Object]])
+      val valueMap = mapper.readValue(valueStr, classOf[java.util.Map[String, Object]])
       val coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap)
       if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType)) {
         val configKey = coordinatorStreamMessage.getKeyEntry

@@ -27,8 +27,8 @@ public class CoordinatorStreamSystemProducer {
 
   public void send(CoordinatorStreamMessage message) throws JsonGenerationException, JsonMappingException, IOException {
     String source = message.getSource();
-    String key = mapper.writeValueAsString(message.getKey());
-    String value = mapper.writeValueAsString(message.getValue());
+    byte[] key = mapper.writeValueAsString(message.getKey()).getBytes("UTF-8");
+    byte[] value = mapper.writeValueAsString(message.getValue()).getBytes("UTF-8");
     OutgoingMessageEnvelope envelope = new OutgoingMessageEnvelope(systemStream, Integer.valueOf(0), key, value);
     systemProducer.send(source, envelope);
   }

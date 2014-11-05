@@ -207,7 +207,7 @@ class KafkaSystemAdmin(
             zkClient,
             streamName,
             1,
-            3, // TODO configurable?
+            1, // TODO configurable?
             checkpointTopicProperties)
         } finally {
           zkClient.close

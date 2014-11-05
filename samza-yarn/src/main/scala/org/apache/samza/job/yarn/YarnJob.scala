@@ -39,6 +39,9 @@ import org.apache.samza.SamzaException
 import org.apache.samza.serializers.model.SamzaObjectMapper
 import org.apache.samza.config.JobConfig.Config2Job
 import scala.collection.JavaConversions._
+import org.apache.samza.config.MapConfig
+import org.apache.samza.config.ConfigException
+import org.apache.samza.config.SystemConfig
 
 object YarnJob {
   val DEFAULT_AM_CONTAINER_MEM = 1024
@@ -63,8 +66,10 @@ class YarnJob(config: Config, hadoopConfig: Configuration) extends StreamJob {
           format (ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.STDOUT, ApplicationConstants.STDERR)),
       Some({
         // TODO clean this up
-        val coorindatorSystemConfig = config.subset(config.getCoordinatorSystemName, false) ++
-          Map(JobConfig.JOB_NAME -> config.getName, JobConfig.JOB_ID -> config.getJobId)
+        val jobName = config.getName.getOrElse(throw new ConfigException("Missing required config: job.name"))
+        val jobId = config.getJobId.getOrElse("1")
+        val coorindatorSystemConfig = new MapConfig(config.subset(SystemConfig.SYSTEM_PREFIX format config.getCoordinatorSystemName, false) ++
+          Map[String, String](JobConfig.JOB_NAME -> jobName, JobConfig.JOB_ID -> jobId))
         val envMap = Map(
           ShellCommandConfig.ENV_COORDINATOR_SYSTEM_CONFIG -> Util.envVarEscape(SamzaObjectMapper.getObjectMapper.writeValueAsString(coorindatorSystemConfig)),
           ShellCommandConfig.ENV_JAVA_OPTS -> Util.envVarEscape(config.getAmOpts.getOrElse("")))
