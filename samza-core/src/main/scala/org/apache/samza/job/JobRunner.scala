@@ -38,6 +38,8 @@ import org.apache.samza.system.SystemStream
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
 
 object JobRunner {
+  val SOURCE = "job-runner"
+
   def main(args: Array[String]) {
     val cmdline = new CommandLine
     val options = cmdline.parser.parse(args: _*)
@@ -53,12 +55,11 @@ object JobRunner {
  */
 class JobRunner(config: Config) extends Logging with Runnable {
   def run() {
-    val source = "job-runner" // TODO
     val coordinatorSystemProducer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemProducer(config)
 
-    coordinatorSystemProducer.register(source)
+    coordinatorSystemProducer.register(JobRunner.SOURCE)
     coordinatorSystemProducer.start
-    coordinatorSystemProducer.writeConfig(source, config)
+    coordinatorSystemProducer.writeConfig(JobRunner.SOURCE, config)
     coordinatorSystemProducer.stop
 
     val jobFactoryClass = config.getStreamJobFactoryClass match {
