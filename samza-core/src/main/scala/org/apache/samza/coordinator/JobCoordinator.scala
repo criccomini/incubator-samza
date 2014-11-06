@@ -50,9 +50,10 @@ import org.apache.samza.config.SystemConfig.Config2System
 import org.apache.samza.config.ConfigException
 import org.apache.samza.config.SystemConfig
 import org.apache.samza.system.SystemStreamPartitionIterator
-import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage
-import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage.SetConfig
+import org.apache.samza.coordinator.stream.CoordinatorStreamMessage
+import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
 import org.apache.samza.config.MapConfig
+import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
 
 // TODO re-write config here (used to be in JobRunner)
 // TODO need to serve offsets from job coordinator
@@ -60,51 +61,13 @@ import org.apache.samza.config.MapConfig
 
 object JobCoordinator extends Logging {
   def apply(coordinatorSystemConfig: Config) = {
-    val metrics = new MetricsRegistryMap // TODO use full blown registry
-    val systemNames = coordinatorSystemConfig.getSystemNames
-    val systemName = if (systemNames.size == 0) {
-      throw new ConfigException("Missing coordinator system configuration.")
-    } else if (systemNames.size > 1) {
-      throw new ConfigException("More than one system defined in coordinator system configuration. Don't know which to use.")
-    } else {
-      systemNames.head
-    }
-    val jobName = coordinatorSystemConfig.getName.getOrElse(throw new ConfigException("Missing required config: job.name"))
-    val jobId = coordinatorSystemConfig.getJobId.getOrElse("1")
-    val streamName = Util.getCoordinatorStreamName(jobName, jobId)
-    val systemFactoryClassName = coordinatorSystemConfig
-      .getSystemFactory(systemName)
-      .getOrElse(throw new SamzaException("Missing configuration: " + SystemConfig.SYSTEM_FACTORY format systemName))
-    val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
-    val systemAdmin = systemFactory.getAdmin(systemName, coordinatorSystemConfig)
-    val systemStreamMetadata = systemAdmin.getSystemStreamMetadata(Set(streamName))
-    val coordinatorSystemStreamPartition = new SystemStreamPartition(systemName, streamName, new Partition(0))
-    val startingOffset = systemStreamMetadata
-      .getOrElse(streamName, throw new SamzaException("Expected %s to be in system stream metadata." format streamName))
-      .getSystemStreamPartitionMetadata
-      .getOrElse(new Partition(0), throw new SamzaException("Expected metadata for %s to exist." format coordinatorSystemStreamPartition))
-      .getOldestOffset
-    val systemConsumer = systemFactory.getConsumer(systemName, coordinatorSystemConfig, metrics)
-    val iterator = new SystemStreamPartitionIterator(systemConsumer, coordinatorSystemStreamPartition)
-    systemConsumer.register(coordinatorSystemStreamPartition, startingOffset)
-    systemConsumer.start
-    var configMap = Map[String, String]()
-    while (iterator.hasNext) {
-      val envelope = iterator.next
-      val keyStr = new String(envelope.getKey.asInstanceOf[Array[Byte]], "UTF-8")
-      val valueStr = new String(envelope.getMessage.asInstanceOf[Array[Byte]], "UTF-8")
-      val mapper = SamzaObjectMapper.getObjectMapper
-      val keyMap = mapper.readValue(keyStr, classOf[java.util.Map[String, Object]])
-      val valueMap = mapper.readValue(valueStr, classOf[java.util.Map[String, Object]])
-      val coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap)
-      if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType)) {
-        val configKey = coordinatorStreamMessage.getKeyEntry
-        val configValue = new SetConfig(coordinatorStreamMessage).getConfigValue
-        configMap += configKey -> configValue
-      }
-    }
-    systemConsumer.stop
-    getJobCoordinator(new MapConfig(configMap))
+    val coordinatorSystemConsumer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemConsumer(coordinatorSystemConfig, new MetricsRegistryMap)
+    coordinatorSystemConsumer.register
+    coordinatorSystemConsumer.start
+    coordinatorSystemConsumer.bootstrap
+    coordinatorSystemConsumer.stop
+    val config = coordinatorSystemConsumer.getConfig
+    getJobCoordinator(config)
   }
 
   /**

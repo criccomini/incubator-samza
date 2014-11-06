@@ -32,8 +32,8 @@ import org.apache.samza.config.ConfigException
 import org.apache.samza.config.SystemConfig
 import org.apache.samza.system.SystemFactory
 import org.apache.samza.metrics.MetricsRegistryMap
-import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage
-import org.apache.samza.job.coordinator.stream.CoordinatorStreamSystemProducer
+import org.apache.samza.coordinator.stream.CoordinatorStreamMessage
+import org.apache.samza.coordinator.stream.CoordinatorStreamSystemProducer
 import org.apache.samza.system.SystemStream
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
 
@@ -55,7 +55,7 @@ object JobRunner {
  */
 class JobRunner(config: Config) extends Logging with Runnable {
   def run() {
-    val coordinatorSystemProducer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemProducer(config)
+    val coordinatorSystemProducer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemProducer(config, new MetricsRegistryMap)
 
     coordinatorSystemProducer.register(JobRunner.SOURCE)
     coordinatorSystemProducer.start

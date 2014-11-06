@@ -1,4 +1,4 @@
-package org.apache.samza.job.coordinator.stream;
+package org.apache.samza.coordinator.stream;
 
 import java.util.Map;
 
