@@ -35,6 +35,7 @@ import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.job.coordinator.stream.CoordinatorStreamMessage
 import org.apache.samza.job.coordinator.stream.CoordinatorStreamSystemProducer
 import org.apache.samza.system.SystemStream
+import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
 
 object JobRunner {
   def main(args: Array[String]) {
@@ -52,7 +53,13 @@ object JobRunner {
  */
 class JobRunner(config: Config) extends Logging with Runnable {
   def run() {
-    val coordinatorSystemName = writeConfig(config)
+    val source = "job-runner" // TODO
+    val coordinatorSystemProducer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemProducer(config)
+
+    coordinatorSystemProducer.register(source)
+    coordinatorSystemProducer.start
+    coordinatorSystemProducer.writeConfig(source, config)
+    coordinatorSystemProducer.stop
 
     val jobFactoryClass = config.getStreamJobFactoryClass match {
       case Some(factoryClass) => factoryClass
@@ -82,30 +89,5 @@ class JobRunner(config: Config) extends Logging with Runnable {
     }
 
     info("exiting")
-  }
-
-  // TODO clean this up.
-  def writeConfig(config: Config) = {
-    val systemName = config.getCoordinatorSystemName
-    val jobName = config.getName.getOrElse(throw new ConfigException("Missing required config: job.name"))
-    val jobId = config.getJobId.getOrElse("1")
-    val streamName = Util.getCoordinatorStreamName(jobName, jobId)
-    val coordinatorSystemStream = new SystemStream(systemName, streamName)
-    val systemFactoryClassName = config.getSystemFactory(systemName).getOrElse("Missing " + SystemConfig.SYSTEM_FACTORY format systemName + " configuration.")
-    val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
-    val systemProducer = systemFactory.getProducer(systemName, config, new MetricsRegistryMap)
-    val systemAdmin = systemFactory.getAdmin(systemName, config)
-    val source = "job-runner" // TODO
-    val coordinatorSystemProducer = new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer)
-    systemAdmin.createCoordinatorStream(streamName)
-    systemProducer.register(source)
-    systemProducer.start
-    config.foreach {
-      case (k, v) =>
-        // TODO need to clear out all config kv pairs in the stream that aren't in the config object anymore
-        coordinatorSystemProducer.send(new CoordinatorStreamMessage.SetConfig(source, k, v))
-    }
-    systemProducer.stop
-    systemName
   }
 }
