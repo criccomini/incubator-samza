@@ -123,7 +123,7 @@ public class CoordinatorStreamSystemConsumer {
         });
         CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap);
         if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType())) {
-          String configKey = coordinatorStreamMessage.getKeyEntry();
+          String configKey = coordinatorStreamMessage.getKey();
           String configValue = new SetConfig(coordinatorStreamMessage).getConfigValue();
           configMap.put(configKey, configValue);
         }

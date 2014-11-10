@@ -61,9 +61,20 @@ class JobConfig(config: Config) extends ScalaMapConfig(config) with Logging {
     }
   })
 
-  def getContainerCount = getOption(JobConfig.CONTAINER_COUNT)
-    .getOrElse("1")
-    .toInt
+  def getContainerCount = {
+    getOption(JobConfig.CONTAINER_COUNT) match {
+      case Some(count) => count.toInt
+      case _ =>
+        // To maintain backwards compatibility, honor yarn.container.count for now.
+        // TODO get rid of this in a future release.
+        getOption("yarn.container.count") match {
+          case Some(count) =>
+            warn("Configuration 'yarn.container.count' is deprecated. Please use %s." format JobConfig.CONTAINER_COUNT)
+            count.toInt
+          case _ => 1
+        }
+    }
+  }
 
   def getStreamJobFactoryClass = getOption(JobConfig.STREAM_JOB_FACTORY_CLASS)
 
