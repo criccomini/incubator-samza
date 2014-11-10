@@ -45,7 +45,7 @@ import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
  */
 class CoordinatorStreamSystemFactory {
   def getCoordinatorStreamSystemConsumer(config: Config, registry: MetricsRegistry) = {
-    val systemName = guessCoordinatorStreamSystemName(config)
+    val systemName = config.getCoordinatorSystemName
     val (jobName, jobId) = Util.getJobNameAndId(config)
     val streamName = Util.getCoordinatorStreamName(jobName, jobId)
     val coordinatorSystemStream = new SystemStream(systemName, streamName)
@@ -64,21 +64,6 @@ class CoordinatorStreamSystemFactory {
     val systemProducer = systemFactory.getProducer(systemName, config, registry)
     val systemAdmin = systemFactory.getAdmin(systemName, config)
     new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer, systemAdmin)
-  }
-
-  /**
-   * Use the configured coordinator system if it's defined. Otherwise, try and
-   * guess by checking if there's only one system defined.
-   */
-  private def guessCoordinatorStreamSystemName(config: Config) = {
-    val systemNames = config.getSystemNames
-    if (systemNames.size == 0) {
-      throw new ConfigException("Missing coordinator system configuration.")
-    } else if (systemNames.size > 1) {
-      throw new ConfigException("More than one system defined in coordinator system configuration. Don't know which to use.")
-    } else {
-      systemNames.head
-    }
   }
 
   private def getSystemFactory(systemName: String, config: Config) = {
