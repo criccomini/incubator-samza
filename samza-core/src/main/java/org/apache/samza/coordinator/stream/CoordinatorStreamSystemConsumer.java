@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.samza.coordinator.stream;
 
 import java.util.HashMap;
@@ -22,12 +41,17 @@ import org.apache.samza.system.SystemStreamPartitionIterator;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 
+/**
+ * A wrapper around a SystemConsumer that reads provides helpful methods for
+ * dealing with the coordinator stream.
+ */
 public class CoordinatorStreamSystemConsumer {
   private final SystemStreamPartition coordinatorSystemStreamPartition;
   private final SystemConsumer systemConsumer;
   private final SystemAdmin systemAdmin;
   private final Map<String, String> configMap;
   private final ObjectMapper mapper;
+  private boolean isBootstrapped;
 
   public CoordinatorStreamSystemConsumer(SystemStream coordinatorSystemStream, SystemConsumer systemConsumer, SystemAdmin systemAdmin, ObjectMapper mapper) {
     this.coordinatorSystemStreamPartition = new SystemStreamPartition(coordinatorSystemStream, new Partition(0));
@@ -35,12 +59,17 @@ public class CoordinatorStreamSystemConsumer {
     this.systemAdmin = systemAdmin;
     this.mapper = mapper;
     this.configMap = new HashMap<String, String>();
+    this.isBootstrapped = false;
   }
 
   public CoordinatorStreamSystemConsumer(SystemStream coordinatorSystemStream, SystemConsumer systemConsumer, SystemAdmin systemAdmin) {
     this(coordinatorSystemStream, systemConsumer, systemAdmin, SamzaObjectMapper.getObjectMapper());
   }
 
+  /**
+   * Retrieves the earliest offset in the coordinator stream, and registers the
+   * coordinator stream with the SystemConsumer using the earliest offset.
+   */
   public void register() {
     Set<String> streamNames = new HashSet<String>();
     String streamName = coordinatorSystemStreamPartition.getStream();
@@ -62,14 +91,24 @@ public class CoordinatorStreamSystemConsumer {
     systemConsumer.register(coordinatorSystemStreamPartition, startingOffset);
   }
 
+  /**
+   * Starts the underlying SystemConsumer.
+   */
   public void start() {
     systemConsumer.start();
   }
 
+  /**
+   * Stops the underlying SystemConsumer.
+   */
   public void stop() {
     systemConsumer.stop();
   }
 
+  /**
+   * Read all messages from the earliest offset, all the way to the latest.
+   * Currently, this method only pays attention to config messages.
+   */
   public void bootstrap() {
     SystemStreamPartitionIterator iterator = new SystemStreamPartitionIterator(systemConsumer, coordinatorSystemStreamPartition);
 
@@ -78,8 +117,10 @@ public class CoordinatorStreamSystemConsumer {
         IncomingMessageEnvelope envelope = iterator.next();
         String keyStr = new String((byte[]) envelope.getKey(), "UTF-8");
         String valueStr = new String((byte[]) envelope.getMessage(), "UTF-8");
-        Map<String, Object> keyMap = mapper.readValue(keyStr, new TypeReference<Map<String, String>>() {});
-        Map<String, Object> valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, String>>() {});
+        Map<String, Object> keyMap = mapper.readValue(keyStr, new TypeReference<Map<String, String>>() {
+        });
+        Map<String, Object> valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, String>>() {
+        });
         CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap);
         if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType())) {
           String configKey = coordinatorStreamMessage.getKeyEntry();
@@ -87,12 +128,21 @@ public class CoordinatorStreamSystemConsumer {
           configMap.put(configKey, configValue);
         }
       }
+      isBootstrapped = true;
     } catch (Exception e) {
       throw new SamzaException(e);
     }
   }
 
+  /**
+   * @return The bootstrapped configuration that's been read after bootstrap has
+   *         been invoked.
+   */
   public Config getConfig() {
-    return new MapConfig(configMap);
+    if (isBootstrapped) {
+      return new MapConfig(configMap);
+    } else {
+      throw new SamzaException("Must call bootstrap before retrieving config.");
+    }
   }
 }

@@ -50,6 +50,12 @@ public interface SystemAdmin {
    */
   Map<String, SystemStreamMetadata> getSystemStreamMetadata(Set<String> streamNames);
 
-  // TODO javadocs
+  /**
+   * Create a stream for the job coordinator. If the stream already exists, this
+   * call should simply return.
+   * 
+   * @param streamName
+   *          The name of the coordinator stream to create.
+   */
   void createCoordinatorStream(String streamName);
 }
