@@ -28,8 +28,21 @@ import java.util.Map;
 import org.apache.samza.SamzaException;
 
 /**
+ * <p>
  * Represents a message for the job coordinator. All messages in the coordinator
- * stream must wrap the CoordinatorStreamMessage class.
+ * stream must wrap the CoordinatorStreamMessage class. Coordinator stream
+ * messages are modeled as key/value pairs, both of which are maps. There are
+ * some pre-defined fields (such as type, key, timestamp, host, etc) for the
+ * maps, which are common to all messages.
+ * </p>
+ * 
+ * <p>
+ * The most important fields are type, key, and values. The type field defines
+ * the kind of message, the key defines a key to associate with the values, and
+ * the values map defines a set of values associated with the type. A concrete
+ * example would be a config message of type "set-config" with key "job.name"
+ * and values {"value": "my-job-name"}.
+ * </p>
  */
 public class CoordinatorStreamMessage {
 
