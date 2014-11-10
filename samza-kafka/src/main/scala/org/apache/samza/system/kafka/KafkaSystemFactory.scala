@@ -103,13 +103,20 @@ class KafkaSystemFactory extends SystemFactory {
     val connectZk = () => {
       new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer)
     }
-    val checkpointTopicProperties = KafkaCheckpointManagerFactory.getCheckpointTopicProperties(config)
+    // TODO Piggy back off of the checkpoint topic for now. Eventually, the 
+    // checkpoint topic will go away, and we'll just use the coordinator 
+    // stream.
+    val coordinatorStreamProperties = KafkaCheckpointManagerFactory.getCheckpointTopicProperties(config)
+    val coordinatorStreamReplicationFactor = config
+      .getCheckpointReplicationFactor.getOrElse("3")
+      .toInt
 
     new KafkaSystemAdmin(
       systemName,
       brokerListString,
       connectZk,
-      checkpointTopicProperties,
+      coordinatorStreamProperties,
+      coordinatorStreamReplicationFactor,
       timeout,
       bufferSize,
       clientId)

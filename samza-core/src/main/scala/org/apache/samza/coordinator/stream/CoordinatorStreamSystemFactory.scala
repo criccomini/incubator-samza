@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.samza.coordinator.stream
 
 import org.apache.samza.config.Config
@@ -18,10 +37,16 @@ import scala.collection.JavaConversions._
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
 
+/**
+ * A helper class that does wiring for CoordinatorStreamSystemConsumer and
+ * CoordinatorStreamSystemProducer. This factory should only be used in
+ * situations where the underlying SystemConsumer/SystemProducer does not
+ * exist.
+ */
 class CoordinatorStreamSystemFactory {
   def getCoordinatorStreamSystemConsumer(config: Config, registry: MetricsRegistry) = {
     val systemName = guessCoordinatorStreamSystemName(config)
-    val (jobName, jobId) = getJobNameAndId(config)
+    val (jobName, jobId) = Util.getJobNameAndId(config)
     val streamName = Util.getCoordinatorStreamName(jobName, jobId)
     val coordinatorSystemStream = new SystemStream(systemName, streamName)
     val systemFactory = getSystemFactory(systemName, config)
@@ -32,7 +57,7 @@ class CoordinatorStreamSystemFactory {
 
   def getCoordinatorStreamSystemProducer(config: Config, registry: MetricsRegistry) = {
     val systemName = config.getCoordinatorSystemName
-    val (jobName, jobId) = getJobNameAndId(config)
+    val (jobName, jobId) = Util.getJobNameAndId(config)
     val streamName = Util.getCoordinatorStreamName(jobName, jobId)
     val coordinatorSystemStream = new SystemStream(systemName, streamName)
     val systemFactory = getSystemFactory(systemName, config)
@@ -41,6 +66,10 @@ class CoordinatorStreamSystemFactory {
     new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer, systemAdmin)
   }
 
+  /**
+   * Use the configured coordinator system if it's defined. Otherwise, try and
+   * guess by checking if there's only one system defined.
+   */
   private def guessCoordinatorStreamSystemName(config: Config) = {
     val systemNames = config.getSystemNames
     if (systemNames.size == 0) {
@@ -57,9 +86,5 @@ class CoordinatorStreamSystemFactory {
       .getSystemFactory(systemName)
       .getOrElse(throw new SamzaException("Missing configuration: " + SystemConfig.SYSTEM_FACTORY format systemName))
     Util.getObj[SystemFactory](systemFactoryClassName)
-  }
-
-  private def getJobNameAndId(config: Config) = {
-    (config.getName.getOrElse(throw new ConfigException("Missing required config: job.name")), config.getJobId.getOrElse("1"))
   }
 }

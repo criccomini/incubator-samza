@@ -22,7 +22,6 @@ package org.apache.samza.coordinator.stream;
 import java.util.Map;
 
 import org.apache.samza.SamzaException;
-import org.apache.samza.checkpoint.Checkpoint;
 import org.apache.samza.config.Config;
 import org.apache.samza.serializers.model.SamzaObjectMapper;
 import org.apache.samza.system.OutgoingMessageEnvelope;

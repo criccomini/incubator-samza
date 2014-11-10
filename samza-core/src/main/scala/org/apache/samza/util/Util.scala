@@ -27,6 +27,9 @@ import org.apache.samza.system.SystemStream
 import java.util.Random
 import org.apache.samza.job.model.JobModel
 import java.io.InputStreamReader
+import org.apache.samza.config.Config
+import org.apache.samza.config.JobConfig.Config2Job
+import org.apache.samza.config.ConfigException
 
 object Util extends Logging {
   val random = new Random
@@ -132,5 +135,15 @@ object Util extends Logging {
    */
   def getCoordinatorStreamName(jobName: String, jobId: String) = {
     "__samza_coordinator_%s_%s" format (jobName.replaceAll("_", "-"), jobId.replaceAll("_", "-"))
+  }
+
+  /**
+   * Get a job's name and ID given a config. Job ID is defaulted to 1 if not
+   * defined in the config, and job name must be defined in config.
+   *
+   * @return A tuple of (jobName, jobId)
+   */
+  def getJobNameAndId(config: Config) = {
+    (config.getName.getOrElse(throw new ConfigException("Missing required config: job.name")), config.getJobId.getOrElse("1"))
   }
 }

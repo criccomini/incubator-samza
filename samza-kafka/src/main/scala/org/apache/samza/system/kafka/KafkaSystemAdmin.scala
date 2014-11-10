@@ -93,11 +93,23 @@ class KafkaSystemAdmin(
    */
   brokerListString: String,
 
-  // TODO javaodcs
+  /**
+   * A method that returns a ZkClient for the Kafka system. This is invoked
+   * when the system admin is attempting to create a coordinator stream.
+   */
   connectZk: () => ZkClient,
 
-  // TODO javaodcs
-  checkpointTopicProperties: Properties = new Properties,
+  /**
+   * Custom properties to use when the system admin tries to create a new
+   * coordinator stream.
+   */
+  coordinatorStreamProperties: Properties = new Properties,
+
+  /**
+   * The replication factor to use when the system admin creates a new
+   * coordinator stream.
+   */
+  coordinatorStreamReplicationFactor: Int = 3,
 
   /**
    * The timeout to use for the simple consumer when fetching metadata from
@@ -206,9 +218,9 @@ class KafkaSystemAdmin(
           AdminUtils.createTopic(
             zkClient,
             streamName,
-            1,
-            1, // TODO configurable?
-            checkpointTopicProperties)
+            1, // Always one partition for coordinator stream.
+            coordinatorStreamReplicationFactor,
+            coordinatorStreamProperties)
         } finally {
           zkClient.close
         }
