@@ -31,8 +31,8 @@ import org.apache.samza.task.TaskContext
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.util.Logging
 import org.junit.Test
-
 import scala.collection.JavaConversions._
+import org.apache.samza.coordinator.stream.MockCoordinatorStreamSystemFactory
 
 /**
  * A simple unit test that drives the TestPerformanceTask. This unit test can
@@ -83,6 +83,7 @@ class TestSamzaContainerPerformance extends Logging{
   val jobConfig = Map(
     "job.factory.class" -> jobFactory.getClass.getCanonicalName,
     "job.name" -> "test-container-performance",
+    "job.coordinator.system" -> "coordinator",
     "task.class" -> classOf[TestPerformanceTask].getName,
     "task.inputs" -> (0 until streamCount).map(i => "mock.stream" + i).mkString(","),
     "task.log.interval" -> logInterval.toString,
@@ -91,7 +92,8 @@ class TestSamzaContainerPerformance extends Logging{
     "systems.mock.partitions.per.stream" -> partitionsPerStreamCount.toString,
     "systems.mock.messages.per.batch" -> messagesPerBatch.toString,
     "systems.mock.consumer.thread.count" -> consumerThreadCount.toString,
-    "systems.mock.broker.sleep.ms" -> brokerSleepMs.toString)
+    "systems.mock.broker.sleep.ms" -> brokerSleepMs.toString,
+    "systems.coordinator.samza.factory" -> classOf[MockCoordinatorStreamSystemFactory].getCanonicalName)
 
   @Test
   def testContainerPerformance {

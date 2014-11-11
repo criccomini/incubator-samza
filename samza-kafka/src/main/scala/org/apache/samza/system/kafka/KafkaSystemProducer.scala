@@ -86,7 +86,9 @@ class KafkaSystemProducer(
             debug("Created a new producer for system %s." format systemName)
           }
 
-          producer.send(buffer: _*)
+          if (buffer.size > 0) {
+            producer.send(buffer: _*)
+          }
           loop.done
           metrics.flushSizes.inc(buffer.size)
         },
