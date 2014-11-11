@@ -54,6 +54,7 @@ import org.apache.samza.coordinator.stream.CoordinatorStreamMessage
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
 import org.apache.samza.config.MapConfig
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
+import org.apache.samza.config.ConfigRewriter
 
 // TODO re-write config here (used to be in JobRunner)
 // TODO need to serve offsets from job coordinator
@@ -67,7 +68,7 @@ object JobCoordinator extends Logging {
     coordinatorSystemConsumer.bootstrap
     coordinatorSystemConsumer.stop
     val config = coordinatorSystemConsumer.getConfig
-    getJobCoordinator(config)
+    getJobCoordinator(rewriteConfig(config))
   }
 
   /**
@@ -135,6 +136,23 @@ object JobCoordinator extends Logging {
     val factoryString = config.getSystemStreamPartitionGrouperFactory
     val factory = Util.getObj[SystemStreamPartitionGrouperFactory](factoryString)
     factory.getSystemStreamPartitionGrouper(config)
+  }
+
+  // Apply any and all config re-writer classes that the user has specified
+  def rewriteConfig(config: Config): Config = {
+    def rewrite(c: Config, rewriterName: String): Config = {
+      val klass = config
+        .getConfigRewriterClass(rewriterName)
+        .getOrElse(throw new SamzaException("Unable to find class config for config rewriter %s." format rewriterName))
+      val rewriter = Util.getObj[ConfigRewriter](klass)
+      info("Re-writing config file with " + rewriter)
+      rewriter.rewrite(rewriterName, c)
+    }
+
+    config.getConfigRewriters match {
+      case Some(rewriters) => rewriters.split(",").foldLeft(config)(rewrite(_, _))
+      case _ => config
+    }
   }
 
   /**
