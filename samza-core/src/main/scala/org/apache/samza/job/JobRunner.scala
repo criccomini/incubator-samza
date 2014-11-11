@@ -53,8 +53,8 @@ object JobRunner {
  * on a config URI. The configFactory is instantiated, fed the configPath,
  * and returns a Config, which is used to execute the job.
  */
-class JobRunner(config: Config) extends Logging with Runnable {
-  def run() {
+class JobRunner(config: Config) extends Logging {
+  def run() = {
     val coordinatorSystemProducer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemProducer(config, new MetricsRegistryMap)
 
     coordinatorSystemProducer.register(JobRunner.SOURCE)
@@ -90,5 +90,6 @@ class JobRunner(config: Config) extends Logging with Runnable {
     }
 
     info("exiting")
+    job
   }
 }

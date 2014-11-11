@@ -43,6 +43,8 @@ class KafkaSystemProducer(
   }
 
   def stop() {
+    sourceBuffers.keySet.foreach(flush(_))
+
     if (producer != null) {
       producer.close
     }

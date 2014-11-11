@@ -22,7 +22,6 @@ package org.apache.samza.test.integration
 import java.util.Properties
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-
 import kafka.admin.AdminUtils
 import kafka.common.ErrorMapping
 import kafka.consumer.Consumer
@@ -38,7 +37,6 @@ import kafka.utils.TestZKUtils
 import kafka.utils.Utils
 import kafka.utils.ZKStringSerializer
 import kafka.zk.EmbeddedZookeeper
-
 import org.I0Itec.zkclient.ZkClient
 import org.apache.samza.Partition
 import org.apache.samza.checkpoint.Checkpoint
@@ -61,11 +59,11 @@ import org.apache.samza.util.ClientUtilTopicMetadataStore
 import org.apache.samza.util.TopicMetadataStore
 import org.junit.Assert._
 import org.junit.{BeforeClass, AfterClass, Test}
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.SynchronizedMap
+import org.apache.samza.job.JobRunner
 
 object TestStatefulTask {
   val INPUT_TOPIC = "input"
@@ -196,10 +194,9 @@ object TestStatefulTask {
  */
 class TestStatefulTask {
   import TestStatefulTask._
-  val jobFactory = new ThreadJobFactory
 
   val jobConfig = Map(
-    "job.factory.class" -> jobFactory.getClass.getCanonicalName,
+    "job.factory.class" -> classOf[ThreadJobFactory].getCanonicalName,
     "job.name" -> "hello-stateful-world",
     "task.class" -> "org.apache.samza.test.integration.TestTask",
     "task.inputs" -> "kafka.input",
@@ -320,21 +317,15 @@ class TestStatefulTask {
    * time, number of partitions, etc.
    */
   def startJob = {
-    val job = jobFactory.getJob(new MapConfig(jobConfig))
-
     // Start task.
-    job.submit
+    val job = new JobRunner(new MapConfig(jobConfig)).run
     assertEquals(ApplicationStatus.Running, job.waitForStatus(ApplicationStatus.Running, 60000))
     TestTask.awaitTaskRegistered
     val tasks = TestTask.tasks
-
     assertEquals("Should only have a single partition in this task", 1, tasks.size)
-
     val task = tasks.values.toList.head
-
     task.initFinished.await(60, TimeUnit.SECONDS)
     assertEquals(0, task.initFinished.getCount)
-
     (job, task)
   }
 
