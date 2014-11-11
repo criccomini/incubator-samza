@@ -117,9 +117,9 @@ public class CoordinatorStreamSystemConsumer {
         IncomingMessageEnvelope envelope = iterator.next();
         String keyStr = new String((byte[]) envelope.getKey(), "UTF-8");
         String valueStr = new String((byte[]) envelope.getMessage(), "UTF-8");
-        Map<String, Object> keyMap = mapper.readValue(keyStr, new TypeReference<Map<String, String>>() {
+        Map<String, Object> keyMap = mapper.readValue(keyStr, new TypeReference<Map<String, Object>>() {
         });
-        Map<String, Object> valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, String>>() {
+        Map<String, Object> valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, Object>>() {
         });
         CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap);
         if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType())) {
