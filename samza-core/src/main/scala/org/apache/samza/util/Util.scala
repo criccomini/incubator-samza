@@ -28,8 +28,12 @@ import java.util.Random
 import org.apache.samza.job.model.JobModel
 import java.io.InputStreamReader
 import org.apache.samza.config.Config
+import org.apache.samza.config.SystemConfig
 import org.apache.samza.config.JobConfig.Config2Job
 import org.apache.samza.config.ConfigException
+import org.apache.samza.config.MapConfig
+import scala.collection.JavaConversions._
+import org.apache.samza.config.JobConfig
 
 object Util extends Logging {
   val random = new Random
@@ -145,5 +149,16 @@ object Util extends Logging {
    */
   def getJobNameAndId(config: Config) = {
     (config.getName.getOrElse(throw new ConfigException("Missing required config: job.name")), config.getJobId.getOrElse("1"))
+  }
+
+  /**
+   * Given a job's full config object, build a subset config which includes 
+   * only the job name, job id, and system config for the coordinator stream.
+   */
+  def buildCoordinatorStreamConfig(config: Config) = {
+    val (jobName, jobId) = Util.getJobNameAndId(config)
+    // Build a map with just the system config and job.name/job.id. This is what's required to start the JobCoordinator.
+    new MapConfig(config.subset(SystemConfig.SYSTEM_PREFIX format config.getCoordinatorSystemName, false) ++
+      Map[String, String](JobConfig.JOB_NAME -> jobName, JobConfig.JOB_ID -> jobId))
   }
 }

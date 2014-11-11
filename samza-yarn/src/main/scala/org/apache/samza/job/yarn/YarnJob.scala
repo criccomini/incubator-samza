@@ -65,10 +65,7 @@ class YarnJob(config: Config, hadoopConfig: Configuration) extends StreamJob {
         "export SAMZA_LOG_DIR=%s && ln -sfn %s logs && exec ./__package/bin/run-am.sh 1>logs/%s 2>logs/%s"
           format (ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.LOG_DIR_EXPANSION_VAR, ApplicationConstants.STDOUT, ApplicationConstants.STDERR)),
       Some({
-        val (jobName, jobId) = Util.getJobNameAndId(config)
-        // Build a map with just the system config and job.name/job.id. This is what's required to start the JobCoordinator.
-        val coorindatorSystemConfig = new MapConfig(config.subset(SystemConfig.SYSTEM_PREFIX format config.getCoordinatorSystemName, false) ++
-          Map[String, String](JobConfig.JOB_NAME -> jobName, JobConfig.JOB_ID -> jobId))
+        val coorindatorSystemConfig = Util.buildCoordinatorStreamConfig(config)
         val envMap = Map(
           ShellCommandConfig.ENV_COORDINATOR_SYSTEM_CONFIG -> Util.envVarEscape(SamzaObjectMapper.getObjectMapper.writeValueAsString(coorindatorSystemConfig)),
           ShellCommandConfig.ENV_JAVA_OPTS -> Util.envVarEscape(config.getAmOpts.getOrElse("")))
