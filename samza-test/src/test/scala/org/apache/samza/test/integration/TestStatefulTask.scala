@@ -208,7 +208,6 @@ class TestStatefulTask {
     "stores.mystore.key.serde" -> "string",
     "stores.mystore.msg.serde" -> "string",
     "stores.mystore.changelog" -> "kafka.mystore",
-
     "systems.kafka.samza.factory" -> "org.apache.samza.system.kafka.KafkaSystemFactory",
     // Always start consuming at offset 0. This avoids a race condition between
     // the producer and the consumer in this test (SAMZA-166, SAMZA-224).
