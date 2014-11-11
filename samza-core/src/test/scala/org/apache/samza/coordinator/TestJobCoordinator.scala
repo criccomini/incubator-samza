@@ -40,23 +40,27 @@ import org.apache.samza.Partition
 import org.apache.samza.job.model.JobModel
 import org.apache.samza.job.model.ContainerModel
 import org.apache.samza.job.model.TaskModel
+import org.apache.samza.config.JobConfig
+import org.apache.samza.system.IncomingMessageEnvelope
+import org.apache.samza.system.SystemConsumer
 
 class TestJobCoordinator {
   /**
-   * Builds a coordinator from config, and then compares it with what was 
-   * expected. We simulate having a checkpoint manager that has 2 task 
-   * changelog entries, and our model adds a third task. Expectation is that 
-   * the JobCoordinator will assign the new task with a new changelog 
+   * Builds a coordinator from config, and then compares it with what was
+   * expected. We simulate having a checkpoint manager that has 2 task
+   * changelog entries, and our model adds a third task. Expectation is that
+   * the JobCoordinator will assign the new task with a new changelog
    * partition.
    */
   @Test
   def testJobCoordinator {
-    val containerCount = 2
     val config = new MapConfig(Map(
+      JobConfig.JOB_NAME -> "test",
+      JobConfig.CONTAINER_COUNT -> "2",
       TaskConfig.CHECKPOINT_MANAGER_FACTORY -> classOf[MockCheckpointManagerFactory].getCanonicalName,
       TaskConfig.INPUT_STREAMS -> "test.stream1",
       (SystemConfig.SYSTEM_FACTORY format "test") -> classOf[MockSystemFactory].getCanonicalName))
-    val coordinator = JobCoordinator(config, containerCount)
+    val coordinator = JobCoordinator(config)
 
     // Construct the expected JobModel, so we can compare it to 
     // JobCoordinator's JobModel.
@@ -100,7 +104,12 @@ class MockCheckpointManager extends CheckpointManager {
 }
 
 class MockSystemFactory extends SystemFactory {
-  def getConsumer(systemName: String, config: Config, registry: MetricsRegistry) = null
+  def getConsumer(systemName: String, config: Config, registry: MetricsRegistry) = new SystemConsumer {
+    def start() {}
+    def stop() {}
+    def register(systemStreamPartition: SystemStreamPartition, offset: String) {}
+    def poll(systemStreamPartitions: java.util.Set[SystemStreamPartition], timeout: Long) = new java.util.HashMap[SystemStreamPartition, java.util.List[IncomingMessageEnvelope]]()
+  }
   def getProducer(systemName: String, config: Config, registry: MetricsRegistry) = null
   def getAdmin(systemName: String, config: Config) = new MockSystemAdmin
 }
@@ -116,4 +125,5 @@ class MockSystemAdmin extends SystemAdmin {
       new Partition(2) -> new SystemStreamPartitionMetadata(null, null, null))
     Map(streamNames.toList.head -> new SystemStreamMetadata("foo", partitionMetadata))
   }
+  def createCoordinatorStream(streamName: String) {}
 }

@@ -244,6 +244,8 @@ class TestOffsetManager {
 
       def getSystemStreamMetadata(streamNames: java.util.Set[String]) =
         Map[String, SystemStreamMetadata]()
+
+      def createCoordinatorStream(streamName: String) {}
     }
   }
 }
