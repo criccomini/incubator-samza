@@ -55,6 +55,7 @@ public class CoordinatorStreamMessage {
 
   private final Map<String, Object> keyMap;
   private final Map<String, Object> messageMap;
+  private boolean isDelete = false;
 
   public CoordinatorStreamMessage(Map<String, Object> keyMap, Map<String, Object> messageMap) {
     this.keyMap = keyMap;
@@ -74,6 +75,10 @@ public class CoordinatorStreamMessage {
     } catch (UnknownHostException e) {
       throw new SamzaException(e);
     }
+  }
+
+  protected void setIsDelete(boolean isDelete) {
+    this.isDelete = isDelete;
   }
 
   protected void setHost(String host) {
@@ -138,9 +143,13 @@ public class CoordinatorStreamMessage {
    */
   @SuppressWarnings("unchecked")
   public Map<String, Object> getMessageMap() {
-    Map<String, Object> immutableMap = new HashMap<String, Object>(messageMap);
-    immutableMap.put("values", Collections.unmodifiableMap((Map<String, String>) messageMap.get("values")));
-    return Collections.unmodifiableMap(immutableMap);
+    if (!isDelete) {
+      Map<String, Object> immutableMap = new HashMap<String, Object>(messageMap);
+      immutableMap.put("values", Collections.unmodifiableMap((Map<String, String>) messageMap.get("values")));
+      return Collections.unmodifiableMap(immutableMap);
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -179,6 +188,20 @@ public class CoordinatorStreamMessage {
 
     public String getConfigValue() {
       return (String) getValue("value");
+    }
+  }
+
+  public static class Delete extends CoordinatorStreamMessage {
+    public Delete(String source, String key, String type) {
+      this(source, type, key, VERSION);
+    }
+
+    public Delete(String source, String key, String type, int version) {
+      super(source);
+      setType(type);
+      setKey(key);
+      setVersion(version);
+      setIsDelete(true);
     }
   }
 }

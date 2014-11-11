@@ -33,6 +33,7 @@ import org.apache.samza.config.SystemConfig
 import org.apache.samza.system.SystemFactory
 import org.apache.samza.metrics.MetricsRegistryMap
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage
+import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemProducer
 import org.apache.samza.system.SystemStream
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
@@ -55,11 +56,28 @@ object JobRunner {
  */
 class JobRunner(config: Config) extends Logging {
   def run() = {
-    val coordinatorSystemProducer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemProducer(config, new MetricsRegistryMap)
+    val factory = new CoordinatorStreamSystemFactory
+    val coordinatorSystemConsumer = factory.getCoordinatorStreamSystemConsumer(config, new MetricsRegistryMap)
+    val coordinatorSystemProducer = factory.getCoordinatorStreamSystemProducer(config, new MetricsRegistryMap)
 
+    // Load old config.
+    coordinatorSystemConsumer.register
+    coordinatorSystemConsumer.start
+    coordinatorSystemConsumer.bootstrap
+    coordinatorSystemConsumer.stop
+
+    val oldConfig = coordinatorSystemConsumer.getConfig();
+
+    // Send new config.
     coordinatorSystemProducer.register(JobRunner.SOURCE)
     coordinatorSystemProducer.start
     coordinatorSystemProducer.writeConfig(JobRunner.SOURCE, config)
+
+    // Delete all old configs that haven't been over-written by new config.
+    (oldConfig.keySet -- config.keySet).foreach(key => {
+      coordinatorSystemProducer.send(new CoordinatorStreamMessage.Delete(JobRunner.SOURCE, key, SetConfig.TYPE))
+    })
+
     coordinatorSystemProducer.stop
 
     val jobFactoryClass = config.getStreamJobFactoryClass match {
