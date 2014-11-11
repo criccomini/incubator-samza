@@ -230,19 +230,23 @@ class JobCoordinator(
   /**
    * HTTP server used to serve a Samza job's container model to SamzaContainers when they start up.
    */
-  val server: HttpServer) extends Logging {
+  val server: HttpServer = null) extends Logging {
 
   debug("Got job model: %s." format jobModel)
 
   def start {
-    debug("Starting HTTP server.")
-    server.start
-    info("Startd HTTP server: %s" format server.getUrl)
+    if (server != null) {
+      debug("Starting HTTP server.")
+      server.start
+      info("Startd HTTP server: %s" format server.getUrl)
+    }
   }
 
   def stop {
-    debug("Stopping HTTP server.")
-    server.stop
-    info("Stopped HTTP server.")
+    if (server != null) {
+      debug("Stopping HTTP server.")
+      server.stop
+      info("Stopped HTTP server.")
+    }
   }
 }

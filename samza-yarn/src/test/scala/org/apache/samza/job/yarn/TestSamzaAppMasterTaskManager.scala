@@ -31,6 +31,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.util.ConverterUtils
 import org.apache.samza.Partition
 import org.apache.samza.config.Config
+import org.apache.samza.config.JobConfig.Config2Job
 import org.apache.samza.config.YarnConfig.Config2Yarn
 import org.apache.samza.config.MapConfig
 import org.apache.samza.metrics.MetricsRegistry
@@ -44,6 +45,11 @@ import java.net.URL
 import org.apache.samza.system.SystemAdmin
 import org.apache.samza.system.SystemStreamMetadata
 import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata
+import org.apache.samza.coordinator.JobCoordinator
+import org.apache.samza.job.model.JobModel
+import org.apache.samza.job.model.ContainerModel
+import org.apache.samza.container.TaskName
+import org.apache.samza.job.model.TaskModel
 
 object TestSamzaAppMasterTaskManager {
   def getContainer(containerId: ContainerId) = new Container {
@@ -151,16 +157,26 @@ class TestSamzaAppMasterTaskManager {
     "yarn.container.retry.count" -> "1",
     "yarn.container.retry.window.ms" -> "1999999999"))
 
+  def getCoordinator(containerCount: Int = 1) = {
+    val containers = new java.util.HashMap[java.lang.Integer, ContainerModel]()
+    (0 until containerCount).foreach(idx => {
+      val container = new ContainerModel(idx, Map[TaskName, TaskModel]())
+      containers.put(new java.lang.Integer(idx), container)
+    })
+    val jobModel = new JobModel(config, containers)
+    new JobCoordinator(jobModel, null)
+  }
+
   @Test
   def testAppMasterShouldDefaultToOneContainerIfTaskCountIsNotSpecified {
-    val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    val state = new SamzaAppMasterState(getCoordinator(), -1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     val taskManager = new SamzaAppMasterTaskManager(clock, config, state, null, new YarnConfiguration)
     assertEquals(1, state.taskCount)
   }
 
   @Test
   def testAppMasterShouldStopWhenContainersFinish {
-    val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    val state = new SamzaAppMasterState(getCoordinator(), -1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     val taskManager = new SamzaAppMasterTaskManager(clock, config, state, null, new YarnConfiguration)
 
     assertFalse(taskManager.shouldShutdown)
@@ -175,7 +191,7 @@ class TestSamzaAppMasterTaskManager {
   @Test
   def testAppMasterShouldRequestANewContainerWhenATaskFails {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
-    val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    val state = new SamzaAppMasterState(getCoordinator(), -1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     state.coordinatorUrl = new URL("http://localhost:1234")
     val taskManager = new SamzaAppMasterTaskManager(clock, config, state, amClient, new YarnConfiguration) {
       override def startContainer(packagePath: Path, container: Container, env: Map[String, String], cmds: String*) {
@@ -210,7 +226,7 @@ class TestSamzaAppMasterTaskManager {
   @Test
   def testAppMasterShouldRequestANewContainerWhenATaskIsReleased {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
-    val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    val state = new SamzaAppMasterState(getCoordinator(), -1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     state.coordinatorUrl = new URL("http://localhost:1234")
     state.taskCount = 2
     var containersRequested = 0
@@ -286,7 +302,7 @@ class TestSamzaAppMasterTaskManager {
     map.put("yarn.container.count", "2")
     val newConfig = new MapConfig(map)
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
-    val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    val state = new SamzaAppMasterState(getCoordinator(2), -1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     state.taskCount = 2
     state.coordinatorUrl = new URL("http://localhost:1234")
     var containersStarted = 0
@@ -348,7 +364,7 @@ class TestSamzaAppMasterTaskManager {
   @Test
   def testAppMasterShouldReleaseExtraContainers {
     val amClient = getAmClient(new TestAMRMClientImpl(getAppMasterResponse(false, List(), List())))
-    val state = new SamzaAppMasterState(-1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
+    val state = new SamzaAppMasterState(getCoordinator(), -1, ConverterUtils.toContainerId("container_1350670447861_0003_01_000001"), "", 1, 2)
     state.coordinatorUrl = new URL("http://localhost:1234")
     var containersRequested = 0
     var containersStarted = 0
@@ -403,8 +419,7 @@ class MockSystemFactory extends SystemFactory {
   }
 
   def getAdmin(systemName: String, config: Config) = {
-    val containerCount = config.getTaskCount.getOrElse(1)
-    new MockSystemAdmin(containerCount)
+    new MockSystemAdmin(config.getContainerCount)
   }
 }
 
@@ -420,5 +435,8 @@ class MockSystemAdmin(numTasks: Int) extends SystemAdmin {
       }).toMap
       streamName -> new SystemStreamMetadata(streamName, partitionMetadata)
     }).toMap[String, SystemStreamMetadata]
+  }
+  def createCoordinatorStream(streamName: String) {
+    throw new UnsupportedOperationException
   }
 }
