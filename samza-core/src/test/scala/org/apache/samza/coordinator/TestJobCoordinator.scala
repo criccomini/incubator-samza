@@ -43,6 +43,7 @@ import org.apache.samza.job.model.TaskModel
 import org.apache.samza.config.JobConfig
 import org.apache.samza.system.IncomingMessageEnvelope
 import org.apache.samza.system.SystemConsumer
+import org.apache.samza.coordinator.stream.MockCoordinatorStreamSystemFactory
 
 class TestJobCoordinator {
   /**
@@ -56,10 +57,13 @@ class TestJobCoordinator {
   def testJobCoordinator {
     val config = new MapConfig(Map(
       JobConfig.JOB_NAME -> "test",
+      JobConfig.COORDINATOR_SYSTEM -> "coordinator",
       JobConfig.CONTAINER_COUNT -> "2",
       TaskConfig.CHECKPOINT_MANAGER_FACTORY -> classOf[MockCheckpointManagerFactory].getCanonicalName,
       TaskConfig.INPUT_STREAMS -> "test.stream1",
-      (SystemConfig.SYSTEM_FACTORY format "test") -> classOf[MockSystemFactory].getCanonicalName))
+      SystemConfig.SYSTEM_FACTORY.format("test") -> classOf[MockSystemFactory].getCanonicalName,
+      SystemConfig.SYSTEM_FACTORY.format("coordinator") -> classOf[MockCoordinatorStreamSystemFactory].getName
+    ))
     val coordinator = JobCoordinator(config)
 
     // Construct the expected JobModel, so we can compare it to 
