@@ -86,7 +86,10 @@ public class CoordinatorStreamSystemProducer {
     try {
       String source = message.getSource();
       byte[] key = mapper.writeValueAsString(message.getKeyMap()).getBytes("UTF-8");
-      byte[] value = mapper.writeValueAsString(message.getMessageMap()).getBytes("UTF-8");
+      byte[] value = null;
+      if (!message.isDelete()) {
+        value = mapper.writeValueAsString(message.getMessageMap()).getBytes("UTF-8");
+      }
       OutgoingMessageEnvelope envelope = new OutgoingMessageEnvelope(systemStream, Integer.valueOf(0), key, value);
       systemProducer.send(source, envelope);
     } catch (Exception e) {

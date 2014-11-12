@@ -73,6 +73,8 @@ class JobRunner(config: Config) extends Logging {
     coordinatorSystemProducer.start
     coordinatorSystemProducer.writeConfig(JobRunner.SOURCE, config)
 
+    info("Deleting old configs: %s".format(oldConfig.keySet -- config.keySet))
+
     // Delete all old configs that haven't been over-written by new config.
     (oldConfig.keySet -- config.keySet).foreach(key => {
       coordinatorSystemProducer.send(new CoordinatorStreamMessage.Delete(JobRunner.SOURCE, key, SetConfig.TYPE))

@@ -55,11 +55,12 @@ public class CoordinatorStreamMessage {
 
   private final Map<String, Object> keyMap;
   private final Map<String, Object> messageMap;
-  private boolean isDelete = false;
+  private boolean isDelete;
 
   public CoordinatorStreamMessage(Map<String, Object> keyMap, Map<String, Object> messageMap) {
     this.keyMap = keyMap;
     this.messageMap = messageMap;
+    this.isDelete = messageMap == null;
   }
 
   public CoordinatorStreamMessage(String source) {
@@ -139,6 +140,13 @@ public class CoordinatorStreamMessage {
   }
 
   /**
+   * @return Whether the message signifies a delete or not.
+   */
+  public boolean isDelete() {
+    return isDelete;
+  }
+
+  /**
    * @return The whole message map including header information.
    */
   @SuppressWarnings("unchecked")
@@ -168,6 +176,11 @@ public class CoordinatorStreamMessage {
     return (String) this.keyMap.get("key");
   }
 
+  @Override
+  public String toString() {
+    return "CoordinatorStreamMessage [keyMap=" + keyMap + ", messageMap=" + messageMap + ", isDelete=" + isDelete + "]";
+  }
+
   /**
    * A coordinator stream message that tells the job coordinator to set a
    * specific configuration.
@@ -193,7 +206,7 @@ public class CoordinatorStreamMessage {
 
   public static class Delete extends CoordinatorStreamMessage {
     public Delete(String source, String key, String type) {
-      this(source, type, key, VERSION);
+      this(source, key, type, VERSION);
     }
 
     public Delete(String source, String key, String type, int version) {

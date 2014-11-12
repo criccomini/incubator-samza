@@ -28,6 +28,7 @@ import org.apache.samza.Partition;
 import org.apache.samza.SamzaException;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.MapConfig;
+import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.Delete;
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig;
 import org.apache.samza.serializers.model.SamzaObjectMapper;
 import org.apache.samza.system.IncomingMessageEnvelope;
@@ -116,16 +117,23 @@ public class CoordinatorStreamSystemConsumer {
       while (iterator.hasNext()) {
         IncomingMessageEnvelope envelope = iterator.next();
         String keyStr = new String((byte[]) envelope.getKey(), "UTF-8");
-        String valueStr = new String((byte[]) envelope.getMessage(), "UTF-8");
         Map<String, Object> keyMap = mapper.readValue(keyStr, new TypeReference<Map<String, Object>>() {
         });
-        Map<String, Object> valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, Object>>() {
-        });
+        Map<String, Object> valueMap = null;
+        if (envelope.getMessage() != null) {
+          String valueStr = new String((byte[]) envelope.getMessage(), "UTF-8");
+          valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, Object>>() {
+          });
+        }
         CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap);
         if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType())) {
           String configKey = coordinatorStreamMessage.getKey();
-          String configValue = new SetConfig(coordinatorStreamMessage).getConfigValue();
-          configMap.put(configKey, configValue);
+          if (coordinatorStreamMessage.isDelete()) {
+            configMap.remove(configKey);
+          } else {
+            String configValue = new SetConfig(coordinatorStreamMessage).getConfigValue();
+            configMap.put(configKey, configValue);
+          }
         }
       }
       isBootstrapped = true;
