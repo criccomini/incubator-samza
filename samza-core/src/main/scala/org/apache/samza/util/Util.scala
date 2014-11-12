@@ -156,7 +156,7 @@ object Util extends Logging {
    * only the job name, job id, and system config for the coordinator stream.
    */
   def buildCoordinatorStreamConfig(config: Config) = {
-    val (jobName, jobId) = Util.getJobNameAndId(config)
+    val (jobName, jobId) = getJobNameAndId(config)
     // Build a map with just the system config and job.name/job.id. This is what's required to start the JobCoordinator.
     new MapConfig(config.subset(SystemConfig.SYSTEM_PREFIX format config.getCoordinatorSystemName, false) ++
       Map[String, String](JobConfig.JOB_NAME -> jobName, JobConfig.JOB_ID -> jobId))

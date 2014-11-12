@@ -56,10 +56,6 @@ import org.apache.samza.config.MapConfig
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
 import org.apache.samza.config.ConfigRewriter
 
-// TODO re-write config here (used to be in JobRunner)
-// TODO need to serve offsets from job coordinator
-// TODO need to remove checkpoint manager from SamzaContainer and use coordinator stream system producer instead
-
 object JobCoordinator extends Logging {
   def apply(coordinatorSystemConfig: Config) = {
     val coordinatorSystemConsumer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemConsumer(coordinatorSystemConfig, new MetricsRegistryMap)

@@ -32,7 +32,17 @@ import org.apache.samza.system.SystemStreamPartition;
 import org.apache.samza.util.SinglePartitionWithoutOffsetsSystemAdmin;
 import org.apache.samza.util.Util;
 
+/**
+ * Helper for creating mock CoordinatorStreamConsumer and
+ * CoordinatorStreamConsumer. The CoordinatorStreamConsumer is meant to just
+ * forward all configs to JobCoordinator, which is useful for mocking in unit
+ * tests.
+ */
 public class MockCoordinatorStreamSystemFactory implements SystemFactory {
+
+  /**
+   * Returns a consumer that sends all configs to the coordinator stream.
+   */
   public SystemConsumer getConsumer(String systemName, Config config, MetricsRegistry registry) {
     String jobName = config.get("job.name");
     String jobId = config.get("job.id");
@@ -47,6 +57,9 @@ public class MockCoordinatorStreamSystemFactory implements SystemFactory {
     return new MockCoordinatorStreamWrappedConsumer(systemStreamPartition, config);
   }
 
+  /**
+   * Returns a no-op producer.
+   */
   public SystemProducer getProducer(String systemName, Config config, MetricsRegistry registry) {
     // A do-nothing producer.
     return new SystemProducer() {
@@ -67,6 +80,10 @@ public class MockCoordinatorStreamSystemFactory implements SystemFactory {
     };
   }
 
+  /**
+   * Returns a single partition admin that pretends to create a coordinator
+   * stream.
+   */
   public SystemAdmin getAdmin(String systemName, Config config) {
     return new SinglePartitionWithoutOffsetsSystemAdmin() {
       @Override

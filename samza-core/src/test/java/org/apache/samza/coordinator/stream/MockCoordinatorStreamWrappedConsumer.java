@@ -30,6 +30,12 @@ import org.apache.samza.system.SystemStreamPartition;
 import org.apache.samza.util.BlockingEnvelopeMap;
 import org.codehaus.jackson.map.ObjectMapper;
 
+/**
+ * A mock SystemConsumer that pretends to be a coordinator stream. The mock will
+ * take all configs given to it, and put them into the coordinator stream's
+ * SystemStreamPartition. This is useful in cases where config needs to be
+ * quickly passed from a unit test into the JobCoordinator.
+ */
 public class MockCoordinatorStreamWrappedConsumer extends BlockingEnvelopeMap {
   private final static ObjectMapper MAPPER = SamzaObjectMapper.getObjectMapper();
 
@@ -46,7 +52,6 @@ public class MockCoordinatorStreamWrappedConsumer extends BlockingEnvelopeMap {
     try {
       for (Map.Entry<String, String> configPair : config.entrySet()) {
         SetConfig setConfig = new SetConfig("source", configPair.getKey(), configPair.getValue());
-System.err.println("!!!!" + MAPPER.writeValueAsString(setConfig.getMessageMap()));
         byte[] keyBytes = MAPPER.writeValueAsString(setConfig.getKeyMap()).getBytes("UTF-8");
         byte[] messgeBytes = MAPPER.writeValueAsString(setConfig.getMessageMap()).getBytes("UTF-8");
         put(systemStreamPartition, new IncomingMessageEnvelope(systemStreamPartition, "", keyBytes, messgeBytes));
