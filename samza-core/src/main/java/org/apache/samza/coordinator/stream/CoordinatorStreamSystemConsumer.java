@@ -28,7 +28,6 @@ import org.apache.samza.Partition;
 import org.apache.samza.SamzaException;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.MapConfig;
-import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.Delete;
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig;
 import org.apache.samza.serializers.model.SamzaObjectMapper;
 import org.apache.samza.system.IncomingMessageEnvelope;
@@ -41,12 +40,16 @@ import org.apache.samza.system.SystemStreamPartition;
 import org.apache.samza.system.SystemStreamPartitionIterator;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A wrapper around a SystemConsumer that reads provides helpful methods for
  * dealing with the coordinator stream.
  */
 public class CoordinatorStreamSystemConsumer {
+  private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamSystemConsumer.class);
+
   private final SystemStreamPartition coordinatorSystemStreamPartition;
   private final SystemConsumer systemConsumer;
   private final SystemAdmin systemAdmin;
@@ -72,6 +75,7 @@ public class CoordinatorStreamSystemConsumer {
    * coordinator stream with the SystemConsumer using the earliest offset.
    */
   public void register() {
+    log.debug("Attempting to register: {}", coordinatorSystemStreamPartition);
     Set<String> streamNames = new HashSet<String>();
     String streamName = coordinatorSystemStreamPartition.getStream();
     streamNames.add(streamName);
@@ -89,6 +93,7 @@ public class CoordinatorStreamSystemConsumer {
     }
 
     String startingOffset = systemStreamPartitionMetadata.getOldestOffset();
+    log.debug("Registering {} with offset {}", coordinatorSystemStreamPartition, startingOffset);
     systemConsumer.register(coordinatorSystemStreamPartition, startingOffset);
   }
 
@@ -96,6 +101,7 @@ public class CoordinatorStreamSystemConsumer {
    * Starts the underlying SystemConsumer.
    */
   public void start() {
+    log.info("Starting coordinator stream system consumer.");
     systemConsumer.start();
   }
 
@@ -103,6 +109,7 @@ public class CoordinatorStreamSystemConsumer {
    * Stops the underlying SystemConsumer.
    */
   public void stop() {
+    log.info("Stopping coordinator stream system consumer.");
     systemConsumer.stop();
   }
 
@@ -111,6 +118,7 @@ public class CoordinatorStreamSystemConsumer {
    * Currently, this method only pays attention to config messages.
    */
   public void bootstrap() {
+    log.info("Bootstrapping configuration from coordinator stream.");
     SystemStreamPartitionIterator iterator = new SystemStreamPartitionIterator(systemConsumer, coordinatorSystemStreamPartition);
 
     try {
@@ -126,6 +134,7 @@ public class CoordinatorStreamSystemConsumer {
           });
         }
         CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap);
+        log.debug("Received coordinator stream message: {}", coordinatorStreamMessage);
         if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType())) {
           String configKey = coordinatorStreamMessage.getKey();
           if (coordinatorStreamMessage.isDelete()) {
@@ -136,6 +145,7 @@ public class CoordinatorStreamSystemConsumer {
           }
         }
       }
+      log.debug("Bootstrapped configuration: {}", configMap);
       isBootstrapped = true;
     } catch (Exception e) {
       throw new SamzaException(e);

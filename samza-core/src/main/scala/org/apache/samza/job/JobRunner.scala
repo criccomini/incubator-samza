@@ -56,41 +56,31 @@ object JobRunner {
  */
 class JobRunner(config: Config) extends Logging {
   def run() = {
-    val factory = new CoordinatorStreamSystemFactory
-    val coordinatorSystemConsumer = factory.getCoordinatorStreamSystemConsumer(config, new MetricsRegistryMap)
-    val coordinatorSystemProducer = factory.getCoordinatorStreamSystemProducer(config, new MetricsRegistryMap)
-
-    // Load old config.
-    coordinatorSystemConsumer.register
-    coordinatorSystemConsumer.start
-    coordinatorSystemConsumer.bootstrap
-    coordinatorSystemConsumer.stop
-
-    val oldConfig = coordinatorSystemConsumer.getConfig();
-
-    // Send new config.
-    coordinatorSystemProducer.register(JobRunner.SOURCE)
-    coordinatorSystemProducer.start
-    coordinatorSystemProducer.writeConfig(JobRunner.SOURCE, config)
-
-    info("Deleting old configs: %s".format(oldConfig.keySet -- config.keySet))
-
-    // Delete all old configs that haven't been over-written by new config.
-    (oldConfig.keySet -- config.keySet).foreach(key => {
-      coordinatorSystemProducer.send(new CoordinatorStreamMessage.Delete(JobRunner.SOURCE, key, SetConfig.TYPE))
-    })
-
-    coordinatorSystemProducer.stop
-
+    debug("config: %s" format (config))
     val jobFactoryClass = config.getStreamJobFactoryClass match {
       case Some(factoryClass) => factoryClass
       case _ => throw new SamzaException("no job factory class defined")
     }
-
     val jobFactory = Class.forName(jobFactoryClass).newInstance.asInstanceOf[StreamJobFactory]
-
     info("job factory: %s" format (jobFactoryClass))
-    debug("config: %s" format (config))
+    val factory = new CoordinatorStreamSystemFactory
+    val coordinatorSystemConsumer = factory.getCoordinatorStreamSystemConsumer(config, new MetricsRegistryMap)
+    val coordinatorSystemProducer = factory.getCoordinatorStreamSystemProducer(config, new MetricsRegistryMap)
+    info("Storing config in coordinator stream.")
+    coordinatorSystemProducer.register(JobRunner.SOURCE)
+    coordinatorSystemProducer.start
+    coordinatorSystemProducer.writeConfig(JobRunner.SOURCE, config)
+    info("Loading old config from coordinator stream.")
+    coordinatorSystemConsumer.register
+    coordinatorSystemConsumer.start
+    coordinatorSystemConsumer.bootstrap
+    coordinatorSystemConsumer.stop
+    val oldConfig = coordinatorSystemConsumer.getConfig();
+    info("Deleting old configs that are no longer defined: %s".format(oldConfig.keySet -- config.keySet))
+    (oldConfig.keySet -- config.keySet).foreach(key => {
+      coordinatorSystemProducer.send(new CoordinatorStreamMessage.Delete(JobRunner.SOURCE, key, SetConfig.TYPE))
+    })
+    coordinatorSystemProducer.stop
 
     // Create the actual job, and submit it.
     val job = jobFactory.getJob(config).submit

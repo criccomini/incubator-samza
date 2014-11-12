@@ -29,12 +29,16 @@ import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemProducer;
 import org.apache.samza.system.SystemStream;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A wrapper around a SystemProducer that reads provides helpful methods for
  * dealing with the coordinator stream.
  */
 public class CoordinatorStreamSystemProducer {
+  private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamSystemProducer.class);
+
   private final ObjectMapper mapper;
   private final SystemStream systemStream;
   private final SystemProducer systemProducer;
@@ -65,7 +69,9 @@ public class CoordinatorStreamSystemProducer {
    * Creates the coordinator stream, and starts the system producer.
    */
   public void start() {
+    log.info("Creating coordinator stream producer.");
     systemAdmin.createCoordinatorStream(systemStream.getStream());
+    log.info("Starting coordinator stream producer.");
     systemProducer.start();
   }
 
@@ -73,6 +79,7 @@ public class CoordinatorStreamSystemProducer {
    * Stops the underlying SystemProducer.
    */
   public void stop() {
+    log.info("Stopping coordinator stream producer.");
     systemProducer.stop();
   }
 
@@ -83,6 +90,7 @@ public class CoordinatorStreamSystemProducer {
    *          The message to send.
    */
   public void send(CoordinatorStreamMessage message) {
+    log.debug("Sending {}", message);
     try {
       String source = message.getSource();
       byte[] key = mapper.writeValueAsString(message.getKeyMap()).getBytes("UTF-8");
@@ -108,8 +116,10 @@ public class CoordinatorStreamSystemProducer {
    *          The config object to store in the coordinator stream.
    */
   public void writeConfig(String source, Config config) {
+    log.debug("Writing config: {}", config);
     for (Map.Entry<String, String> configPair : config.entrySet()) {
       send(new CoordinatorStreamMessage.SetConfig(source, configPair.getKey(), configPair.getValue()));
     }
+    systemProducer.flush(source);
   }
 }
