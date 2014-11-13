@@ -45,31 +45,28 @@ import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
  */
 class CoordinatorStreamSystemFactory {
   def getCoordinatorStreamSystemConsumer(config: Config, registry: MetricsRegistry) = {
-    val systemName = config.getCoordinatorSystemName
-    val (jobName, jobId) = Util.getJobNameAndId(config)
-    val streamName = Util.getCoordinatorStreamName(jobName, jobId)
-    val coordinatorSystemStream = new SystemStream(systemName, streamName)
-    val systemFactory = getSystemFactory(systemName, config)
-    val systemAdmin = systemFactory.getAdmin(systemName, config)
-    val systemConsumer = systemFactory.getConsumer(systemName, config, registry)
+    val (coordinatorSystemStream, systemFactory) = getCoordinatorSystemStreamAndFactory(config, registry)
+    val systemAdmin = systemFactory.getAdmin(coordinatorSystemStream.getSystem, config)
+    val systemConsumer = systemFactory.getConsumer(coordinatorSystemStream.getSystem, config, registry)
     new CoordinatorStreamSystemConsumer(coordinatorSystemStream, systemConsumer, systemAdmin)
   }
 
   def getCoordinatorStreamSystemProducer(config: Config, registry: MetricsRegistry) = {
+    val (coordinatorSystemStream, systemFactory) = getCoordinatorSystemStreamAndFactory(config, registry)
+    val systemAdmin = systemFactory.getAdmin(coordinatorSystemStream.getSystem, config)
+    val systemProducer = systemFactory.getProducer(coordinatorSystemStream.getSystem, config, registry)
+    new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer, systemAdmin)
+  }
+
+  private def getCoordinatorSystemStreamAndFactory(config: Config, registry: MetricsRegistry) = {
     val systemName = config.getCoordinatorSystemName
     val (jobName, jobId) = Util.getJobNameAndId(config)
     val streamName = Util.getCoordinatorStreamName(jobName, jobId)
     val coordinatorSystemStream = new SystemStream(systemName, streamName)
-    val systemFactory = getSystemFactory(systemName, config)
-    val systemProducer = systemFactory.getProducer(systemName, config, registry)
-    val systemAdmin = systemFactory.getAdmin(systemName, config)
-    new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer, systemAdmin)
-  }
-
-  private def getSystemFactory(systemName: String, config: Config) = {
     val systemFactoryClassName = config
       .getSystemFactory(systemName)
       .getOrElse(throw new SamzaException("Missing configuration: " + SystemConfig.SYSTEM_FACTORY format systemName))
-    Util.getObj[SystemFactory](systemFactoryClassName)
+    val systemFactory = Util.getObj[SystemFactory](systemFactoryClassName)
+    (coordinatorSystemStream, systemFactory)
   }
 }

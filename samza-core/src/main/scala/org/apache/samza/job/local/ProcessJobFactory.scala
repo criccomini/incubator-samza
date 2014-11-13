@@ -54,10 +54,10 @@ class ProcessJobFactory extends StreamJobFactory with Logging {
         }
       }
 
-      val coorindatorSystemConfig = Util.buildCoordinatorStreamConfig(config)
+      val coordinatorSystemConfig = Util.buildCoordinatorStreamConfig(config)
 
       commandBuilder
-        .setConfig(coorindatorSystemConfig)
+        .setConfig(coordinatorSystemConfig)
         .setId(0)
 
       coordinator.start

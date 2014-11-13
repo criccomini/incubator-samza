@@ -56,7 +56,17 @@ import org.apache.samza.config.MapConfig
 import org.apache.samza.coordinator.stream.CoordinatorStreamSystemFactory
 import org.apache.samza.config.ConfigRewriter
 
+/**
+ * Helper companion object that is responsible for wiring up a JobCoordinator
+ * given a Config object.
+ */
 object JobCoordinator extends Logging {
+  /**
+   * @param coordinatorSystemConfig A config object that contains job.name,
+   * job.id, and all system.&lt;job-coordinator-system-name&gt;.*
+   * configuration. The method will use this config to read all configuration
+   * from the coordinator stream, and instantiate a JobCoordinator.
+   */
   def apply(coordinatorSystemConfig: Config) = {
     val coordinatorSystemConsumer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemConsumer(coordinatorSystemConfig, new MetricsRegistryMap)
     coordinatorSystemConsumer.register
@@ -134,7 +144,13 @@ object JobCoordinator extends Logging {
     factory.getSystemStreamPartitionGrouper(config)
   }
 
-  // Apply any and all config re-writer classes that the user has specified
+  /**
+   * Re-writes configuration using a ConfigRewriter, if one is defined. If
+   * there is no ConfigRewriter defined for the job, then this method is a
+   * no-op.
+   *
+   * @param config The config to re-write.
+   */
   def rewriteConfig(config: Config): Config = {
     def rewrite(c: Config, rewriterName: String): Config = {
       val klass = config

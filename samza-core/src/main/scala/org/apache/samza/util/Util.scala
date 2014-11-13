@@ -152,7 +152,7 @@ object Util extends Logging {
   }
 
   /**
-   * Given a job's full config object, build a subset config which includes 
+   * Given a job's full config object, build a subset config which includes
    * only the job name, job id, and system config for the coordinator stream.
    */
   def buildCoordinatorStreamConfig(config: Config) = {

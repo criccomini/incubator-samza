@@ -109,7 +109,7 @@ class KafkaSystemAdmin(
    * The replication factor to use when the system admin creates a new
    * coordinator stream.
    */
-  coordinatorStreamReplicationFactor: Int = 3,
+  coordinatorStreamReplicationFactor: Int = 1,
 
   /**
    * The timeout to use for the simple consumer when fetching metadata from
