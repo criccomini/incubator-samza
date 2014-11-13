@@ -64,9 +64,4 @@ public class MockSystemAdmin implements SystemAdmin {
 
     return offsetsAfter;
   }
-
-  @Override
-  public void createCoordinatorStream(String streamName) {
-    throw new SamzaException(this.getClass().getCanonicalName() + " does not support coordinator streams.");
-  }
 }

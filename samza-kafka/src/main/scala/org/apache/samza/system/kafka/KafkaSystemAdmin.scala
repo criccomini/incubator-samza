@@ -21,7 +21,7 @@ package org.apache.samza.system.kafka
 
 import org.apache.samza.Partition
 import org.apache.samza.SamzaException
-import org.apache.samza.system.SystemAdmin
+import org.apache.samza.system.CoordinatorSystemAdmin
 import org.apache.samza.system.SystemStreamMetadata
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.ClientUtilTopicMetadataStore
@@ -128,7 +128,7 @@ class KafkaSystemAdmin(
    * The client ID to use for the simple consumer when fetching metadata from
    * Kafka. Equivalent to Kafka's client.id configuration.
    */
-  clientId: String = UUID.randomUUID.toString) extends SystemAdmin with Logging {
+  clientId: String = UUID.randomUUID.toString) extends CoordinatorSystemAdmin with Logging {
 
   import KafkaSystemAdmin._
 

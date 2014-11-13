@@ -23,6 +23,7 @@ import org.apache.samza.Partition;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.ConfigException;
 import org.apache.samza.metrics.MetricsRegistry;
+import org.apache.samza.system.CoordinatorSystemAdmin;
 import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemConsumer;
@@ -85,14 +86,12 @@ public class MockCoordinatorStreamSystemFactory implements SystemFactory {
    * stream.
    */
   public SystemAdmin getAdmin(String systemName, Config config) {
-    return new SinglePartitionWithoutOffsetsSystemAdmin() {
-      @Override
-      public void createCoordinatorStream(String streamName) {
-        // Rather than fail, as the SinglePartitionWithoutOffsetsSystemAdmin
-        // does, simply ignore this call. Since this is meant to be used in
-        // conjunction with the MockCoordinatorStreamWrappedConsumer, there's
-        // nothing to create.
-      }
-    };
+    return new MockSystemAdmin();
+  }
+
+  public static final class MockSystemAdmin extends SinglePartitionWithoutOffsetsSystemAdmin implements CoordinatorSystemAdmin {
+    public void createCoordinatorStream(String streamName) {
+      // Do nothing.
+    }
   }
 }

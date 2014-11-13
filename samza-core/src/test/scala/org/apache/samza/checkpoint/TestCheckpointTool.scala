@@ -64,7 +64,7 @@ class TestCheckpointTool extends AssertionsForJUnit with MockitoSugar {
   def setup {
     config = new MapConfig(Map(
       JobConfig.JOB_NAME -> "test",
-      JobConfig.COORDINATOR_SYSTEM -> "coordinator",
+      JobConfig.JOB_COORDINATOR_SYSTEM -> "coordinator",
       TaskConfig.INPUT_STREAMS -> "test.foo",
       TaskConfig.CHECKPOINT_MANAGER_FACTORY -> classOf[MockCheckpointManagerFactory].getName,
       SystemConfig.SYSTEM_FACTORY.format("test") -> classOf[MockSystemFactory].getName,

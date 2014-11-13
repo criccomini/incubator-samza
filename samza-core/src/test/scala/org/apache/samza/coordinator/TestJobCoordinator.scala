@@ -57,8 +57,8 @@ class TestJobCoordinator {
   def testJobCoordinator {
     val config = new MapConfig(Map(
       JobConfig.JOB_NAME -> "test",
-      JobConfig.COORDINATOR_SYSTEM -> "coordinator",
-      JobConfig.CONTAINER_COUNT -> "2",
+      JobConfig.JOB_COORDINATOR_SYSTEM -> "coordinator",
+      JobConfig.JOB_CONTAINER_COUNT -> "2",
       TaskConfig.CHECKPOINT_MANAGER_FACTORY -> classOf[MockCheckpointManagerFactory].getCanonicalName,
       TaskConfig.INPUT_STREAMS -> "test.stream1",
       SystemConfig.SYSTEM_FACTORY.format("test") -> classOf[MockSystemFactory].getCanonicalName,
@@ -129,5 +129,4 @@ class MockSystemAdmin extends SystemAdmin {
       new Partition(2) -> new SystemStreamPartitionMetadata(null, null, null))
     Map(streamNames.toList.head -> new SystemStreamMetadata("foo", partitionMetadata))
   }
-  def createCoordinatorStream(streamName: String) {}
 }

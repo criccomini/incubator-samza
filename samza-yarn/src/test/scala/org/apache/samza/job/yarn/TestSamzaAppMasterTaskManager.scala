@@ -436,7 +436,4 @@ class MockSystemAdmin(numTasks: Int) extends SystemAdmin {
       streamName -> new SystemStreamMetadata(streamName, partitionMetadata)
     }).toMap[String, SystemStreamMetadata]
   }
-  def createCoordinatorStream(streamName: String) {
-    throw new UnsupportedOperationException
-  }
 }

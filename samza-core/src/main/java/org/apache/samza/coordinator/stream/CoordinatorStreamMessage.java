@@ -42,13 +42,13 @@ import org.slf4j.LoggerFactory;
  * </p>
  * 
  * <pre>
- * key => {
+ * key =&gt; {
  *   "version": 1,
  *   "type": "set-config",
  *   "key": "job.name"
  * }
  * 
- * message => {
+ * message =&gt; {
  *   "host": "192.168.0.1",
  *   "username": "criccomini",
  *   "source": "job-runner",

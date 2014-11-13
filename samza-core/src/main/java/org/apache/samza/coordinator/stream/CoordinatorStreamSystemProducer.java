@@ -25,7 +25,7 @@ import org.apache.samza.SamzaException;
 import org.apache.samza.config.Config;
 import org.apache.samza.serializers.model.SamzaObjectMapper;
 import org.apache.samza.system.OutgoingMessageEnvelope;
-import org.apache.samza.system.SystemAdmin;
+import org.apache.samza.system.CoordinatorSystemAdmin;
 import org.apache.samza.system.SystemProducer;
 import org.apache.samza.system.SystemStream;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -42,13 +42,13 @@ public class CoordinatorStreamSystemProducer {
   private final ObjectMapper mapper;
   private final SystemStream systemStream;
   private final SystemProducer systemProducer;
-  private final SystemAdmin systemAdmin;
+  private final CoordinatorSystemAdmin systemAdmin;
 
-  public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, SystemAdmin systemAdmin) {
+  public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, CoordinatorSystemAdmin systemAdmin) {
     this(systemStream, systemProducer, systemAdmin, SamzaObjectMapper.getObjectMapper());
   }
 
-  public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, SystemAdmin systemAdmin, ObjectMapper mapper) {
+  public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, CoordinatorSystemAdmin systemAdmin, ObjectMapper mapper) {
     this.systemStream = systemStream;
     this.systemProducer = systemProducer;
     this.systemAdmin = systemAdmin;
