@@ -25,7 +25,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.samza.SamzaException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>
@@ -37,6 +38,36 @@ import org.apache.samza.SamzaException;
  * </p>
  * 
  * <p>
+ * The full structure for a CoordinatorStreamMessage is:
+ * </p>
+ * 
+ * <pre>
+ * key => {
+ *   "version": 1,
+ *   "type": "set-config",
+ *   "key": "job.name"
+ * }
+ * 
+ * message => {
+ *   "host": "192.168.0.1",
+ *   "username": "criccomini",
+ *   "source": "job-runner",
+ *   "timestamp": 123456789,
+ *   "values": {
+ *     "value": "my-job-name"
+ *   } 
+ * }
+ * </pre>
+ * 
+ * <p>
+ * The "values" map in the message is defined on a per-message-type basis. For
+ * set-config messages, there is just a single key/value pair, where the "value"
+ * key is defined. For offset messages, there will be multiple key/values pairs
+ * in "values" (one for each SystemStreamPartition/offset pair for a given
+ * TaskName).
+ * </p>
+ * 
+ * <p>
  * The most important fields are type, key, and values. The type field defines
  * the kind of message, the key defines a key to associate with the values, and
  * the values map defines a set of values associated with the type. A concrete
@@ -45,6 +76,7 @@ import org.apache.samza.SamzaException;
  * </p>
  */
 public class CoordinatorStreamMessage {
+  private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamMessage.class);
 
   /**
    * Protocol version for coordinator stream messages. This version number must
@@ -53,7 +85,20 @@ public class CoordinatorStreamMessage {
    */
   public static final int VERSION = 1;
 
+  /**
+   * Contains all key fields. Currently, this includes the type of the message,
+   * the key associated with the type (e.g. type: set-config key: job.name), and
+   * the version of the protocol.
+   */
   private final Map<String, Object> keyMap;
+
+  /**
+   * Contains all fields for the message. This includes who sent the message,
+   * the host, etc. It also includes a "values" map, which contains all values
+   * associated with the key of the message. If set-config/job.name were used as
+   * the type/key of the message, then values would contain
+   * {"value":"my-job-name"}.
+   */
   private final Map<String, Object> messageMap;
   private boolean isDelete;
 
@@ -74,7 +119,8 @@ public class CoordinatorStreamMessage {
     try {
       setHost(InetAddress.getLocalHost().getHostAddress());
     } catch (UnknownHostException e) {
-      throw new SamzaException(e);
+      log.warn("Unable to retrieve host for current machine. Setting coordinator stream message host field to an empty string.");
+      setHost("");
     }
   }
 
@@ -111,14 +157,16 @@ public class CoordinatorStreamMessage {
   }
 
   @SuppressWarnings("unchecked")
-  protected String getValue(String key) {
-    return ((Map<String, String>) this.messageMap.get("values")).get(key);
+  protected Map<String, String> getMessageValues() {
+    return (Map<String, String>) this.messageMap.get("values");
   }
 
-  @SuppressWarnings("unchecked")
-  protected void putValue(String key, String value) {
-    Map<String, String> values = (Map<String, String>) messageMap.get("values");
-    values.put(key, value);
+  protected String getMessageValue(String key) {
+    return getMessageValues().get(key);
+  }
+
+  protected void putMessageValue(String key, String value) {
+    getMessageValues().put(key, value);
   }
 
   /**
@@ -149,11 +197,10 @@ public class CoordinatorStreamMessage {
   /**
    * @return The whole message map including header information.
    */
-  @SuppressWarnings("unchecked")
   public Map<String, Object> getMessageMap() {
     if (!isDelete) {
       Map<String, Object> immutableMap = new HashMap<String, Object>(messageMap);
-      immutableMap.put("values", Collections.unmodifiableMap((Map<String, String>) messageMap.get("values")));
+      immutableMap.put("values", Collections.unmodifiableMap(getMessageValues()));
       return Collections.unmodifiableMap(immutableMap);
     } else {
       return null;
@@ -196,11 +243,11 @@ public class CoordinatorStreamMessage {
       super(source);
       setType(TYPE);
       setKey(key);
-      putValue("value", value);
+      putMessageValue("value", value);
     }
 
     public String getConfigValue() {
-      return (String) getValue("value");
+      return (String) getMessageValue("value");
     }
   }
 

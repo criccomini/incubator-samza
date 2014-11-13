@@ -33,8 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A wrapper around a SystemProducer that reads provides helpful methods for
- * dealing with the coordinator stream.
+ * A wrapper around a SystemProducer that provides helpful methods for dealing
+ * with the coordinator stream.
  */
 public class CoordinatorStreamSystemProducer {
   private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamSystemProducer.class);

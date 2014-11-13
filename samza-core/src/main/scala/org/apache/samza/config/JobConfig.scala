@@ -38,8 +38,8 @@ object JobConfig {
   val CONFIG_REWRITER_CLASS = "job.config.rewriter.%s.class" // streaming.job_config_rewriter_class - regex, system, config
   val JOB_NAME = "job.name" // streaming.job_name
   val JOB_ID = "job.id" // streaming.job_id
-  val COORDINATOR_SYSTEM = "job.coordinator.system"
-  val CONTAINER_COUNT = "job.container.count"
+  val JOB_COORDINATOR_SYSTEM = "job.coordinator.system"
+  val JOB_CONTAINER_COUNT = "job.container.count"
 
   val SSP_GROUPER_FACTORY = "job.systemstreampartition.grouper.factory"
 
@@ -49,7 +49,7 @@ object JobConfig {
 class JobConfig(config: Config) extends ScalaMapConfig(config) with Logging {
   def getName = getOption(JobConfig.JOB_NAME)
 
-  def getCoordinatorSystemName = getOption(JobConfig.COORDINATOR_SYSTEM).getOrElse({
+  def getCoordinatorSystemName = getOption(JobConfig.JOB_COORDINATOR_SYSTEM).getOrElse({
     // If no coordinator system is configured, try and guess it if there's just one system configured.
     val systemNames = config.getSystemNames.toSet
     if (systemNames.size == 1) {
@@ -62,14 +62,14 @@ class JobConfig(config: Config) extends ScalaMapConfig(config) with Logging {
   })
 
   def getContainerCount = {
-    getOption(JobConfig.CONTAINER_COUNT) match {
+    getOption(JobConfig.JOB_CONTAINER_COUNT) match {
       case Some(count) => count.toInt
       case _ =>
         // To maintain backwards compatibility, honor yarn.container.count for now.
         // TODO get rid of this in a future release.
         getOption("yarn.container.count") match {
           case Some(count) =>
-            warn("Configuration 'yarn.container.count' is deprecated. Please use %s." format JobConfig.CONTAINER_COUNT)
+            warn("Configuration 'yarn.container.count' is deprecated. Please use %s." format JobConfig.JOB_CONTAINER_COUNT)
             count.toInt
           case _ => 1
         }

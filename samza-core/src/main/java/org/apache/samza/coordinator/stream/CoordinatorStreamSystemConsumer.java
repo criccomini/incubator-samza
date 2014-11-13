@@ -44,8 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A wrapper around a SystemConsumer that reads provides helpful methods for
- * dealing with the coordinator stream.
+ * A wrapper around a SystemConsumer that provides helpful methods for dealing
+ * with the coordinator stream.
  */
 public class CoordinatorStreamSystemConsumer {
   private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamSystemConsumer.class);
@@ -71,7 +71,7 @@ public class CoordinatorStreamSystemConsumer {
   }
 
   /**
-   * Retrieves the earliest offset in the coordinator stream, and registers the
+   * Retrieves the oldest offset in the coordinator stream, and registers the
    * coordinator stream with the SystemConsumer using the earliest offset.
    */
   public void register() {
