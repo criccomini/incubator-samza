@@ -195,6 +195,20 @@ public class CoordinatorStreamMessage {
   }
 
   /**
+   * @return Whether the message signifies a delete or not.
+   */
+  public String getUsername() {
+    return (String) this.messageMap.get("username");
+  }
+
+  /**
+   * @return Whether the message signifies a delete or not.
+   */
+  public long getTimestamp() {
+    return (Long) this.messageMap.get("timestamp");
+  }
+
+  /**
    * @return The whole message map including header information.
    */
   public Map<String, Object> getMessageMap() {
@@ -212,7 +226,14 @@ public class CoordinatorStreamMessage {
    *         defined by the sender.
    */
   public String getSource() {
-    return (String) messageMap.get("source");
+    return (String) this.messageMap.get("source");
+  }
+
+  /**
+   * @return The protocol version that the message conforms to.
+   */
+  public int getVersion() {
+    return (Integer) this.keyMap.get("version");
   }
 
   /**
@@ -226,6 +247,40 @@ public class CoordinatorStreamMessage {
   @Override
   public String toString() {
     return "CoordinatorStreamMessage [keyMap=" + keyMap + ", messageMap=" + messageMap + ", isDelete=" + isDelete + "]";
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + (isDelete ? 1231 : 1237);
+    result = prime * result + ((keyMap == null) ? 0 : keyMap.hashCode());
+    result = prime * result + ((messageMap == null) ? 0 : messageMap.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    CoordinatorStreamMessage other = (CoordinatorStreamMessage) obj;
+    if (isDelete != other.isDelete)
+      return false;
+    if (keyMap == null) {
+      if (other.keyMap != null)
+        return false;
+    } else if (!keyMap.equals(other.keyMap))
+      return false;
+    if (messageMap == null) {
+      if (other.messageMap != null)
+        return false;
+    } else if (!messageMap.equals(other.messageMap))
+      return false;
+    return true;
   }
 
   /**
