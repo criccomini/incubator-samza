@@ -24,6 +24,8 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,29 +105,36 @@ public class CoordinatorStreamMessage {
   private boolean isDelete;
 
   public CoordinatorStreamMessage(CoordinatorStreamMessage message) {
-    this(message.getKeyMap(), message.getMessageMap());
+    this(new TreeMap<String, Object>(message.getKeyMap()), message.getMessageMap());
   }
 
   public CoordinatorStreamMessage(Map<String, Object> keyMap, Map<String, Object> messageMap) {
-    this.keyMap = keyMap;
+    this.keyMap = new TreeMap<String, Object>(keyMap);
     this.messageMap = messageMap;
     this.isDelete = messageMap == null;
   }
 
   public CoordinatorStreamMessage(String source) {
-    this(new HashMap<String, Object>(), new HashMap<String, Object>());
-    this.messageMap.put("values", new HashMap<String, String>());
-    setSource(source);
-    setVersion(VERSION);
-    setUsername(System.getProperty("user.name"));
-    setTimestamp(System.currentTimeMillis());
+    this(source, new TreeMap<String, Object>(), new HashMap<String, Object>());
+  }
 
-    try {
-      setHost(InetAddress.getLocalHost().getHostAddress());
-    } catch (UnknownHostException e) {
-      log.warn("Unable to retrieve host for current machine. Setting coordinator stream message host field to an empty string.");
-      setHost("");
+  public CoordinatorStreamMessage(String source, Map<String, Object> keyMap, Map<String, Object> messageMap) {
+    this(new TreeMap<String, Object>(keyMap), messageMap);
+    if (!isDelete) {
+      this.messageMap.put("values", new HashMap<String, String>());
+      setSource(source);
+      setUsername(System.getProperty("user.name"));
+      setTimestamp(System.currentTimeMillis());
+
+      try {
+        setHost(InetAddress.getLocalHost().getHostAddress());
+      } catch (UnknownHostException e) {
+        log.warn("Unable to retrieve host for current machine. Setting coordinator stream message host field to an empty string.");
+        setHost("");
+      }
     }
+
+    setVersion(VERSION);
   }
 
   protected void setIsDelete(boolean isDelete) {
@@ -315,6 +324,34 @@ public class CoordinatorStreamMessage {
       this(source, key, type, VERSION);
     }
 
+    /**
+     * <p>
+     * Delete messages must take the type of another CoordinatorStreamMessage
+     * (e.g. SetConfig) to define the type of message that's being deleted.
+     * Considering Kafka's log compaction, for example, the keys of a message
+     * and its delete key must match exactly:
+     * </p>
+     * 
+     * <pre>
+     * k=&gt;{version=1, key=job.name, type=set-config} .. v=&gt; {..some stuff..}
+     * v=&gt;{version=1, key=job.name, type=set-config} .. v=&gt; null
+     * </pre>
+     * 
+     * <p>
+     * Deletes are modeled as a CoordinatorStreamMessage with a null message
+     * map, and a key that's identical to the key map that's to be deleted.
+     * </p>
+     * 
+     * @param source
+     *          The source ID of the sender of the delete message.
+     * @param key
+     *          The key to delete.
+     * @param type
+     *          The type of message to delete. Must correspond to one of hte
+     *          other CoordinatorStreamMessages.
+     * @param version
+     *          The protocol version.
+     */
     public Delete(String source, String key, String type, int version) {
       super(source);
       setType(type);

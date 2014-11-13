@@ -22,12 +22,33 @@ package org.apache.samza.coordinator.stream;
 import static org.junit.Assert.*;
 
 import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.Delete;
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig;
+import org.apache.samza.serializers.model.SamzaObjectMapper;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Test;
 
 public class TestCoordinatorStreamMessage {
+  @Test
+  public void testKeyOrder() throws Exception {
+    ObjectMapper mapper = SamzaObjectMapper.getObjectMapper();
+    SortedMap<String, Object> sortedMap = new TreeMap<String, Object>();
+    Map<String, Object> map = new HashMap<String, Object>();
+    map.put("aaa", "AAA");
+    map.put("bbb", "BBB");
+    map.put("ccc", "CCC");
+    map.put("ddd", "DDD");
+    sortedMap.putAll(map);
+    assertFalse(mapper.writeValueAsString(map).equals(mapper.writeValueAsString(sortedMap)));
+    CoordinatorStreamMessage unsorted = new CoordinatorStreamMessage("", map, null);
+    CoordinatorStreamMessage sorted = new CoordinatorStreamMessage("", sortedMap, null);
+    assertTrue(mapper.writeValueAsString(unsorted.getKeyMap()).equals(mapper.writeValueAsString(sorted.getKeyMap())));
+  }
+
   @Test
   public void testCoordinatorStreamMessage() {
     CoordinatorStreamMessage message = new CoordinatorStreamMessage("source");
