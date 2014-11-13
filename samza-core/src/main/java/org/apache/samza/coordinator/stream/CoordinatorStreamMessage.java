@@ -102,6 +102,10 @@ public class CoordinatorStreamMessage {
   private final Map<String, Object> messageMap;
   private boolean isDelete;
 
+  public CoordinatorStreamMessage(CoordinatorStreamMessage message) {
+    this(message.getKeyMap(), message.getMessageMap());
+  }
+
   public CoordinatorStreamMessage(Map<String, Object> keyMap, Map<String, Object> messageMap) {
     this.keyMap = keyMap;
     this.messageMap = messageMap;
