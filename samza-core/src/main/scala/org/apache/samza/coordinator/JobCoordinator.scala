@@ -69,13 +69,13 @@ object JobCoordinator extends Logging {
    */
   def apply(coordinatorSystemConfig: Config) = {
     val coordinatorSystemConsumer = new CoordinatorStreamSystemFactory().getCoordinatorStreamSystemConsumer(coordinatorSystemConfig, new MetricsRegistryMap)
-    info("Registering coordinator system stream.")
+    debug("Registering coordinator system stream.")
     coordinatorSystemConsumer.register
-    info("Starting coordinator system stream.")
+    debug("Starting coordinator system stream.")
     coordinatorSystemConsumer.start
-    info("Bootstrapping coordinator system stream.")
+    debug("Bootstrapping coordinator system stream.")
     coordinatorSystemConsumer.bootstrap
-    info("Stopping coordinator system stream.")
+    debug("Stopping coordinator system stream.")
     coordinatorSystemConsumer.stop
     val config = coordinatorSystemConsumer.getConfig
     debug("Got config: %s" format config)
