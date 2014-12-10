@@ -130,7 +130,7 @@ public class CoordinatorStreamSystemConsumer {
       while (iterator.hasNext()) {
         IncomingMessageEnvelope envelope = iterator.next();
         String keyStr = new String((byte[]) envelope.getKey(), "UTF-8");
-        Map<String, Object> keyMap = mapper.readValue(keyStr, new TypeReference<Map<String, Object>>() {
+        Object[] keyArray = mapper.readValue(keyStr, new TypeReference<Object[]>() {
         });
         Map<String, Object> valueMap = null;
         if (envelope.getMessage() != null) {
@@ -138,7 +138,7 @@ public class CoordinatorStreamSystemConsumer {
           valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, Object>>() {
           });
         }
-        CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyMap, valueMap);
+        CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyArray, valueMap);
         log.debug("Received coordinator stream message: {}", coordinatorStreamMessage);
         if (SetConfig.TYPE.equals(coordinatorStreamMessage.getType())) {
           String configKey = coordinatorStreamMessage.getKey();

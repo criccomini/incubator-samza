@@ -93,7 +93,7 @@ public class CoordinatorStreamSystemProducer {
     log.debug("Sending {}", message);
     try {
       String source = message.getSource();
-      byte[] key = mapper.writeValueAsString(message.getKeyMap()).getBytes("UTF-8");
+      byte[] key = mapper.writeValueAsString(message.getKeyArray()).getBytes("UTF-8");
       byte[] value = null;
       if (!message.isDelete()) {
         value = mapper.writeValueAsString(message.getMessageMap()).getBytes("UTF-8");

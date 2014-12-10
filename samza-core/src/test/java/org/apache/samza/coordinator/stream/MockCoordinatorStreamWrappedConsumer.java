@@ -52,7 +52,7 @@ public class MockCoordinatorStreamWrappedConsumer extends BlockingEnvelopeMap {
     try {
       for (Map.Entry<String, String> configPair : config.entrySet()) {
         SetConfig setConfig = new SetConfig("source", configPair.getKey(), configPair.getValue());
-        byte[] keyBytes = MAPPER.writeValueAsString(setConfig.getKeyMap()).getBytes("UTF-8");
+        byte[] keyBytes = MAPPER.writeValueAsString(setConfig.getKeyArray()).getBytes("UTF-8");
         byte[] messgeBytes = MAPPER.writeValueAsString(setConfig.getMessageMap()).getBytes("UTF-8");
         put(systemStreamPartition, new IncomingMessageEnvelope(systemStreamPartition, "", keyBytes, messgeBytes));
       }

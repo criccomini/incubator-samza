@@ -66,18 +66,21 @@ public class TestCoordinatorStreamSystemProducer {
     OutgoingMessageEnvelope envelope0 = envelopes.get(0);
     OutgoingMessageEnvelope envelope1 = envelopes.get(1);
     OutgoingMessageEnvelope envelope2 = envelopes.get(2);
+    TypeReference<Object[]> keyRef = new TypeReference<Object[]>() {
+    };
+    TypeReference<Map<String, Object>> msgRef = new TypeReference<Map<String, Object>>() {
+    };
     assertEquals(3, envelopes.size());
-    assertEquals(new CoordinatorStreamMessage(setConfig1), new CoordinatorStreamMessage(deserialize((byte[]) envelope0.getKey()), deserialize((byte[]) envelope0.getMessage())));
-    assertEquals(new CoordinatorStreamMessage(setConfig2), new CoordinatorStreamMessage(deserialize((byte[]) envelope1.getKey()), deserialize((byte[]) envelope1.getMessage())));
-    assertEquals(new CoordinatorStreamMessage(delete), new CoordinatorStreamMessage(deserialize((byte[]) envelope2.getKey()), deserialize((byte[]) envelope2.getMessage())));
+    assertEquals(new CoordinatorStreamMessage(setConfig1), new CoordinatorStreamMessage(deserialize((byte[]) envelope0.getKey(), keyRef), deserialize((byte[]) envelope0.getMessage(), msgRef)));
+    assertEquals(new CoordinatorStreamMessage(setConfig2), new CoordinatorStreamMessage(deserialize((byte[]) envelope1.getKey(), keyRef), deserialize((byte[]) envelope1.getMessage(), msgRef)));
+    assertEquals(new CoordinatorStreamMessage(delete), new CoordinatorStreamMessage(deserialize((byte[]) envelope2.getKey(), keyRef), deserialize((byte[]) envelope2.getMessage(), msgRef)));
   }
 
-  private Map<String, Object> deserialize(byte[] bytes) {
+  private <T> T deserialize(byte[] bytes, TypeReference<T> reference) {
     try {
       if (bytes != null) {
         String valueStr = new String((byte[]) bytes, "UTF-8");
-        return SamzaObjectMapper.getObjectMapper().readValue(valueStr, new TypeReference<Map<String, Object>>() {
-        });
+        return SamzaObjectMapper.getObjectMapper().readValue(valueStr, reference);
       }
     } catch (Exception e) {
       throw new SamzaException(e);

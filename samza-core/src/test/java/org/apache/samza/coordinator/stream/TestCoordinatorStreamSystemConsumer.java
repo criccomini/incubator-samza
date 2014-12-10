@@ -105,18 +105,18 @@ public class TestCoordinatorStreamSystemConsumer {
         SetConfig setConfig1 = new SetConfig("test", "job.name", "my-job-name");
         SetConfig setConfig2 = new SetConfig("test", "job.id", "1234");
         Delete delete = new Delete("test", "job.name", SetConfig.TYPE);
-        list.add(new IncomingMessageEnvelope(systemStreamPartition, null, serialize(setConfig1.getKeyMap()), serialize(setConfig1.getMessageMap())));
-        list.add(new IncomingMessageEnvelope(systemStreamPartition, null, serialize(setConfig2.getKeyMap()), serialize(setConfig2.getMessageMap())));
-        list.add(new IncomingMessageEnvelope(systemStreamPartition, null, serialize(delete.getKeyMap()), delete.getMessageMap()));
+        list.add(new IncomingMessageEnvelope(systemStreamPartition, null, serialize(setConfig1.getKeyArray()), serialize(setConfig1.getMessageMap())));
+        list.add(new IncomingMessageEnvelope(systemStreamPartition, null, serialize(setConfig2.getKeyArray()), serialize(setConfig2.getMessageMap())));
+        list.add(new IncomingMessageEnvelope(systemStreamPartition, null, serialize(delete.getKeyArray()), delete.getMessageMap()));
         map.put(systemStreamPartition, list);
       }
 
       return map;
     }
 
-    private byte[] serialize(Map<String, Object> map) {
+    private byte[] serialize(Object obj) {
       try {
-        return SamzaObjectMapper.getObjectMapper().writeValueAsString(map).getBytes("UTF-8");
+        return SamzaObjectMapper.getObjectMapper().writeValueAsString(obj).getBytes("UTF-8");
       } catch (Exception e) {
         throw new SamzaException(e);
       }

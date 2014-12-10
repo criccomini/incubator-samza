@@ -21,11 +21,12 @@ package org.apache.samza.coordinator.stream;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +35,10 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Represents a message for the job coordinator. All messages in the coordinator
  * stream must wrap the CoordinatorStreamMessage class. Coordinator stream
- * messages are modeled as key/value pairs, both of which are maps. There are
- * some pre-defined fields (such as type, key, timestamp, host, etc) for the
- * maps, which are common to all messages.
+ * messages are modeled as key/value pairs. The key is a list of well defined
+ * fields: version, type, and key. The value is a map. There are some
+ * pre-defined fields (such as timestamp, host, etc) for the value map, which
+ * are common to all messages.
  * </p>
  * 
  * <p>
@@ -44,11 +46,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  * 
  * <pre>
- * key =&gt; {
- *   "version": 1,
- *   "type": "set-config",
- *   "key": "job.name"
- * }
+ * key =&gt; [1, "set-config", "job.name"] 
  * 
  * message =&gt; {
  *   "host": "192.168.0.1",
@@ -61,6 +59,12 @@ import org.slf4j.LoggerFactory;
  * }
  * </pre>
  * 
+ * Where the key's structure is:
+ * 
+ * <pre>
+ * key =&gt; [&lt;version&gt;, &lt;type&gt;, &lt;key&gt;]
+ * </pre>
+ * 
  * <p>
  * The "values" map in the message is defined on a per-message-type basis. For
  * set-config messages, there is just a single key/value pair, where the "value"
@@ -70,14 +74,19 @@ import org.slf4j.LoggerFactory;
  * </p>
  * 
  * <p>
- * The most important fields are type, key, and values. The type field defines
- * the kind of message, the key defines a key to associate with the values, and
- * the values map defines a set of values associated with the type. A concrete
+ * The most important fields are type, key, and values. The type field (defined
+ * as index 1 in the key list) defines the kind of message, the key (defined as
+ * index 2 in the key list) defines a key to associate with the values, and the
+ * values map defines a set of values associated with the type. A concrete
  * example would be a config message of type "set-config" with key "job.name"
  * and values {"value": "my-job-name"}.
  * </p>
  */
 public class CoordinatorStreamMessage {
+  public static int VERSION_INDEX = 0;
+  public static int TYPE_INDEX = 1;
+  public static int KEY_INDEX = 2;
+
   private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamMessage.class);
 
   /**
@@ -92,7 +101,7 @@ public class CoordinatorStreamMessage {
    * the key associated with the type (e.g. type: set-config key: job.name), and
    * the version of the protocol.
    */
-  private final Map<String, Object> keyMap;
+  private final Object[] keyArray;
 
   /**
    * Contains all fields for the message. This includes who sent the message,
@@ -105,21 +114,21 @@ public class CoordinatorStreamMessage {
   private boolean isDelete;
 
   public CoordinatorStreamMessage(CoordinatorStreamMessage message) {
-    this(new TreeMap<String, Object>(message.getKeyMap()), message.getMessageMap());
+    this(message.getKeyArray(), message.getMessageMap());
   }
 
-  public CoordinatorStreamMessage(Map<String, Object> keyMap, Map<String, Object> messageMap) {
-    this.keyMap = new TreeMap<String, Object>(keyMap);
+  public CoordinatorStreamMessage(Object[] keyArray, Map<String, Object> messageMap) {
+    this.keyArray = keyArray;
     this.messageMap = messageMap;
     this.isDelete = messageMap == null;
   }
 
   public CoordinatorStreamMessage(String source) {
-    this(source, new TreeMap<String, Object>(), new HashMap<String, Object>());
+    this(source, new Object[] { Integer.valueOf(VERSION), null, null }, new HashMap<String, Object>());
   }
 
-  public CoordinatorStreamMessage(String source, Map<String, Object> keyMap, Map<String, Object> messageMap) {
-    this(new TreeMap<String, Object>(keyMap), messageMap);
+  public CoordinatorStreamMessage(String source, Object[] keyArray, Map<String, Object> messageMap) {
+    this(keyArray, messageMap);
     if (!isDelete) {
       this.messageMap.put("values", new HashMap<String, String>());
       setSource(source);
@@ -158,15 +167,15 @@ public class CoordinatorStreamMessage {
   }
 
   protected void setVersion(int version) {
-    this.keyMap.put("version", Integer.valueOf(version));
+    this.keyArray[VERSION_INDEX] = Integer.valueOf(version);
   }
 
   protected void setType(String type) {
-    this.keyMap.put("type", type);
+    this.keyArray[TYPE_INDEX] = type;
   }
 
   protected void setKey(String key) {
-    this.keyMap.put("key", key);
+    this.keyArray[KEY_INDEX] = key;
   }
 
   @SuppressWarnings("unchecked")
@@ -190,14 +199,14 @@ public class CoordinatorStreamMessage {
    * @return The type of the message.
    */
   public String getType() {
-    return (String) this.keyMap.get("type");
+    return (String) this.keyArray[TYPE_INDEX];
   }
 
   /**
    * @return The whole key map including both the key and type of the message.
    */
-  public Map<String, Object> getKeyMap() {
-    return Collections.unmodifiableMap(keyMap);
+  public Object[] getKeyArray() {
+    return this.keyArray;
   }
 
   /**
@@ -246,7 +255,7 @@ public class CoordinatorStreamMessage {
    * @return The protocol version that the message conforms to.
    */
   public int getVersion() {
-    return (Integer) this.keyMap.get("version");
+    return (Integer) this.keyArray[VERSION_INDEX];
   }
 
   /**
@@ -254,12 +263,12 @@ public class CoordinatorStreamMessage {
    *         the message.
    */
   public String getKey() {
-    return (String) this.keyMap.get("key");
+    return (String) this.keyArray[KEY_INDEX];
   }
 
   @Override
   public String toString() {
-    return "CoordinatorStreamMessage [keyMap=" + keyMap + ", messageMap=" + messageMap + ", isDelete=" + isDelete + "]";
+    return "CoordinatorStreamMessage [keyArray=" + Arrays.toString(keyArray) + ", messageMap=" + messageMap + ", isDelete=" + isDelete + "]";
   }
 
   @Override
@@ -267,7 +276,7 @@ public class CoordinatorStreamMessage {
     final int prime = 31;
     int result = 1;
     result = prime * result + (isDelete ? 1231 : 1237);
-    result = prime * result + ((keyMap == null) ? 0 : keyMap.hashCode());
+    result = prime * result + Arrays.hashCode(keyArray);
     result = prime * result + ((messageMap == null) ? 0 : messageMap.hashCode());
     return result;
   }
@@ -283,10 +292,7 @@ public class CoordinatorStreamMessage {
     CoordinatorStreamMessage other = (CoordinatorStreamMessage) obj;
     if (isDelete != other.isDelete)
       return false;
-    if (keyMap == null) {
-      if (other.keyMap != null)
-        return false;
-    } else if (!keyMap.equals(other.keyMap))
+    if (!Arrays.equals(keyArray, other.keyArray))
       return false;
     if (messageMap == null) {
       if (other.messageMap != null)
@@ -304,7 +310,7 @@ public class CoordinatorStreamMessage {
     public static final String TYPE = "set-config";
 
     public SetConfig(CoordinatorStreamMessage message) {
-      super(message.getKeyMap(), message.getMessageMap());
+      super(message.getKeyArray(), message.getMessageMap());
     }
 
     public SetConfig(String source, String key, String value) {
