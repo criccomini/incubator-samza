@@ -99,7 +99,8 @@ public class CoordinatorStreamMessage {
   /**
    * Contains all key fields. Currently, this includes the type of the message,
    * the key associated with the type (e.g. type: set-config key: job.name), and
-   * the version of the protocol.
+   * the version of the protocol. The indices are defined as the INDEX static
+   * variables above.
    */
   private final Object[] keyArray;
 
@@ -339,8 +340,8 @@ public class CoordinatorStreamMessage {
      * </p>
      * 
      * <pre>
-     * k=&gt;{version=1, key=job.name, type=set-config} .. v=&gt; {..some stuff..}
-     * v=&gt;{version=1, key=job.name, type=set-config} .. v=&gt; null
+     * k=&gt;[1,"job.name","set-config"] .. v=&gt; {..some stuff..}
+     * v=&gt;[1,"job.name","set-config"] .. v=&gt; null
      * </pre>
      * 
      * <p>
