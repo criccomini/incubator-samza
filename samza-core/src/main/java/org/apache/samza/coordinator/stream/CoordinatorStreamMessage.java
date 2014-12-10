@@ -66,6 +66,15 @@ import org.slf4j.LoggerFactory;
  * </pre>
  * 
  * <p>
+ * Note that the white space in the above JSON blobs are done for legibility.
+ * Over the wire, the JSON should be compact, and no unnecessary white space
+ * should be used. This is extremely important for key serialization, since a
+ * key with [1,"set-config","job.name"] and [1, "set-config", "job.name"] will
+ * be evaluated as two different keys, and Kafka will not log compact them (if
+ * Kafka is used as the underlying system for a coordinator stream).
+ * </p>
+ * 
+ * <p>
  * The "values" map in the message is defined on a per-message-type basis. For
  * set-config messages, there is just a single key/value pair, where the "value"
  * key is defined. For offset messages, there will be multiple key/values pairs
