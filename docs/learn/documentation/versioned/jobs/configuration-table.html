@@ -188,8 +188,8 @@
                 </tr>
 
                 <tr>
-                    <td class="property" id="job-systemstreampartition-grouper-factory">job.systemstreampartition.grouper.factory</td>
-                    <td class="default">org.apache.samza.container.grouper.stream.GroupByPartitionFactory</td>
+                    <td class="property" id="job-systemstreampartition-grouper-factory">job.systemstreampartition.<br>grouper.factory</td>
+                    <td class="default">org.apache.samza.<br>container.grouper.stream.<br>GroupByPartitionFactory</td>
                     <td class="description">
                         A factory class that is used to determine how input SystemStreamPartitions are grouped together for processing in individual StreamTask instances. The factory must implement the SystemStreamPartitionGrouperFactory interface. Once this configuration is set, it can't be changed, since doing so could violate state semantics, and lead to a loss of data.
 
@@ -370,6 +370,20 @@
                         This property is to define how the system deals with serialization failure situation. If set to true, the system will
                         drop the error messages and keep running. If set to false, the system with throw exceptions and fail the container. Default 
                         is false.
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="property" id="task-log4j-system">task.log4j.system</td>
+                    <td class="default"></td>
+                    <td class="description">
+                        Specify the system name for the StreamAppender. If Samza can not find this property and there is
+                        only one system in the config, it will guess to use that system for the log4j appender. If this property
+                        is not specified and there are more than one system in the config, Samza throws exception. (See
+                        <a href="logging.html#stream-log4j-appender">Stream Log4j Appender</a>)
+                        <dl>
+                            <dt>Example: <code>task.log4j.system=kafka</code></dt>
+                        </dl>
                     </td>
                 </tr>
 
@@ -1230,7 +1244,7 @@
                     <td class="property" id="yarn-am-poll-interval-ms">yarn.am.poll.interval.ms</td>
                     <td class="default">1000</td>
                     <td class="description">
-                        THe Samza ApplicationMaster sends regular heartbeats to the YARN ResourceManager
+                        The Samza ApplicationMaster sends regular heartbeats to the YARN ResourceManager
                         to confirm that it is alive. This property determines the time (in milliseconds)
                         between heartbeats.
                     </td>
@@ -1242,6 +1256,14 @@
                     <td class="description">
                         Determines whether a JMX server should be started on this job's YARN ApplicationMaster
                         (<code>true</code> or <code>false</code>).
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="property" id="yarn-queue">yarn.queue</td>
+                    <td class="default"></td>
+                    <td class="description">
+                        Determines which YARN queue will be used for Samza job.
                     </td>
                 </tr>
 

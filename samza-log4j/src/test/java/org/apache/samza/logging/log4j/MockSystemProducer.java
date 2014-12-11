@@ -16,21 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-include \
-  'samza-api',
-  'samza-core',
-  'samza-kafka',
-  'samza-kv',
-  'samza-kv-inmemory',
-  'samza-kv-leveldb',
-  'samza-kv-rocksdb',
-  'samza-log4j',
-  'samza-shell',
-  'samza-yarn',
-  'samza-test'
 
-rootProject.children.each {
-  if (it.name != 'samza-api' && it.name != 'samza-shell' && it.name != 'samza-log4j') {
-    it.name = it.name + "_" + scalaVersion
+package org.apache.samza.logging.log4j;
+
+import java.util.ArrayList;
+
+import org.apache.log4j.Logger;
+import org.apache.samza.system.OutgoingMessageEnvelope;
+import org.apache.samza.system.SystemProducer;
+
+public class MockSystemProducer implements SystemProducer {
+  static public ArrayList<Object> messagesReceived = new ArrayList<Object>();
+  static private Logger log = Logger.getLogger(MockSystemProducer.class);
+
+  @Override
+  public void start() {
+    log.info("mock system producer is started...");
+  }
+
+  @Override
+  public void stop() {
+  }
+
+  @Override
+  public void register(String source) {
+  }
+
+  @Override
+  public void send(String source, OutgoingMessageEnvelope envelope) {
+    messagesReceived.add(envelope.getMessage());
+  }
+
+  @Override
+  public void flush(String source) {
   }
 }
