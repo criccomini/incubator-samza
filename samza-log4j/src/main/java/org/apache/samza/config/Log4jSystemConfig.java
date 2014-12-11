@@ -77,7 +77,6 @@ public class Log4jSystemConfig {
    * a helper method to get the value from the config. If the config does not
    * contain the key, return null.
    *
-   * @param key
    * @return value of the key in the config
    */
   protected String getValue(String key) {
@@ -89,7 +88,9 @@ public class Log4jSystemConfig {
   }
 
   /**
-   * get a list of system names
+   * Get a list of system names.
+   * 
+   * @return Returns a list of configured systems..
    */
   protected ArrayList<String> getSystemNames() {
     Config subConf = config.subset(SYSTEM_PREFIX, true);
