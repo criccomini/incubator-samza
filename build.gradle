@@ -387,3 +387,33 @@ project(":samza-test_$scalaVersion") {
     systemProperties = System.properties.findAll { it.key.startsWith("samza") }
   }
 }
+
+project(":samza-test-jobs") {
+  apply plugin: 'java'
+
+  tasks.create(name: "releaseTestJobs", dependsOn: configurations.archives.artifacts, type: Tar) {
+    into "samza-test-jobs-$version"
+    compression = Compression.GZIP
+    from(file("$projectDir/src/main/config")) { into "config/" }
+    from(project(':samza-shell').file("src/main/bash")) { into "bin/" }
+    from(project(':samza-shell').file("src/main/resources")) { into "bin/" }
+    from '../LICENSE'
+    from '../NOTICE'
+    from(configurations.runtime) { into("lib/") }
+    from(configurations.archives.artifacts.files) { into("lib/") }
+    from jar.outputs.files
+  }
+
+  dependencies {
+    compile project(':samza-api')
+    compile project(":samza-core_$scalaVersion")
+    compile project(":samza-serializers_$scalaVersion")
+    compile project(":samza-log4j")
+    compile project(":samza-kafka_$scalaVersion")
+    compile project(":samza-yarn_$scalaVersion")
+    compile("org.apache.hadoop:hadoop-hdfs:$yarnVersion") {
+      exclude module: 'slf4j-log4j12'
+    }
+    compile("org.apache.kafka:kafka_$scalaVersion")
+  }
+}

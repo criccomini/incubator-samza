@@ -16,22 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-include \
-  'samza-api',
-  'samza-core',
-  'samza-kafka',
-  'samza-kv',
-  'samza-kv-inmemory',
-  'samza-kv-leveldb',
-  'samza-kv-rocksdb',
-  'samza-log4j',
-  'samza-shell',
-  'samza-yarn',
-  'samza-test',
-  'samza-test-jobs'
 
-rootProject.children.each {
-  if (it.name != 'samza-api' && it.name != 'samza-shell' && it.name != 'samza-log4j' && it.name != 'samza-test-jobs') {
-    it.name = it.name + "_" + scalaVersion
+package org.apache.samza.examples;
+import org.apache.samza.system.IncomingMessageEnvelope;
+import org.apache.samza.system.OutgoingMessageEnvelope;
+import org.apache.samza.system.SystemStream;
+import org.apache.samza.task.MessageCollector;
+import org.apache.samza.task.StreamTask;
+import org.apache.samza.task.TaskCoordinator;
+
+
+public class NegateNumberTask implements StreamTask {
+  public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
+    String input = (String) envelope.getMessage();
+    Integer number = Integer.valueOf(input);
+    Integer output = number.intValue() * -1;
+    collector.send(
+        new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-test-topic-output"), output.toString()));
   }
 }

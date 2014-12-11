@@ -1,0 +1,7 @@
+{
+  "kafka_hostname": "localhost",
+  "kafka_install_path": "/tmp/samza-integration-test/deploy",
+  "kafka_executable": "http://www.us.apache.org/dist/kafka/0.8.1.1/kafka_2.9.2-0.8.1.1.tgz",
+  "kafka_zookeeper_executable": "http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz",
+  "kafka_control_script": "/home/nramesh/Projects/incubator-samza/samza-test/src/main/python/bin/kafka.sh"
+}

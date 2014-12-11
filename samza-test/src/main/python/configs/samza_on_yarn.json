@@ -1,0 +1,11 @@
+{
+  "samza_hostname": "localhost",
+  "samza_executable": "http://nramesh-ld1.linkedin.biz:8000/samza-test-jobs-0.8.0-SNAPSHOT.tgz",
+  "samza_install_path": "/tmp/samza-integration-test/deploy/",
+  "samza_config-factory": "org.apache.samza.config.factories.PropertiesConfigFactory",
+  "samza_config-file": "negate-number.properties",
+  "samza_properties": {
+    "job.name": "negate-number",
+    "job.id": "0"
+  }
+}
