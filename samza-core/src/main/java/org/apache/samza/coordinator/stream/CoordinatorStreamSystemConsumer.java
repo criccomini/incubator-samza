@@ -21,6 +21,7 @@ package org.apache.samza.coordinator.stream;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,7 +30,8 @@ import org.apache.samza.SamzaException;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.MapConfig;
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig;
-import org.apache.samza.serializers.model.SamzaObjectMapper;
+import org.apache.samza.serializers.JsonSerde;
+import org.apache.samza.serializers.Serde;
 import org.apache.samza.system.IncomingMessageEnvelope;
 import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.SystemConsumer;
@@ -38,8 +40,6 @@ import org.apache.samza.system.SystemStreamMetadata;
 import org.apache.samza.system.SystemStreamMetadata.SystemStreamPartitionMetadata;
 import org.apache.samza.system.SystemStreamPartition;
 import org.apache.samza.system.SystemStreamPartitionIterator;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,24 +50,26 @@ import org.slf4j.LoggerFactory;
 public class CoordinatorStreamSystemConsumer {
   private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamSystemConsumer.class);
 
+  private final Serde<List<?>> keySerde;
+  private final Serde<Map<String, Object>> messageSerde;
   private final SystemStreamPartition coordinatorSystemStreamPartition;
   private final SystemConsumer systemConsumer;
   private final SystemAdmin systemAdmin;
   private final Map<String, String> configMap;
-  private final ObjectMapper mapper;
   private boolean isBootstrapped;
 
-  public CoordinatorStreamSystemConsumer(SystemStream coordinatorSystemStream, SystemConsumer systemConsumer, SystemAdmin systemAdmin, ObjectMapper mapper) {
+  public CoordinatorStreamSystemConsumer(SystemStream coordinatorSystemStream, SystemConsumer systemConsumer, SystemAdmin systemAdmin, Serde<List<?>> keySerde, Serde<Map<String, Object>> messageSerde) {
     this.coordinatorSystemStreamPartition = new SystemStreamPartition(coordinatorSystemStream, new Partition(0));
     this.systemConsumer = systemConsumer;
     this.systemAdmin = systemAdmin;
-    this.mapper = mapper;
     this.configMap = new HashMap<String, String>();
     this.isBootstrapped = false;
+    this.keySerde = keySerde;
+    this.messageSerde = messageSerde;
   }
 
   public CoordinatorStreamSystemConsumer(SystemStream coordinatorSystemStream, SystemConsumer systemConsumer, SystemAdmin systemAdmin) {
-    this(coordinatorSystemStream, systemConsumer, systemAdmin, SamzaObjectMapper.getObjectMapper());
+    this(coordinatorSystemStream, systemConsumer, systemAdmin, new JsonSerde<List<?>>(), new JsonSerde<Map<String, Object>>());
   }
 
   /**
@@ -129,14 +131,10 @@ public class CoordinatorStreamSystemConsumer {
     try {
       while (iterator.hasNext()) {
         IncomingMessageEnvelope envelope = iterator.next();
-        String keyStr = new String((byte[]) envelope.getKey(), "UTF-8");
-        Object[] keyArray = mapper.readValue(keyStr, new TypeReference<Object[]>() {
-        });
+        Object[] keyArray = keySerde.fromBytes((byte[]) envelope.getKey()).toArray();
         Map<String, Object> valueMap = null;
         if (envelope.getMessage() != null) {
-          String valueStr = new String((byte[]) envelope.getMessage(), "UTF-8");
-          valueMap = mapper.readValue(valueStr, new TypeReference<Map<String, Object>>() {
-          });
+          valueMap = messageSerde.fromBytes((byte[]) envelope.getMessage());
         }
         CoordinatorStreamMessage coordinatorStreamMessage = new CoordinatorStreamMessage(keyArray, valueMap);
         log.debug("Received coordinator stream message: {}", coordinatorStreamMessage);

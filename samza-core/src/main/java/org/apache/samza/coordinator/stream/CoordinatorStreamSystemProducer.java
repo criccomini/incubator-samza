@@ -19,16 +19,18 @@
 
 package org.apache.samza.coordinator.stream;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.samza.SamzaException;
 import org.apache.samza.config.Config;
-import org.apache.samza.serializers.model.SamzaObjectMapper;
-import org.apache.samza.system.OutgoingMessageEnvelope;
+import org.apache.samza.serializers.JsonSerde;
+import org.apache.samza.serializers.Serde;
 import org.apache.samza.system.CoordinatorSystemAdmin;
+import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemProducer;
 import org.apache.samza.system.SystemStream;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,20 +41,22 @@ import org.slf4j.LoggerFactory;
 public class CoordinatorStreamSystemProducer {
   private static final Logger log = LoggerFactory.getLogger(CoordinatorStreamSystemProducer.class);
 
-  private final ObjectMapper mapper;
+  private final Serde<List<?>> keySerde;
+  private final Serde<Map<String, Object>> messageSerde;
   private final SystemStream systemStream;
   private final SystemProducer systemProducer;
   private final CoordinatorSystemAdmin systemAdmin;
 
   public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, CoordinatorSystemAdmin systemAdmin) {
-    this(systemStream, systemProducer, systemAdmin, SamzaObjectMapper.getObjectMapper());
+    this(systemStream, systemProducer, systemAdmin, new JsonSerde<List<?>>(), new JsonSerde<Map<String, Object>>());
   }
 
-  public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, CoordinatorSystemAdmin systemAdmin, ObjectMapper mapper) {
+  public CoordinatorStreamSystemProducer(SystemStream systemStream, SystemProducer systemProducer, CoordinatorSystemAdmin systemAdmin, Serde<List<?>> keySerde, Serde<Map<String, Object>> messageSerde) {
     this.systemStream = systemStream;
     this.systemProducer = systemProducer;
     this.systemAdmin = systemAdmin;
-    this.mapper = mapper;
+    this.keySerde = keySerde;
+    this.messageSerde = messageSerde;
   }
 
   /**
@@ -93,10 +97,10 @@ public class CoordinatorStreamSystemProducer {
     log.debug("Sending {}", message);
     try {
       String source = message.getSource();
-      byte[] key = mapper.writeValueAsString(message.getKeyArray()).getBytes("UTF-8");
+      byte[] key = keySerde.toBytes(Arrays.asList(message.getKeyArray()));
       byte[] value = null;
       if (!message.isDelete()) {
-        value = mapper.writeValueAsString(message.getMessageMap()).getBytes("UTF-8");
+        value = messageSerde.toBytes(message.getMessageMap());
       }
       OutgoingMessageEnvelope envelope = new OutgoingMessageEnvelope(systemStream, Integer.valueOf(0), key, value);
       systemProducer.send(source, envelope);
