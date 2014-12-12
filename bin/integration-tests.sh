@@ -13,7 +13,12 @@ if test -z "$TEST_DIR"; then
   exit 0
 fi
 
+# build integration test tarball
+./gradlew clean releaseTestJobs
+
+# create integration test directory
 mkdir -p $TEST_DIR
+cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $TEST_DIR
 cd $TEST_DIR
 
 # setup virtualenv locally if it's not already there

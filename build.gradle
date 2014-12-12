@@ -407,7 +407,6 @@ project(":samza-test-jobs") {
   dependencies {
     compile project(':samza-api')
     compile project(":samza-core_$scalaVersion")
-    compile project(":samza-serializers_$scalaVersion")
     compile project(":samza-log4j")
     compile project(":samza-kafka_$scalaVersion")
     compile project(":samza-yarn_$scalaVersion")
