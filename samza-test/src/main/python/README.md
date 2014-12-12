@@ -1,26 +1,10 @@
-<!--
-   Licensed to the Apache Software Foundation (ASF) under one or more
-   contributor license agreements.  See the NOTICE file distributed with
-   this work for additional information regarding copyright ownership.
-   The ASF licenses this file to You under the Apache License, Version 2.0
-   (the "License"); you may not use this file except in compliance with
-   the License.  You may obtain a copy of the License at
+## Running integration tests
 
-       http://www.apache.org/licenses/LICENSE-2.0
+To start Samza's integration test, run:
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
--->
-Steps to start integration tests using Zopkio
+  $ bin/integration-tests.sh <directory to run tests in>
 
-1. Download & Install Zopkio [ https://github.com/linkedin/Zopkio ]
-
-git clone https://github.com/linkedin/Zopkio.git
-cd distributed-test-framework
-sudo python setup.py install
+This will setup a [virtualenv](https://virtualenv.readthedocs.org/en/latest/), in the directory.
 
 2. You need to place your test job tar ball in a remotely accessible server.
 If you want to quickly spin up a local server, you can do the following:
