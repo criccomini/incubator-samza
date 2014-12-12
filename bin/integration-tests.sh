@@ -29,12 +29,27 @@ if [[ ! -d "${TEST_DIR}/${VIRTUAL_ENV}" ]] ; then
 fi
 
 # build a clean virtual environment
-rm -rf samza-integration-tests
-python $VIRTUAL_ENV/virtualenv.py samza-integration-tests
-cd $TEST_DIR/samza-integration-tests
+SAMZA_INTEGRATION_TESTS_DIR=$TEST_DIR/samza-integration-tests
+rm -rf $SAMZA_INTEGRATION_TESTS_DIR
+python $VIRTUAL_ENV/virtualenv.py $SAMZA_INTEGRATION_TESTS_DIR
+cd $SAMZA_INTEGRATION_TESTS_DIR
 
 # activate the virtual environment
 source bin/activate
+
+# install zopkio
+pip install zopkio
+
+# start an HTTP server to server job TGZ files
+HTTP_PID_FILE=$TEST_DIR/http_server.pid
+if [[ -a $HTTP_PID_FILE ]] ; then
+  kill -9 $(<"$HTTP_PID_FILE")
+fi
+python -m SimpleHTTPServer &
+echo $! > $HTTP_PID_FILE
+
+# run the tests
+zopkio $BASE_DIR/samza-test/src/main/python/simple-integration-test.py
 
 # go back to execution directory
 deactivate
