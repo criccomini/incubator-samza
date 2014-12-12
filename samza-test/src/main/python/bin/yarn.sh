@@ -50,7 +50,15 @@ stop() {
   fi
 }
 
-export JAVA_HOME=/export/apps/jdk/JDK-1_8_0_5
+# try and find JAVA_HOME
+if [ -f /usr/libexec/java_home ]; then
+  export JAVA_HOME=$(/usr/libexec/java_home)
+elif [ -f /usr/bin/java ]; then
+  export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")
+else
+  echo "Unable to determine JAVA_HOME. Please set it manually in yarn.sh."
+  exit 1
+fi
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -67,7 +75,8 @@ if [ "$COMMAND" = "install" ]; then
  fi
 elif [[ "$COMMAND" = "start" || "$COMMAND" = "stop" ]]; then
     "$COMMAND"
-  else
-    echo "Usage: \t yarn install DOWNLOAD_URL \n\t yarn start"
-    exit
+else
+  echo "Usage: \t yarn install DOWNLOAD_URL \n\t yarn start"
+  exit
 fi
+

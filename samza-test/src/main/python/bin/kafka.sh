@@ -95,7 +95,15 @@ stop() {
   stop_zookeeper
 }
 
-export JAVA_HOME=/export/apps/jdk/JDK-1_8_0_5
+# try and find JAVA_HOME
+if [ -f /usr/libexec/java_home ]; then
+  export JAVA_HOME=$(/usr/libexec/java_home)
+elif [ -f /usr/bin/java ]; then
+  export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")
+else
+  echo "Unable to determine JAVA_HOME. Please set it manually in kafka.sh."
+  exit 1
+fi
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -118,3 +126,4 @@ elif [[ "$COMMAND" = "start" || "$COMMAND" = "stop" ]]; then
     echo "Usage: \t kafka.sh install ZOOKEEPER_DOWNLOAD_URL KAFKA_DOWNLOAD_URL\n\t kafka.sh start \n\t kafka.sh stop"
     exit
 fi
+

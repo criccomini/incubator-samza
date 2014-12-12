@@ -125,7 +125,7 @@ def teardown_suite():
     "stop_command": "stop"
   })
   yarn_deployer.uninstall("yarn_instance_0", {
-    "additional_directories": ["/export/home/eng/nramesh/samza-integration-test"]
+    "additional_directories": ["/tmp/samza-integration-test"]
   })
   """
 

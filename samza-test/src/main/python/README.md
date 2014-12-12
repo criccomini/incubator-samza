@@ -1,8 +1,8 @@
 ## Running integration tests
 
-To start Samza's integration test, run:
+To start Samza's integration test in a specific directory, run:
 
-  $ bin/integration-tests.sh <directory to run tests in>
+  $ bin/integration-tests.sh <dir>
 
 This command will:
 
@@ -13,4 +13,6 @@ This command will:
 # Run a simple integration test.
 # Open a test report in the browser.
 
-If the report does not automatically pop-up, it can be located at <INCUBATOR-SAMZA-MASTER>/samza-test/src/main/python/reports/*
+If the report does not automatically pop-up, it can be located at <INCUBATOR-SAMZA-MASTER>/samza-test/src/main/python/reports/*.
+
+Logs are located in <dir>/logs.

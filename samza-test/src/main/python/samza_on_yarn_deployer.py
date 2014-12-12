@@ -95,13 +95,15 @@ class SamzaOnYarnDeployer(Deployer):
 
     samza_home = os.path.join(install_path, "samza")
     with get_ssh_client(yarn_hostname) as ssh:
-      better_exec_command(ssh, "mkdir -p {0}".format(install_path), "Failed to create path {0}".format(install_path))
-      better_exec_command(ssh, "chmod a+w {0}".format(install_path), "Failed to make path {0} writeable".format(install_path))
       exec_file_name = os.path.basename(executable)
+      exec_file_dir = exec_file_name.replace(".tgz", "")
       exec_file_location = os.path.join(install_path, exec_file_name)
+      exec_file_install_path = os.path.join(install_path, exec_file_dir)
+      better_exec_command(ssh, "mkdir -p {0}".format(exec_file_install_path), "Failed to create path {0}".format(install_path))
+      better_exec_command(ssh, "chmod a+w {0}".format(install_path), "Failed to make path {0} writeable".format(install_path))
       better_exec_command(ssh, "curl " + executable + " -o " + exec_file_location, "Failed to download from " + executable)
-      better_exec_command(ssh, "tar -zxvf {0} -C {1}".format(exec_file_location, install_path), "Unable to extract samza job")
-      better_exec_command(ssh, "mv {0} {1}".format(os.path.join(install_path, exec_file_name.replace(".tgz","")), samza_home), "Failed to move samza job")
+      better_exec_command(ssh, "tar -zxvf {0} -C {1}".format(exec_file_location, exec_file_install_path), "Unable to extract samza job")
+      better_exec_command(ssh, "mv {0} {1}".format(exec_file_install_path, samza_home), "Failed to move samza job")
 
       self.processes[unique_id] = SamzaOnYarnProcess(unique_id, self.service_name, samza_hostname, install_path, yarn_hostname, yarn_port, yarn_home)
 
