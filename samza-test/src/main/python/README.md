@@ -15,4 +15,4 @@ This command will:
 
 If the report does not automatically pop-up, it can be located at <INCUBATOR-SAMZA-MASTER>/samza-test/src/main/python/reports/*.
 
-Logs are located in <dir>/logs.
+Logs are located in <dir>/logs. Test reports are located in <dir>/reports.
