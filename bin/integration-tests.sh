@@ -21,6 +21,14 @@ mkdir -p $TEST_DIR
 cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $TEST_DIR
 cd $TEST_DIR
 
+# start an HTTP server to server job TGZ files
+HTTP_PID_FILE=$TEST_DIR/http_server.pid
+if [[ -a $HTTP_PID_FILE ]] ; then
+  kill -9 $(<"$HTTP_PID_FILE")
+fi
+python -m SimpleHTTPServer &
+echo $! > $HTTP_PID_FILE
+
 # setup virtualenv locally if it's not already there
 VIRTUAL_ENV=virtualenv-1.9
 if [[ ! -d "${TEST_DIR}/${VIRTUAL_ENV}" ]] ; then
@@ -30,27 +38,21 @@ fi
 
 # build a clean virtual environment
 SAMZA_INTEGRATION_TESTS_DIR=$TEST_DIR/samza-integration-tests
-rm -rf $SAMZA_INTEGRATION_TESTS_DIR
-python $VIRTUAL_ENV/virtualenv.py $SAMZA_INTEGRATION_TESTS_DIR
+if [[ ! -d "${SAMZA_INTEGRATION_TESTS_DIR}" ]] ; then
+  python $VIRTUAL_ENV/virtualenv.py $SAMZA_INTEGRATION_TESTS_DIR
+fi
 cd $SAMZA_INTEGRATION_TESTS_DIR
 
 # activate the virtual environment
 source bin/activate
 
-# install zopkio
-pip install zopkio
-
-# start an HTTP server to server job TGZ files
-HTTP_PID_FILE=$TEST_DIR/http_server.pid
-if [[ -a $HTTP_PID_FILE ]] ; then
-  kill -9 $(<"$HTTP_PID_FILE")
-fi
-python -m SimpleHTTPServer &
-echo $! > $HTTP_PID_FILE
+# install zopkio and requests
+pip install zopkio requests
 
 # run the tests
 zopkio $BASE_DIR/samza-test/src/main/python/simple-integration-test.py
 
 # go back to execution directory
+kill -9 $(<"$HTTP_PID_FILE")
 deactivate
 cd $DIR

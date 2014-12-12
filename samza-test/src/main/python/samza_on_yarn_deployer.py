@@ -23,9 +23,9 @@ from subprocess import call
 import json
 import requests
 
-import dtf.constants as constants
-from dtf.deployer import Deployer, Process
-from dtf.remote_host_helper import better_exec_command, DeploymentError, get_sftp_client, get_ssh_client, open_remote_file
+import zopkio.constants as constants
+from zopkio.deployer import Deployer, Process
+from zopkio.remote_host_helper import better_exec_command, DeploymentError, get_sftp_client, get_ssh_client, open_remote_file
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 import os
 import logging
 from time import sleep
-import dtf.remote_host_helper as remote_host_helper
-import dtf.runtime as runtime
+import zopkio.remote_host_helper as remote_host_helper
+import zopkio.runtime as runtime
 
 logger = logging.getLogger(__name__)
 

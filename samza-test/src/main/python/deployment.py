@@ -1,7 +1,7 @@
 import os
 import logging
 
-import dtf.runtime as runtime
+import zopkio.runtime as runtime
 import yarn_deployer as yd
 import samza_on_yarn_deployer as syd
 import kafka_deployer as kd
