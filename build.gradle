@@ -392,7 +392,7 @@ project(":samza-test-jobs") {
   apply plugin: 'java'
 
   tasks.create(name: "releaseTestJobs", dependsOn: configurations.archives.artifacts, type: Tar) {
-    into "samza-test-jobs-$version"
+    //into "samza-test-jobs-$version"
     compression = Compression.GZIP
     from(file("$projectDir/src/main/config")) { into "config/" }
     from(project(':samza-shell').file("src/main/bash")) { into "bin/" }
@@ -401,7 +401,7 @@ project(":samza-test-jobs") {
     from '../NOTICE'
     from(configurations.runtime) { into("lib/") }
     from(configurations.archives.artifacts.files) { into("lib/") }
-    from jar.outputs.files
+    //from jar.outputs.files
   }
 
   dependencies {
