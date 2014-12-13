@@ -3,6 +3,6 @@
   "yarn_port": 8088,
   "yarn_install_path": "/tmp/samza-integration-test/deploy",
   "yarn_executable": "https://archive.apache.org/dist/hadoop/common/hadoop-2.4.0/hadoop-2.4.0.tar.gz",
-  "yarn_yarn-site": "/Users/criccomi/Code/incubator-samza/samza-test/src/main/python/bin/yarn-site.xml",
-  "yarn_control_script": "/Users/criccomi/Code/incubator-samza/samza-test/src/main/python/bin/yarn.sh"
+  "yarn_yarn-site": "bin/yarn-site.xml",
+  "yarn_control_script": "bin/yarn.sh"
 }

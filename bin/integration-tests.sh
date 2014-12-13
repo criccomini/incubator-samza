@@ -3,6 +3,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR=$DIR/..
 TEST_DIR=$1
+SCRIPTS_DIR=$TEST_DIR/scripts
 
 if test -z "$TEST_DIR"; then
   echo
@@ -19,6 +20,7 @@ fi
 # create integration test directory
 mkdir -p $TEST_DIR
 cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $TEST_DIR
+cp -r samza-test/src/main/python $SCRIPTS_DIR
 cd $TEST_DIR
 
 # start an HTTP server to server job TGZ files
@@ -50,7 +52,8 @@ source bin/activate
 pip install zopkio requests
 
 # run the tests
-zopkio $BASE_DIR/samza-test/src/main/python/simple-integration-test.py
+cd $SCRIPTS_DIR
+zopkio simple-integration-test.py
 
 # go back to execution directory
 kill -9 $(<"$HTTP_PID_FILE")
