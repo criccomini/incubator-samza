@@ -5,7 +5,6 @@ import zopkio.runtime as runtime
 import yarn_deployer as yd
 import samza_on_yarn_deployer as syd
 import kafka_deployer as kd
-from time import sleep
 
 logger = logging.getLogger(__name__)
 yarn_deployer = None
@@ -96,7 +95,6 @@ def setup_suite():
     "config-file": runtime.get_active_config("samza_config-file"),
     "properties": properties
   })
-  sleep(60)
   logger.info("Ready to run tests")
 
 def setup():
