@@ -1,5 +1,5 @@
 * make naraad work
-* fix logs link
+* update yarn_instance_0 logs in perf.py to point to userlogs dir when https://github.com/linkedin/Zopkio/issues/17 is resolved.
 * write proper multi-node yarn, kafka, and zk deployers to contribute back to zopkio 
   * eliminate yarn.sh and kafka.sh
   * download should happen once on driver machine, and should sftp/scp files to other boxes
@@ -19,3 +19,4 @@
 * write util helper functions for kafka to read/write data
 * use kafka python client rather than CLI for integration tests
 * write util helper functions for yarn (await job, etc)
+* come up with a better suite name than "single execution"

@@ -32,6 +32,7 @@ def setup_suite():
     "yarn-site": runtime.get_active_config("yarn_yarn-site"),
     "install_commands": ["install {0}".format(yarn_executable)]
   })
+  runtime.set_deployer("yarn", yarn_deployer)
   #############################
   # Install Kafka / Zookeeper #
   #############################
@@ -49,24 +50,25 @@ def setup_suite():
     "install_commands": ["install {0} {1}".format(zookeeper_executable, kafka_executable)],
     "control_script": runtime.get_active_config("kafka_control_script")
   })
-
+  runtime.set_deployer("kafka", kafka_deployer)
   #####################
   # Install Samza Job #
   #####################
   yarn_process = yarn_deployer.get_process("yarn_instance_0")
   global samza_deployer
-  samza_deployer = syd.SamzaOnYarnDeployer("samza_job_0", {
+  samza_deployer = syd.SamzaOnYarnDeployer("samza_instance_0", {
     "pid_keyword": "samza_job_0",
     "yarn_host": yarn_process.hostname,
     "yarn_port": yarn_process.port,
     "yarn_home": yarn_process.get_yarn_home()
   })
   print "Installing Samza Job"
-  samza_deployer.install("samza_job_0", {
+  samza_deployer.install("samza_instance_0", {
     "hostname": runtime.get_active_config("samza_hostname"),
     "executable": runtime.get_active_config("samza_executable"),
     "install_path": runtime.get_active_config("samza_install_path")
   })
+  runtime.set_deployer("samza", samza_deployer)
   ###############
   # Start Kafka #
   ###############
@@ -90,7 +92,7 @@ def setup_suite():
   properties = []
   for prop_key,prop_value in runtime.get_active_config("samza_properties").iteritems():
     properties.append((prop_key, prop_value))
-  samza_deployer.start("samza_job_0", {
+  samza_deployer.start("samza_instance_0", {
     "config-factory": runtime.get_active_config("samza_config-factory"),
     "config-file": runtime.get_active_config("samza_config-file"),
     "properties": properties
@@ -105,8 +107,8 @@ def teardown():
 
 def teardown_suite():
   print "Stopping Samza Job"
-  samza_deployer.stop("samza_job_0", {})
-  samza_deployer.uninstall("samza_job_0", {})
+  samza_deployer.stop("samza_instance_0", {})
+  samza_deployer.uninstall("samza_instance_0", {})
 
   print "Stopping Kafka"
   kafka_deployer.stop("kafka_instance_0", {
