@@ -1,4 +1,3 @@
-* shutdown YARN after tests complete
 * make naraad work
 * fix logs link
 * write proper multi-node yarn, kafka, and zk deployers to contribute back to zopkio 
@@ -10,5 +9,6 @@
 * remove http server and sftp copy the job tarball
 * update test docs with integration test description
 * make log4j.xml work properly for negate numbers job (so we see logs in containers)
-* directories in deployment.py teardown should not be hard coded
 * report is not opened in chrome after integration test finishes
+* license header for deployment.py et al
+* directories in deployment.py teardown should not be hard coded

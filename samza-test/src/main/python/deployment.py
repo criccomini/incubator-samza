@@ -104,7 +104,6 @@ def teardown():
   pass
 
 def teardown_suite():
-  """
   print "Stopping Samza Job"
   samza_deployer.stop("samza_job_0", {})
   samza_deployer.uninstall("samza_job_0", {})
@@ -125,5 +124,4 @@ def teardown_suite():
   yarn_deployer.uninstall("yarn_instance_0", {
     "additional_directories": ["/tmp/samza-integration-test"]
   })
-  """
 
