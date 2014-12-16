@@ -10,7 +10,6 @@
 * update test docs with integration test description
 * license header for deployment.py et al
 * directories in deployment.py teardown should not be hard coded
-* get rid of instance_0 from all deployment.py deployer names
 * pipe all output in deployers to a specific directory, and copy the entire directory to logs in perf.py
 * store all temp files relative to a configurable sub directory (don't dump numbers.txt into /tmp hard coded)
 * cp'ing scripts directory should overwrite files (e.g. deployment.py changes)

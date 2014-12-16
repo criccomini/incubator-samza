@@ -20,7 +20,7 @@ def setup_suite():
   ##################
   yarn_executable = runtime.get_active_config("yarn_executable")
   global yarn_deployer
-  yarn_deployer = yd.YarnDeployer("yarn_instance_0", {
+  yarn_deployer = yd.YarnDeployer("yarn", {
     "pid_keyword": "yarn",
     "executable": yarn_executable,
     "control_script": runtime.get_active_config("yarn_control_script")
@@ -38,7 +38,7 @@ def setup_suite():
   #############################
   kafka_hostname = runtime.get_active_config("kafka_hostname")
   global kafka_deployer
-  kafka_deployer = kd.KafkaDeployer("kafka_instance_0", {
+  kafka_deployer = kd.KafkaDeployer("kafka", {
     "pid_keyword": "kafka_job_0",
     "hostname": kafka_hostname
   })
@@ -56,7 +56,7 @@ def setup_suite():
   #####################
   yarn_process = yarn_deployer.get_process("yarn_instance_0")
   global samza_deployer
-  samza_deployer = syd.SamzaOnYarnDeployer("samza_instance_0", {
+  samza_deployer = syd.SamzaOnYarnDeployer("samza", {
     "pid_keyword": "samza_job_0",
     "yarn_host": yarn_process.hostname,
     "yarn_port": yarn_process.port,
