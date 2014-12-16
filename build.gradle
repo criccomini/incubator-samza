@@ -395,13 +395,13 @@ project(":samza-test-jobs") {
     //into "samza-test-jobs-$version"
     compression = Compression.GZIP
     from(file("$projectDir/src/main/config")) { into "config/" }
+    from(file("$projectDir/src/main/resources")) { into "lib/" }
     from(project(':samza-shell').file("src/main/bash")) { into "bin/" }
-    from(project(':samza-shell').file("src/main/resources")) { into "bin/" }
+    from(project(':samza-shell').file("src/main/resources")) { into "lib/" }
     from '../LICENSE'
     from '../NOTICE'
     from(configurations.runtime) { into("lib/") }
     from(configurations.archives.artifacts.files) { into("lib/") }
-    //from jar.outputs.files
   }
 
   dependencies {
