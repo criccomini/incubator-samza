@@ -25,9 +25,14 @@ installer() {
   echo "Downloading $SYSTEM from $DOWNLOAD_URL"
   cd $BASE_DIR
   tarfile=$(basename $DOWNLOAD_URL)
-  curl $DOWNLOAD_URL -o $tarfile
+  mkdir -p $SYSTEM_CACHE
+  if [ -f "$SYSTEM_CACHE/$tarfile" ]; then
+    echo "Using previously downloaded file $tarfile"
+  else
+    curl $DOWNLOAD_URL -o $SYSTEM_CACHE/$tarfile
+  fi
   mkdir -p tmp
-  tar -xvf $tarfile -C tmp
+  tar -xvf $SYSTEM_CACHE/$tarfile -C tmp
   mv tmp/* $SYSTEM
   rm -rf tmp
 }
@@ -109,7 +114,7 @@ BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 ZOOKEEPER_HOME_DIR=$BASE_DIR/zookeeper
 KAFKA_HOME_DIR=$BASE_DIR/kafka
-
+SYSTEM_CACHE=$HOME/.samza-int-tests/download
 COMMAND=$1
 ZOOKEEPER_DOWNLOAD_URL=$2
 KAFKA_DOWNLOAD_URL=$3

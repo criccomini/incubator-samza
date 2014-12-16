@@ -24,9 +24,14 @@ install() {
   echo "Downloading YARN from $DOWNLOAD_URL"
   cd $BASE_DIR
   tarfile=$(basename $DOWNLOAD_URL)
-  curl $DOWNLOAD_URL -o $tarfile
+  mkdir -p $SYSTEM_CACHE
+  if [ -f "$SYSTEM_CACHE/$tarfile" ]; then
+    echo "Using previously downloaded file $tarfile"
+  else
+    curl $DOWNLOAD_URL -o $SYSTEM_CACHE/$tarfile
+  fi
   mkdir -p tmp
-  tar -xvf $tarfile -C tmp
+  tar -xvf $SYSTEM_CACHE/$tarfile -C tmp
   mv tmp/* yarn
   rm -rf tmp
 }
@@ -61,9 +66,8 @@ else
 fi
 
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 YARN_HOME_DIR=$BASE_DIR/yarn
-
+SYSTEM_CACHE=$HOME/.samza-int-tests/download
 COMMAND=$1
 DOWNLOAD_URL=$2
 
