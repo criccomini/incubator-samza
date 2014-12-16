@@ -8,7 +8,6 @@
 * use a proper python setup.py install package instead of cp'ing the raw scripts
 * remove http server from bin/integration-tests.sh and sftp copy the job tarball instead
 * update test docs with integration test description
-* report is not opened in chrome after integration test finishes
 * license header for deployment.py et al
 * directories in deployment.py teardown should not be hard coded
 * get rid of instance_0 from all deployment.py deployer names
@@ -19,3 +18,4 @@
 * use kafka python client rather than CLI for integration tests
 * write util helper functions for yarn (await job, etc)
 * come up with a better suite name than "single execution"
+* remove password prompt when running zopkio test (either disable using GH issue, or pipe newline)
