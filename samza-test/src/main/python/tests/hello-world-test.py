@@ -34,9 +34,11 @@ def validate_samza_job():
   kafka_home = os.path.join(runtime.get_active_config("kafka_install_path"), "kafka")
   kafka_bin = os.path.join(kafka_home, "bin")
   kafka_consumer = os.path.join(kafka_bin, "kafka-console-consumer.sh")
-  expected_lines = 50
+  expected_lines = sum(1 for line in open(os.path.join(DATA_DIR, "numbers.txt")))
   has_fifty_lines = False
   attempts = 0
+  line_count = 0
+  assert expected_lines > 0, "Found an empty numbers.txt file. Can't run test without input."
   # try and read the output of the samza job over and over again. keep going 
   # until we've tried 10 times, or we get the expected (expected_lines) line 
   # count.
@@ -48,7 +50,8 @@ def validate_samza_job():
       ftp.get("/tmp/kafka_consumer_output.txt", "/tmp/validate_samza_job.out")
     # if the output has 50 lines in it, then break loop and validate, else sleep
     # and try again.
-    if expected_lines == sum(1 for line in open('/tmp/validate_samza_job.out')):
+    line_count = sum(1 for line in open('/tmp/validate_samza_job.out'))
+    if expected_lines == line_count:
       has_fifty_lines = True
     else:
       sleep(10)
@@ -56,3 +59,4 @@ def validate_samza_job():
     for i in range(expected_lines):
       line = fh.readline()
       assert int(line) < 0 , "Expected negative integer but received {0}".format(line)
+  assert expected_lines == lines, "Expected {0} lines, but found {1}".format(expected_lines, line_count)
