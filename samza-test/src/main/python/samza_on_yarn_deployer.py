@@ -144,7 +144,7 @@ class SamzaOnYarnDeployer(Deployer):
         for (property_name, property_value) in properties:
           command += " --config {0}={1}".format(property_name, property_value)
           self.processes[unique_id].properties[property_name] = property_value
-      better_exec_command(ssh, "{0} > /tmp/output.txt 2> /tmp/error.txt".format(command), "Failed starting Samza Job")
+      better_exec_command(ssh, "{0} > /tmp/job-runner-output.txt 2> /tmp/job-runner-error.txt".format(command), "Failed starting Samza Job")
 
   def stop(self, unique_id, configs=None):
     """Stop the service.  If the deployer has not started a service with`unique_id` the deployer will raise an Exception
