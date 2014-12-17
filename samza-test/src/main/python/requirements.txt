@@ -1,0 +1,3 @@
+zopkio
+requests
+kafka-python

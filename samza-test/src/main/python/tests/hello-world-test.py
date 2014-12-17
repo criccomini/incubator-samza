@@ -1,6 +1,7 @@
 import os
 import logging
 from time import sleep
+from kafka import KafkaClient, SimpleProducer
 import zopkio.remote_host_helper as remote_host_helper
 import zopkio.runtime as runtime
 
@@ -9,20 +10,24 @@ logger = logging.getLogger(__name__)
 CWD = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.join(CWD, os.pardir)
 DATA_DIR = os.path.join(HOME_DIR, "data")
+TEST_TOPIC = "samza-test-topic"
 
 def test_samza_job():
   """
-  Tests if the Samza Job is reading Kafka input to produce the correct output
+  Sends 50 messages (1 .. 50) to samza-test-topic.
   """
   logger.info("Running test_samza_job")
   kafka_hostname = runtime.get_active_config("kafka_hostname")
-  kafka_home = os.path.join(runtime.get_active_config("kafka_install_path"), "kafka")
-  kafka_bin = os.path.join(kafka_home, "bin")
-  kafka_producer = os.path.join(kafka_bin, "kafka-console-producer.sh")
-  with remote_host_helper.get_ssh_client(kafka_hostname) as ssh:
-    with remote_host_helper.get_sftp_client(kafka_hostname) as ftp:
-      ftp.put(os.path.join(DATA_DIR, "numbers.txt"), "/tmp/numbers.txt")
-    remote_host_helper.better_exec_command(ssh, "{0} --topic samza-test-topic --broker-list {1}:9092 --sync < /tmp/numbers.txt > /tmp/loader.txt 2> /tmp/loader.err.txt".format(kafka_producer, kafka_hostname), "Failed to write data to Kafka topic")
+  kafka_hostport = runtime.get_active_config("kafka_hostport")
+  kafka = KafkaClient("{0}:{1}".format(kafka_hostname, kafka_hostport))
+  kafka.ensure_topic_exists(TEST_TOPIC)
+  producer = SimpleProducer(kafka,
+    async=False,
+    req_acks=SimpleProducer.ACK_AFTER_CLUSTER_COMMIT,
+    ack_timeout=30000)
+  for i in range(1, 51):
+    producer.send_messages(TEST_TOPIC, str(i))
+  kafka.close()
 
 def validate_samza_job():
   """

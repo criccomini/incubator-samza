@@ -15,7 +15,7 @@ if test -z "$TEST_DIR"; then
 fi
 
 # build integration test tarball
-./gradlew clean releaseTestJobs
+./gradlew releaseTestJobs
 
 # create integration test directory
 mkdir -p $TEST_DIR
@@ -41,7 +41,7 @@ cd $SAMZA_INTEGRATION_TESTS_DIR
 source bin/activate
 
 # install zopkio and requests
-pip install zopkio requests
+pip install -r $BASE_DIR/samza-test/src/main/python/requirements.txt
 
 # run the tests
 cd $SCRIPTS_DIR
