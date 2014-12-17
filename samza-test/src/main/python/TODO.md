@@ -11,6 +11,5 @@
 * pipe all output in deployers to a specific directory, and copy the entire directory to logs in perf.py
 * store all temp files relative to a configurable sub directory (don't dump numbers.txt into /tmp hard coded)
 * write util helper functions for kafka to read/write data
-* use kafka python client rather than CLI for integration tests
 * write util helper functions for yarn (await job, etc)
 * convert msg payload to JSON instead of string
