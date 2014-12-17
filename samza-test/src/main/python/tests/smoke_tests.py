@@ -1,8 +1,6 @@
 import os
 import logging
-from time import sleep
 from kafka import KafkaClient, SimpleProducer, SimpleConsumer
-import zopkio.remote_host_helper as remote_host_helper
 import zopkio.runtime as runtime
 
 logger = logging.getLogger(__name__)
@@ -43,6 +41,7 @@ def validate_samza_job():
   assert NUM_MESSAGES == message_count, "Expected {0} lines, but found {1}".format(NUM_MESSAGES, message_count)
   for message in map(lambda m: m.message.value, messages):
     assert int(message) < 0 , "Expected negative integer but received {0}".format(message)
+  kafka.close()
 
 def __get_kafka_client():
   kafka_hostname = runtime.get_active_config("kafka_hostname")

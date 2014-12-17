@@ -13,3 +13,5 @@
 * write util helper functions for kafka to read/write data
 * write util helper functions for yarn (await job, etc)
 * convert msg payload to JSON instead of string
+* convert __get_kafka_client method in smoke tests to use a kafka context manager
+* add usr/bin/python to all python files
