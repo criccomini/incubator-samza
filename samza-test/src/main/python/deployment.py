@@ -25,7 +25,7 @@ def setup_suite():
     "executable": yarn_executable,
     "control_script": runtime.get_active_config("yarn_control_script")
     })
-  print "Installing YARN"
+  logger.info("Installing YARN")
   yarn_deployer.install("yarn_instance_0", {
     "hostname": runtime.get_active_config("yarn_hostname"),
     "install_path": runtime.get_active_config("yarn_install_path"),
@@ -42,7 +42,7 @@ def setup_suite():
     "pid_keyword": "kafka_job_0",
     "hostname": kafka_hostname
   })
-  print "Installing Kafka"
+  logger.info("Installing Kafka")
   zookeeper_executable = runtime.get_active_config("kafka_zookeeper_executable")
   kafka_executable = runtime.get_active_config("kafka_executable")
   kafka_deployer.install("kafka_instance_0", {
@@ -62,7 +62,7 @@ def setup_suite():
     "yarn_port": yarn_process.port,
     "yarn_home": yarn_process.get_yarn_home()
   })
-  print "Installing Samza Job"
+  logger.info("Installing Samza Job")
   samza_deployer.install("samza_instance_0", {
     "hostname": runtime.get_active_config("samza_hostname"),
     "executable": runtime.get_active_config("samza_executable"),
@@ -72,7 +72,7 @@ def setup_suite():
   ###############
   # Start Kafka #
   ###############
-  print "Starting Kafka"
+  logger.info("Starting Kafka")
   kafka_deployer.start("kafka_instance_0", {
     "start_command": "start"
   })
@@ -80,7 +80,7 @@ def setup_suite():
   ###############
   # Start YARN  #
   ###############
-  print "Starting YARN"
+  logger.info("Starting YARN")
   yarn_deployer.start("yarn_instance_0", {
     "start_command": "start"
   })
@@ -88,7 +88,7 @@ def setup_suite():
   ###################
   # Start Samza Job #
   ###################
-  print "Starting SAMZA Job"
+  logger.info("Starting Samza Job")
   properties = []
   for prop_key,prop_value in runtime.get_active_config("samza_properties").iteritems():
     properties.append((prop_key, prop_value))
@@ -106,11 +106,11 @@ def teardown():
   pass
 
 def teardown_suite():
-  print "Stopping Samza Job"
+  logger.info("Stopping Samza Job")
   samza_deployer.stop("samza_instance_0", {})
   samza_deployer.uninstall("samza_instance_0", {})
 
-  print "Stopping Kafka"
+  logger.info("Stopping Kafka")
   kafka_deployer.stop("kafka_instance_0", {
     'stop_command': 'stop'
   })
@@ -119,7 +119,7 @@ def teardown_suite():
     'additional_directories': [kafka_process.zookeeper_home, "/tmp/kafka-logs", "/tmp/zookeeper"]
   })
 
-  print "Stopping YARN"
+  logger.info("Stopping YARN")
   yarn_deployer.stop("yarn_instance_0", {
     "stop_command": "stop"
   })

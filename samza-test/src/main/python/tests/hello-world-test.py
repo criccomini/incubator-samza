@@ -14,7 +14,7 @@ def test_samza_job():
   """
   Tests if the Samza Job is reading Kafka input to produce the correct output
   """
-  print "Running test_samza_job"
+  logger.info("Running test_samza_job")
   kafka_hostname = runtime.get_active_config("kafka_hostname")
   kafka_home = os.path.join(runtime.get_active_config("kafka_install_path"), "kafka")
   kafka_bin = os.path.join(kafka_home, "bin")
@@ -28,7 +28,7 @@ def validate_samza_job():
   """
   Validates that the Samza job produced the correct output
   """
-  print "Running validate_samza_job"
+  logger.info("Running validate_samza_job")
   kafka_hostname = runtime.get_active_config("kafka_hostname")
   zookeeper_hostname = kafka_hostname
   kafka_home = os.path.join(runtime.get_active_config("kafka_install_path"), "kafka")

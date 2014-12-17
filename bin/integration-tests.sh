@@ -53,7 +53,7 @@ pip install zopkio requests
 
 # run the tests
 cd $SCRIPTS_DIR
-zopkio --nopassword simple-integration-test.py
+zopkio --console-log-level INFO --nopassword simple-integration-test.py
 
 # go back to execution directory
 kill -9 $(<"$HTTP_PID_FILE")
