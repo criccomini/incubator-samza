@@ -19,17 +19,9 @@ fi
 
 # create integration test directory
 mkdir -p $TEST_DIR
-cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $TEST_DIR
 cp -r samza-test/src/main/python/ $SCRIPTS_DIR
+cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $SCRIPTS_DIR
 cd $TEST_DIR
-
-# start an HTTP server to server job TGZ files
-HTTP_PID_FILE=$TEST_DIR/http_server.pid
-if [[ -a $HTTP_PID_FILE ]] ; then
-  kill -9 $(<"$HTTP_PID_FILE")
-fi
-python -m SimpleHTTPServer &
-echo $! > $HTTP_PID_FILE
 
 # setup virtualenv locally if it's not already there
 VIRTUAL_ENV=virtualenv-1.9
@@ -56,6 +48,5 @@ cd $SCRIPTS_DIR
 zopkio --console-log-level INFO --nopassword simple-integration-test.py
 
 # go back to execution directory
-kill -9 $(<"$HTTP_PID_FILE")
 deactivate
 cd $DIR

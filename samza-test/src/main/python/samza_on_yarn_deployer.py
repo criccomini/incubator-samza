@@ -53,7 +53,7 @@ class SamzaOnYarnDeployer(Deployer):
     Copies the executable to the remote machine under install path. Inspects the configs for te possible keys
     'yarn_hostname': the host to install YARN on
     'install_path': the YARN install location on the remote host
-    'executable': remote location of the YARN executable to copy
+    'executable': local location of the YARN executable to copy
     'yarn_home':
 
     If the unique_id is already installed on a different host, this will perform the cleanup action first.
@@ -87,11 +87,10 @@ class SamzaOnYarnDeployer(Deployer):
       logger.error("install_path was not provided for unique_id: " + unique_id)
       raise DeploymentError("install_path was not provided for unique_id: " + unique_id)
 
-    # TODO - Support local file to remote file copy
     executable = configs.get('executable') or self.default_configs.get('executable')
     if executable is None:
-      logger.error("executable was not provided for unique_id: " + unique_id)
-      raise DeploymentError("executable was not provided for unique_id: " + unique_id)
+      logger.error("Executable was not provided for unique_id: " + unique_id)
+      raise DeploymentError("Executable was not provided for unique_id: " + unique_id)
 
     samza_home = os.path.join(install_path, "samza")
     with get_ssh_client(yarn_hostname) as ssh:
@@ -101,7 +100,8 @@ class SamzaOnYarnDeployer(Deployer):
       exec_file_install_path = os.path.join(install_path, exec_file_dir)
       better_exec_command(ssh, "mkdir -p {0}".format(exec_file_install_path), "Failed to create path {0}".format(install_path))
       better_exec_command(ssh, "chmod a+w {0}".format(install_path), "Failed to make path {0} writeable".format(install_path))
-      better_exec_command(ssh, "curl " + executable + " -o " + exec_file_location, "Failed to download from " + executable)
+      with get_sftp_client(yarn_hostname) as ftp:
+        ftp.put(executable, exec_file_location)
       better_exec_command(ssh, "tar -zxvf {0} -C {1}".format(exec_file_location, exec_file_install_path), "Unable to extract samza job")
       better_exec_command(ssh, "mv {0} {1}".format(exec_file_install_path, samza_home), "Failed to move samza job")
 

@@ -1,4 +1,3 @@
-* remove http server from bin/integration-tests.sh and sftp copy the job tarball instead
 * make naraad work
 * update yarn_instance_0 logs in perf.py to point to userlogs dir when https://github.com/linkedin/Zopkio/issues/17 is resolved.
 * write proper multi-node yarn, kafka, and zk deployers to contribute back to zopkio 
