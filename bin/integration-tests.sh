@@ -19,6 +19,7 @@ fi
 
 # create integration test directory
 mkdir -p $TEST_DIR
+rm -rf $SCRIPTS_DIR
 cp -r samza-test/src/main/python/ $SCRIPTS_DIR
 cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $SCRIPTS_DIR
 cd $TEST_DIR
@@ -45,7 +46,7 @@ pip install -r $BASE_DIR/samza-test/src/main/python/requirements.txt
 
 # run the tests
 cd $SCRIPTS_DIR
-zopkio --console-log-level INFO --nopassword simple-integration-test.py
+zopkio --console-log-level INFO --nopassword tests.py
 
 # go back to execution directory
 deactivate
