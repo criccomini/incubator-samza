@@ -20,7 +20,7 @@ fi
 # create integration test directory
 mkdir -p $TEST_DIR
 cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $TEST_DIR
-cp -r samza-test/src/main/python $SCRIPTS_DIR
+cp -r samza-test/src/main/python/ $SCRIPTS_DIR
 cd $TEST_DIR
 
 # start an HTTP server to server job TGZ files

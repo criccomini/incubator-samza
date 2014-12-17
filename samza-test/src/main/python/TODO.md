@@ -1,4 +1,3 @@
-* cp'ing scripts directory should overwrite files (e.g. deployment.py changes)
 * come up with a better suite name than "single execution"
 * make naraad work
 * update yarn_instance_0 logs in perf.py to point to userlogs dir when https://github.com/linkedin/Zopkio/issues/17 is resolved.
