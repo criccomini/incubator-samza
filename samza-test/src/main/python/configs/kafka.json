@@ -1,8 +1,14 @@
 {
-  "kafka_hostname": "localhost",
+  "kafka_hosts": {
+    "kafka_instance_0": "localhost"
+  },
   "kafka_hostport": "9092",
-  "kafka_install_path": "/tmp/samza-integration-test/deploy",
-  "kafka_executable": "http://www.us.apache.org/dist/kafka/0.8.1.1/kafka_2.9.2-0.8.1.1.tgz",
-  "kafka_zookeeper_executable": "http://archive.apache.org/dist/zookeeper/zookeeper-3.4.3/zookeeper-3.4.3.tar.gz",
-  "kafka_control_script": "bin/kafka.sh"
+  "kafka_start_cmd": "kafka_2.9.2-0.8.1.1/bin/kafka-server-start.sh -daemon kafka_2.9.2-0.8.1.1/config/server.properties",
+  "kafka_stop_cmd": "kafka_2.9.2-0.8.1.1/bin/kafka-server-stop.sh",
+  "kafka_install_path": "deploy",
+  "kafka_executable": "kafka_2.9.2-0.8.1.1.tgz",
+  "kafka_post_install_cmds": [
+    "sed -i.bak 's/SIGINT/SIGTERM/g' kafka_2.9.2-0.8.1.1/bin/kafka-server-stop.sh",
+    "sed -i.bak 's/^num\\.partitions *=.*/num.partitions=1/' kafka_2.9.2-0.8.1.1/config/server.properties"
+  ]
 }
