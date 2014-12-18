@@ -1,8 +1,10 @@
 {
-  "yarn_hostname": "localhost",
-  "yarn_port": 8088,
-  "yarn_install_path": "/tmp/samza-integration-test/deploy",
-  "yarn_executable": "https://archive.apache.org/dist/hadoop/common/hadoop-2.4.0/hadoop-2.4.0.tar.gz",
-  "yarn_yarn-site": "bin/yarn-site.xml",
-  "yarn_control_script": "bin/yarn.sh"
+  "yarn_rm_hostname": "localhost",
+  "yarn_rm_port": 8088,
+  "yarn_rm_start_cmd": "hadoop-2.4.0/sbin/yarn-daemon.sh start resourcemanager",
+  "yarn_rm_stop_cmd": "hadoop-2.4.0/sbin/yarn-daemon.sh stop resourcemanager",
+  "yarn_nm_start_cmd": "hadoop-2.4.0/sbin/yarn-daemon.sh start nodemanager",
+  "yarn_nm_stop_cmd": "hadoop-2.4.0/sbin/yarn-daemon.sh stop nodemanager",
+  "yarn_install_path": "deploy",
+  "yarn_executable": "hadoop-2.4.0.tar.gz"
 }

@@ -1,38 +1,75 @@
 import os
 import logging
-
+import shutil
+import urllib
 import zopkio.runtime as runtime
-import yarn_deployer as yd
+import zopkio.adhoc_deployer as adhoc_deployer
 import samza_on_yarn_deployer as syd
 import kafka_deployer as kd
+from zopkio.runtime import get_active_config as c
 
 logger = logging.getLogger(__name__)
-yarn_deployer = None
 samza_deployer = None
 kafka_deployer = None
+ssh_deployer = None
+
+def _download_packages():
+  for url_key in ["url_hadoop", "url_kafka", "url_zookeeper"]:
+    logger.debug("Getting download URL for: {0}".format(url_key))
+    url = c(url_key)
+    filename = os.path.basename(url)
+    if os.path.exists(filename):
+      logger.debug("Using cached file: {0}".format(filename))
+    else:
+      logger.info("Downloading: {0}".format(url))
+      urllib.urlretrieve(url, filename)
+
+def _install_yarn(deployer, unique_id):
+  logger.debug("Installing YARN.")
+  deployer.install(unique_id, {
+    'hostname': c("yarn_rm_hostname"),
+    'install_path': os.path.join(c("remote_install_path"), c("yarn_install_path")),
+    'executable': c("yarn_executable"),
+  })
+
+def _start_yarn_rm(deployer, unique_id):
+  _start_yarn(deployer, unique_id, "rm")
+
+def _start_yarn_nm(deployer, unique_id):
+  _start_yarn(deployer, unique_id, "nm")
+
+def _start_yarn(deployer, unique_id, type="nm"):
+  logger.debug("Starting YARN.")
+  deployer.start(unique_id, {
+    "start_command": c("yarn_{0}_start_cmd".format(type)),
+    "sync": True,
+  })
+
+def _stop_yarn(deployer, unique_id, type="nm"):
+  logger.debug("Stopping YARN.")
+  deployer.stop(unique_id, {
+    "stop_command": c("yarn_{0}_stop_cmd".format(type)),
+  })
+  logger.debug("Uninstalling YARN.")
+  deployer.uninstall(unique_id)
 
 def setup_suite():
+  global ssh_deployer
   CWD = os.path.dirname(os.path.abspath(__file__))
-  logger.info("Current workding directory {0}".format(CWD))
+  logger.info("Current working directory: {0}".format(CWD))
 
-  ##################
-  #  Install YARN  #
-  ##################
-  yarn_executable = runtime.get_active_config("yarn_executable")
-  global yarn_deployer
-  yarn_deployer = yd.YarnDeployer("yarn", {
-    "pid_keyword": "yarn",
-    "executable": yarn_executable,
-    "control_script": runtime.get_active_config("yarn_control_script")
-    })
-  logger.info("Installing YARN")
-  yarn_deployer.install("yarn_instance_0", {
-    "hostname": runtime.get_active_config("yarn_hostname"),
-    "install_path": runtime.get_active_config("yarn_install_path"),
-    "yarn-site": runtime.get_active_config("yarn_yarn-site"),
-    "install_commands": ["install {0}".format(yarn_executable)]
+  logger.debug("Creating a generic SSH deployer that can be used to deploy ZooKeeper/YARN/Kafka.")
+  ssh_deployer = adhoc_deployer.SSHDeployer("deployer", {
+    'extract': True
   })
-  runtime.set_deployer("yarn", yarn_deployer)
+  runtime.set_deployer("deployer", ssh_deployer)
+
+  _download_packages()
+  _install_yarn(ssh_deployer, "yarn_rm_instance_0")
+  _install_yarn(ssh_deployer, "yarn_nm_instance_0")
+  _start_yarn_rm(ssh_deployer, "yarn_rm_instance_0")
+  _start_yarn_nm(ssh_deployer, "yarn_nm_instance_0")
+
   #############################
   # Install Kafka / Zookeeper #
   #############################
@@ -54,7 +91,7 @@ def setup_suite():
   #####################
   # Install Samza Job #
   #####################
-  yarn_process = yarn_deployer.get_process("yarn_instance_0")
+  yarn_process = ""#TODO yarn_deployer.get_process("yarn_instance_0")
   global samza_deployer
   samza_deployer = syd.SamzaOnYarnDeployer("samza", {
     "pid_keyword": "samza_job_0",
@@ -74,14 +111,6 @@ def setup_suite():
   ###############
   logger.info("Starting Kafka")
   kafka_deployer.start("kafka_instance_0", {
-    "start_command": "start"
-  })
-
-  ###############
-  # Start YARN  #
-  ###############
-  logger.info("Starting YARN")
-  yarn_deployer.start("yarn_instance_0", {
     "start_command": "start"
   })
 
@@ -119,11 +148,5 @@ def teardown_suite():
     'additional_directories': [kafka_process.zookeeper_home, "/tmp/kafka-logs", "/tmp/zookeeper"]
   })
 
-  logger.info("Stopping YARN")
-  yarn_deployer.stop("yarn_instance_0", {
-    "stop_command": "stop"
-  })
-  yarn_deployer.uninstall("yarn_instance_0", {
-    "additional_directories": ["/tmp/samza-integration-test"]
-  })
-
+  _stop_yarn(ssh_deployer, "yarn_rm_instance_0", "rm")
+  _stop_yarn(ssh_deployer, "yarn_nm_instance_0", "nm")

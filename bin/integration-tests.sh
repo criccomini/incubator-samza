@@ -36,17 +36,15 @@ SAMZA_INTEGRATION_TESTS_DIR=$TEST_DIR/samza-integration-tests
 if [[ ! -d "${SAMZA_INTEGRATION_TESTS_DIR}" ]] ; then
   python $VIRTUAL_ENV/virtualenv.py $SAMZA_INTEGRATION_TESTS_DIR
 fi
-cd $SAMZA_INTEGRATION_TESTS_DIR
 
 # activate the virtual environment
-source bin/activate
+source $SAMZA_INTEGRATION_TESTS_DIR/bin/activate
 
 # install zopkio and requests
-pip install -r $BASE_DIR/samza-test/src/main/python/requirements.txt
+pip install -r $SCRIPTS_DIR/requirements.txt
 
 # run the tests
-cd $SCRIPTS_DIR
-zopkio --console-log-level INFO --nopassword tests.py
+zopkio --config-overrides remote_install_path=$TEST_DIR --console-log-level INFO --nopassword $SCRIPTS_DIR/tests.py
 
 # go back to execution directory
 deactivate
