@@ -17,13 +17,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import logging
 import os
-from subprocess import call
+import logging
 import json
 import requests
-
+import tarfile
 import zopkio.constants as constants
+
+from subprocess import call
 from zopkio.deployer import Deployer, Process
 from zopkio.remote_host_helper import better_exec_command, DeploymentError, get_sftp_client, get_ssh_client, open_remote_file
 
@@ -45,10 +46,7 @@ class SamzaJobYarnDeployer(Deployer):
     executable
     """
     configs = self._get_merged_configs(configs)
-
-    # Validate configs.
-    for required_config in ['yarn_nm_hosts', 'install_path', 'executable']:
-      assert configs.get(required_config), 'Required config is undefined: {0}'.format(required_config)
+    self._validate_configs(configs, ['yarn_nm_hosts', 'install_path', 'executable'])
 
     # Get configs.
     nm_hosts = configs.get('yarn_nm_hosts')
@@ -56,28 +54,42 @@ class SamzaJobYarnDeployer(Deployer):
     executable = configs.get('executable')
 
     # FTP and decompress job tarball to all NMs.
-    logger.info('using ' + executable)
-    exec_file_name = os.path.basename(executable)
-    exec_file_location = os.path.join(install_path, exec_file_name)
+    exec_file_location = os.path.join(install_path, self._get_package_tgz_name(package_id))
     exec_file_install_path = os.path.join(install_path, package_id)
-    logger.info('using ' + exec_file_location)
     for host in nm_hosts:
-      with get_ssh_client(host) as ssh:
-        better_exec_command(ssh, "mkdir -p {0}".format(exec_file_install_path), "Failed to create path {0}".format(install_path))
-        with get_sftp_client(host) as ftp:
-          ftp.put(executable, exec_file_location)
-        better_exec_command(ssh, "tar -zxvf {0} -C {1}".format(exec_file_location, exec_file_install_path), "Unable to extract samza job.")
+      with get_sftp_client(host) as ftp:
+        ftp.put(executable, exec_file_location)
+
+    # Extract archive locally so we can use run-job.sh.
+    executable_tgz = tarfile.open(executable, 'r:gz')
+    executable_tgz.extractall(package_id)
 
   def start(self, job_id, configs={}):
     """
     TODO docs
+    TODO it's kind of weird to have package_id as config. seems like it should be in method. Discuss with jehrlich.
+    'package_id':
     'config_factory':
     'config_file':
+    'install_path':
     'properties": (optional) [(property-name,property-value)]
     """
     configs = self._get_merged_configs(configs)
-    # save the job_id -> app ID mapping
-    raise NotImplementedError
+    self._validate_configs(configs, ['package_id', 'config_factory', 'config_file', 'install_path'])
+
+    # Get configs.
+    package_id = configs.get('package_id')
+    config_factory = configs.get('config_factory')
+    config_file = configs.get('config_file')
+    install_path = configs.get('install_path')
+    properties = configs.get('properties', {})
+    properties['yarn.package.path'] = 'file:' + os.path.join(install_path, self._get_package_tgz_name(package_id))
+
+    # Execute bin/run-job.sh locally from driver machine.
+    command = "{0} --config-factory={1} --config-path={2}".format(os.path.join(package_id, "bin/run-job.sh"), config_factory, os.path.join(package_id, config_file))
+    for property_name, property_value in properties.iteritems():
+      command += " --config {0}={1}".format(property_name, property_value)
+    call(command.split(' '))
 
   def stop(self, job_id, configs={}):
     # run bin/kill-yarn-job.sh
@@ -90,11 +102,8 @@ class SamzaJobYarnDeployer(Deployer):
     install_path
     """
     configs = self._get_merged_configs(configs)
+    self._validate_configs(configs, ['yarn_nm_hosts', 'install_path'])
     
-    # Validate configs.
-    for required_config in ['yarn_nm_hosts', 'install_path']:
-      assert nm_hosts, 'Required config is undefined: {0}'.format(required_config)
-
     # Get configs.
     nm_hosts = configs.get('yarn_nm_hosts')
     install_path = configs.get('install_path')
@@ -137,8 +146,15 @@ class SamzaJobYarnDeployer(Deployer):
   def get_logs(self, container_id, logs, directory):
     raise NotImplementedError
 
+  def _validate_configs(self, configs, config_keys):
+    for required_config in config_keys:
+      assert configs.get(required_config), 'Required config is undefined: {0}'.format(required_config)
+
   def _get_merged_configs(self, configs):
     tmp = self.default_configs.copy()
     tmp.update(configs)
     return tmp
+
+  def _get_package_tgz_name(self, package_id):
+    return '{0}.tgz'.format(package_id)
 

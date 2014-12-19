@@ -59,9 +59,10 @@ def setup_suite():
       })
 
   # Start the Samza jobs.
+  samza_install_path = os.path.join(c('remote_install_path'), c('samza_install_path'))
   samza_job_deployer = SamzaJobYarnDeployer({
     'yarn_nm_hosts': c('yarn_nm_hosts').values(),
-    'install_path': os.path.join(c('remote_install_path'), c('samza_install_path')),
+    'install_path': samza_install_path,
   })
 
   samza_job_deployer.install('smoke_tests', {
@@ -69,8 +70,10 @@ def setup_suite():
   })
 
   samza_job_deployer.start('negate_number', {
+    'package_id': 'smoke_tests',
     'config_factory': c('samza_config_factory'),
     'config_file': c('samza_config_file'),
+    'install_path': samza_install_path,
   })
 
 def teardown_suite(): 

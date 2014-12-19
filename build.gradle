@@ -398,6 +398,7 @@ project(":samza-test-jobs") {
     from(file("$projectDir/src/main/resources")) { into "lib/" }
     from(project(':samza-shell').file("src/main/bash")) { into "bin/" }
     from(project(':samza-shell').file("src/main/resources")) { into "lib/" }
+    from(project(':samza-shell').file("src/main/resources/log4j-console.xml")) { into "bin/" }
     from '../LICENSE'
     from '../NOTICE'
     from(configurations.runtime) { into("lib/") }
