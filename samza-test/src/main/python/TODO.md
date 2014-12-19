@@ -16,3 +16,4 @@
 * convert msg payload to JSON instead of string
 * convert __get_kafka_client method in smoke tests to use a kafka context manager
 * merge samza-test and samza-test-job into one package
+* remove all TODOs from python source
