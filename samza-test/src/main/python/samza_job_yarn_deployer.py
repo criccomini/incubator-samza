@@ -18,13 +18,15 @@
 # under the License.
 
 import os
+import re
 import logging
 import json
 import requests
+import shutil
 import tarfile
 import zopkio.constants as constants
 
-from subprocess import call
+from subprocess import PIPE, Popen
 from zopkio.deployer import Deployer, Process
 from zopkio.remote_host_helper import better_exec_command, DeploymentError, get_sftp_client, get_ssh_client, open_remote_file
 
@@ -57,6 +59,8 @@ class SamzaJobYarnDeployer(Deployer):
     exec_file_location = os.path.join(install_path, self._get_package_tgz_name(package_id))
     exec_file_install_path = os.path.join(install_path, package_id)
     for host in nm_hosts:
+      with get_ssh_client(host) as ssh:
+        better_exec_command(ssh, "mkdir -p {0}".format(install_path), "Failed to create path: {0}".format(install_path))
       with get_sftp_client(host) as ftp:
         ftp.put(executable, exec_file_location)
 
@@ -89,11 +93,43 @@ class SamzaJobYarnDeployer(Deployer):
     command = "{0} --config-factory={1} --config-path={2}".format(os.path.join(package_id, "bin/run-job.sh"), config_factory, os.path.join(package_id, config_file))
     for property_name, property_value in properties.iteritems():
       command += " --config {0}={1}".format(property_name, property_value)
-    call(command.split(' '))
+    p = Popen(command.split(' '), stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    output, err = p.communicate()
+    assert p.returncode == 0, "Command returned non-zero exit code ({0}): {1}".format(p.returncode, command)
+
+    # Save application_id for job_id so we can kill the job later.
+    regex = r'.*Submitted application (\w*)'
+    match = re.match(regex, output.replace("\n", ' '))
+    assert match, "Job ({0}) appears not to have started. Expected to see a log line matching regex: {1}".format(job_id, regex)
+    app_id = match.group(1)
+    logger.debug("Got application_id {0} for job_id {1}.".format(app_id, job_id))
+    self.app_ids[job_id] = app_id
 
   def stop(self, job_id, configs={}):
-    # run bin/kill-yarn-job.sh
-    raise NotImplementedError
+    """
+    TODO docs
+    TODO it's kind of weird to have package_id as config. seems like it should be in method. Discuss with jehrlich.
+    'package_id':
+    'install_path':
+    """
+    configs = self._get_merged_configs(configs)
+    self._validate_configs(configs, ['package_id', 'install_path'])
+
+    # Get configs.
+    package_id = configs.get('package_id')
+    install_path = configs.get('install_path')
+
+    # Get the application_id for the job.
+    application_id = self.app_ids.get(job_id)
+
+    # Kill the job, if it's been started, or WARN and return if it's wasn't.
+    if not application_id:
+      logger.warn("Can't stop a job that was never started: {0}".format(job_id))
+    else:
+      command = "{0} {1}".format(os.path.join(package_id, "bin/kill-yarn-job.sh"), application_id)
+      p = Popen(command.split(' '), stdin=PIPE, stdout=PIPE, stderr=PIPE)
+      p.wait()
+      assert p.returncode == 0, "Command returned non-zero exit code ({0}): {1}".format(p.returncode, command)
 
   def uninstall(self, package_id, configs={}):
     """
@@ -111,8 +147,11 @@ class SamzaJobYarnDeployer(Deployer):
     # Delete job package on all NMs.
     exec_file_install_path = os.path.join(install_path, package_id)
     for host in nm_hosts:
-      with get_ssh_client(yarn_hostname) as ssh:
+      with get_ssh_client(host) as ssh:
         better_exec_command(ssh, "rm -rf {0}".format(exec_file_install_path), "Failed to remove {0}".format(exec_file_install_path))
+
+    # Delete job pacakge directory from local driver box.
+    shutil.rmtree(package_id)
 
   # TODO we should implement the below helper methods over time, as we need them.
 

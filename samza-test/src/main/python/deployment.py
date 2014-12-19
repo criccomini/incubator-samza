@@ -10,6 +10,7 @@ from samza_job_yarn_deployer import SamzaJobYarnDeployer
 logger = logging.getLogger(__name__)
 deployers = None
 samza_job_deployer = None
+samza_install_path = None
 
 def _download_packages():
   for url_key in ['url_hadoop', 'url_kafka', 'url_zookeeper']:
@@ -35,9 +36,9 @@ def _new_ssh_deployer(config_prefix, name=None):
   })
 
 def setup_suite():
-  global deployers, samza_job_deployer
-  CWD = os.path.dirname(os.path.abspath(__file__))
-  logger.info('Current working directory: {0}'.format(CWD))
+  global deployers, samza_job_deployer, samza_install_path
+  logger.info('Current working directory: {0}'.format(os.getcwd()))
+  samza_install_path = os.path.join(c('remote_install_path'), c('samza_install_path'))
 
   _download_packages()
 
@@ -59,7 +60,6 @@ def setup_suite():
       })
 
   # Start the Samza jobs.
-  samza_install_path = os.path.join(c('remote_install_path'), c('samza_install_path'))
   samza_job_deployer = SamzaJobYarnDeployer({
     'yarn_nm_hosts': c('yarn_nm_hosts').values(),
     'install_path': samza_install_path,
@@ -76,12 +76,24 @@ def setup_suite():
     'install_path': samza_install_path,
   })
 
-def teardown_suite(): 
-  # TODO properly teardown, including samza job
-  return
+def teardown_suite():
+  # Stop the samza jobs.
+  samza_job_deployer.stop('negate_number', {
+    'package_id': 'smoke_tests',
+    'install_path': samza_install_path,
+  })
+
+  samza_job_deployer.uninstall('smoke_tests')
+
+  # Undeploy everything.
   for name, deployer in deployers.iteritems():
     unique_id = name + '_instance_0'
     deployer.undeploy(unique_id, {
-      'additional_directories': ['/tmp/kafka-logs', '/tmp/zookeeper']
+      'additional_directories': [
+        '/tmp/kafka-logs',
+        '/tmp/zookeeper',
+        '/tmp/hadoop-*',
+        '/tmp/yarn-*',
+      ]
     })
 

@@ -5,7 +5,7 @@
   "kafka_port": 9092,
   "kafka_start_cmd": "kafka_2.9.2-0.8.1.1/bin/kafka-server-start.sh -daemon kafka_2.9.2-0.8.1.1/config/server.properties",
   "kafka_stop_cmd": "kafka_2.9.2-0.8.1.1/bin/kafka-server-stop.sh",
-  "kafka_install_path": "deploy",
+  "kafka_install_path": "deploy/kafka",
   "kafka_executable": "kafka_2.9.2-0.8.1.1.tgz",
   "kafka_post_install_cmds": [
     "sed -i.bak 's/SIGINT/SIGTERM/g' kafka_2.9.2-0.8.1.1/bin/kafka-server-stop.sh",
