@@ -35,7 +35,7 @@ class SamzaJobYarnDeployer(Deployer):
     # map from job_id to app_id
     self.app_ids = {}
     self.default_configs = configs
-    Deployer.__init_1_(self)
+    Deployer.__init__(self)
 
   def install(self, package_id, configs={}):
     """
@@ -48,7 +48,7 @@ class SamzaJobYarnDeployer(Deployer):
 
     # Validate configs.
     for required_config in ['yarn_nm_hosts', 'install_path', 'executable']:
-      assert nm_hosts, 'Required config is undefined: {0}'.format(required_config)
+      assert configs.get(required_config), 'Required config is undefined: {0}'.format(required_config)
 
     # Get configs.
     nm_hosts = configs.get('yarn_nm_hosts')
@@ -56,20 +56,23 @@ class SamzaJobYarnDeployer(Deployer):
     executable = configs.get('executable')
 
     # FTP and decompress job tarball to all NMs.
+    logger.info('using ' + executable)
     exec_file_name = os.path.basename(executable)
     exec_file_location = os.path.join(install_path, exec_file_name)
     exec_file_install_path = os.path.join(install_path, package_id)
+    logger.info('using ' + exec_file_location)
     for host in nm_hosts:
-      with get_sftp_client(host) as ftp:
-        ftp.put(executable, exec_file_location)
-      with get_ssh_client(yarn_hostname) as ssh:
+      with get_ssh_client(host) as ssh:
+        better_exec_command(ssh, "mkdir -p {0}".format(exec_file_install_path), "Failed to create path {0}".format(install_path))
+        with get_sftp_client(host) as ftp:
+          ftp.put(executable, exec_file_location)
         better_exec_command(ssh, "tar -zxvf {0} -C {1}".format(exec_file_location, exec_file_install_path), "Unable to extract samza job.")
 
   def start(self, job_id, configs={}):
     """
     TODO docs
-    'config-factory':
-    'config-file':
+    'config_factory':
+    'config_file':
     'properties": (optional) [(property-name,property-value)]
     """
     configs = self._get_merged_configs(configs)
@@ -134,7 +137,7 @@ class SamzaJobYarnDeployer(Deployer):
   def get_logs(self, container_id, logs, directory):
     raise NotImplementedError
 
-  def _get_merged_configs(configs):
+  def _get_merged_configs(self, configs):
     tmp = self.default_configs.copy()
     tmp.update(configs)
     return tmp

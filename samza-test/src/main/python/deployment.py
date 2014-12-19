@@ -5,9 +5,11 @@ import urllib
 import zopkio.runtime as runtime
 import zopkio.adhoc_deployer as adhoc_deployer
 from zopkio.runtime import get_active_config as c
+from samza_job_yarn_deployer import SamzaJobYarnDeployer
 
 logger = logging.getLogger(__name__)
 deployers = None
+samza_job_deployer = None
 
 def _download_packages():
   for url_key in ['url_hadoop', 'url_kafka', 'url_zookeeper']:
@@ -33,7 +35,7 @@ def _new_ssh_deployer(config_prefix, name=None):
   })
 
 def setup_suite():
-  global deployers
+  global deployers, samza_job_deployer
   CWD = os.path.dirname(os.path.abspath(__file__))
   logger.info('Current working directory: {0}'.format(CWD))
 
@@ -46,7 +48,7 @@ def setup_suite():
     'kafka': _new_ssh_deployer('kafka'),
   }
 
-  # enforce install order through list
+  # Enforce install order through list.
   for name in ['zookeeper', 'yarn_rm', 'yarn_nm', 'kafka']:
     deployer = deployers[name]
     runtime.set_deployer(name, deployer)
@@ -56,15 +58,23 @@ def setup_suite():
         'hostname': host
       })
 
-# TODO do we need these?
-def setup():
-  pass
+  # Start the Samza jobs.
+  samza_job_deployer = SamzaJobYarnDeployer({
+    'yarn_nm_hosts': c('yarn_nm_hosts').values(),
+    'install_path': os.path.join(c('remote_install_path'), c('samza_install_path')),
+  })
 
-def teardown():
-  pass
+  samza_job_deployer.install('smoke_tests', {
+    'executable': c('samza_executable'),
+  })
+
+  samza_job_deployer.start('negate_number', {
+    'config_factory': c('samza_config_factory'),
+    'config_file': c('samza_config_file'),
+  })
 
 def teardown_suite(): 
-  # TODO properly teardown
+  # TODO properly teardown, including samza job
   return
   for name, deployer in deployers.iteritems():
     unique_id = name + '_instance_0'
