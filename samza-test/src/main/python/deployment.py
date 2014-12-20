@@ -77,6 +77,7 @@ def setup_suite():
   })
 
 def teardown_suite():
+  return
   # Stop the samza jobs.
   samza_job_deployer.stop('negate_number', {
     'package_id': 'smoke_tests',
