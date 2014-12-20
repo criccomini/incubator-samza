@@ -87,13 +87,13 @@ def teardown_suite():
 
   # Undeploy everything.
   for name, deployer in deployers.iteritems():
-    unique_id = name + '_instance_0'
-    deployer.undeploy(unique_id, {
-      'additional_directories': [
-        '/tmp/kafka-logs',
-        '/tmp/zookeeper',
-        '/tmp/hadoop-*',
-        '/tmp/yarn-*',
-      ]
-    })
+    for instance, host in c(name + '_hosts').iteritems():
+      deployer.undeploy(instance)
+      """
+      TODO delete these or put them under the remote_install_path dir
+      '/tmp/kafka-logs',
+      '/tmp/zookeeper',
+      '/tmp/hadoop-*',
+      '/tmp/yarn-*',
+      """
 

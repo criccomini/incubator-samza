@@ -145,10 +145,9 @@ class SamzaJobYarnDeployer(Deployer):
     install_path = configs.get('install_path')
 
     # Delete job package on all NMs.
-    exec_file_install_path = os.path.join(install_path, package_id)
     for host in nm_hosts:
       with get_ssh_client(host) as ssh:
-        better_exec_command(ssh, "rm -rf {0}".format(exec_file_install_path), "Failed to remove {0}".format(exec_file_install_path))
+        better_exec_command(ssh, "rm -rf {0}".format(install_path), "Failed to remove {0}".format(install_path))
 
     # Delete job pacakge directory from local driver box.
     shutil.rmtree(package_id)

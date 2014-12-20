@@ -1,32 +1,23 @@
 import os
+from zopkio.runtime import get_active_config as c
 
-# Location on driver machine where remote logs will be SCP'd to.
-LOGS_DIRECTORY = '/tmp/samza-integration-test-logs/'
-# Location on driver machine where other output will be SCP'd to (mostly Naarad output).
-OUTPUT_DIRECTORY = '/tmp/samza-integration-test-output/'
+LOGS_DIRECTORY = 'logs'
+OUTPUT_DIRECTORY = 'output'
 
 def machine_logs():
+  log_paths = {}
+
+  # Attach proper path to all logs.
+  for config_prefix in ['zookeeper', 'yarn_rm', 'yarn_nm', 'kafka']:
+    deployed_path = os.path.join(c('remote_install_path'), c(config_prefix + '_install_path'))
+    relative_log_paths = c(config_prefix + '_logs')
+    log_paths[config_prefix] = map(lambda l: os.path.join(deployed_path, l), relative_log_paths)
+
   return {
-    'zookeeper_instance_0': [
-      '/tmp/samza-integration-test/deploy/zookeeper/zookeeper.out',
-    ],
-    'kafka_instance_0': [
-      '/tmp/samza-integration-test/deploy/kafka/log-cleaner.log',
-      '/tmp/samza-integration-test/deploy/kafka/logs/controller.log',
-      '/tmp/samza-integration-test/deploy/kafka/logs/kafka-request.log',
-      '/tmp/samza-integration-test/deploy/kafka/logs/kafka.log',
-      '/tmp/samza-integration-test/deploy/kafka/logs/kafkaServer-gc.log',
-      '/tmp/samza-integration-test/deploy/kafka/logs/server.log',
-      '/tmp/samza-integration-test/deploy/kafka/logs/state-change.log',
-    ],
-    'yarn_rm_instance_0': [
-      # TODO uncomment this when zopkio supports copying directories instead of files
-      # '/tmp/samza-integration-test/deploy/yarn/logs/userlogs',
-    ],
-    'yarn_nm_instance_0': [
-      # TODO uncomment this when zopkio supports copying directories instead of files
-      # '/tmp/samza-integration-test/deploy/yarn/logs/userlogs',
-    ],
+    'zookeeper_instance_0': log_paths['zookeeper'],
+    'kafka_instance_0': log_paths['kafka'],
+    'yarn_rm_instance_0': log_paths['yarn_rm'],
+    'yarn_nm_instance_0': log_paths['yarn_nm'],
   }
 
 def naarad_logs():
