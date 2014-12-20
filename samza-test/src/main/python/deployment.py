@@ -77,7 +77,6 @@ def setup_suite():
   })
 
 def teardown_suite():
-  return
   # Stop the samza jobs.
   samza_job_deployer.stop('negate_number', {
     'package_id': 'smoke_tests',
@@ -90,11 +89,4 @@ def teardown_suite():
   for name, deployer in deployers.iteritems():
     for instance, host in c(name + '_hosts').iteritems():
       deployer.undeploy(instance)
-      """
-      TODO delete these or put them under the remote_install_path dir
-      '/tmp/kafka-logs',
-      '/tmp/zookeeper',
-      '/tmp/hadoop-*',
-      '/tmp/yarn-*',
-      """
 
