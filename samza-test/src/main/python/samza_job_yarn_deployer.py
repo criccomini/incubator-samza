@@ -1,5 +1,3 @@
-# Copyright 2014 LinkedIn Corp.
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -42,7 +40,6 @@ class SamzaJobYarnDeployer(Deployer):
     as a default whenever overrides are not provided in the methods (intall, 
     start, stop, etc) below.
     """
-
     logging.getLogger("paramiko").setLevel(logging.ERROR)
     # map from job_id to app_id
     self.app_ids = {}
@@ -61,7 +58,6 @@ class SamzaJobYarnDeployer(Deployer):
     install_path: An absolute path where the package will be installed.
     executable: A local path pointing to the location of the package that should be installed on remote hosts.
     """
-
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['yarn_nm_hosts', 'install_path', 'executable'])
 
@@ -101,7 +97,6 @@ class SamzaJobYarnDeployer(Deployer):
     properties for the run-job.sh script. These properties override the 
     config_file's properties.
     """
-
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['package_id', 'config_factory', 'config_file', 'install_path'])
 
@@ -140,7 +135,6 @@ class SamzaJobYarnDeployer(Deployer):
     Usually, the package_id refers to the .tgz job tarball that contains the
     code necessary to run job_id.
     """
-
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['package_id'])
 
@@ -170,7 +164,6 @@ class SamzaJobYarnDeployer(Deployer):
     yarn_nm_hosts: A list of hosts that package was installed on.
     install_path: Path where the package for the job has been installed on remote NMs.
     """
-
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['yarn_nm_hosts', 'install_path'])
     

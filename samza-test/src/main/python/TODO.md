@@ -1,4 +1,3 @@
-* license header for deployment.py et al
 * docs for tests.py
 * update test docs with integration test description
 
