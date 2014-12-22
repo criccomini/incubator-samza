@@ -36,7 +36,7 @@ import org.apache.samza.Partition
 import scala.collection.JavaConversions._
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig
-import org.apache.samza.system.CoordinatorSystemAdmin
+import org.apache.samza.system.SystemAdmin
 
 /**
  * A helper class that does wiring for CoordinatorStreamSystemConsumer and
@@ -56,12 +56,7 @@ class CoordinatorStreamSystemFactory {
     val (coordinatorSystemStream, systemFactory) = getCoordinatorSystemStreamAndFactory(config, registry)
     val systemAdmin = systemFactory.getAdmin(coordinatorSystemStream.getSystem, config)
     val systemProducer = systemFactory.getProducer(coordinatorSystemStream.getSystem, config, registry)
-    val coordinatorSystemAdmin = if (systemAdmin.isInstanceOf[CoordinatorSystemAdmin]) {
-      systemAdmin.asInstanceOf[CoordinatorSystemAdmin]
-    } else {
-      throw new SamzaException("System %s does not support coordinator streams. Its SystemAdmin must implement the CoordinatorSystemAdmin interface, but does not." format coordinatorSystemStream.getSystem)
-    }
-    new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer, coordinatorSystemAdmin)
+    new CoordinatorStreamSystemProducer(coordinatorSystemStream, systemProducer, systemAdmin)
   }
 
   private def getCoordinatorSystemStreamAndFactory(config: Config, registry: MetricsRegistry) = {

@@ -22,7 +22,7 @@ package org.apache.samza.system.kafka
 import org.I0Itec.zkclient.ZkClient
 import org.apache.samza.Partition
 import org.apache.samza.SamzaException
-import org.apache.samza.system.CoordinatorSystemAdmin
+import org.apache.samza.system.SystemAdmin
 import org.apache.samza.system.SystemStreamMetadata
 import org.apache.samza.system.SystemStreamPartition
 import org.apache.samza.util.{ClientUtilTopicMetadataStore, ExponentialSleepStrategy, Logging}
@@ -134,7 +134,7 @@ class KafkaSystemAdmin(
    * Kafka properties to be used during the Changelog topic creation
    */
   topicMetaInformation: Map[String, ChangelogInfo] =  Map[String, ChangelogInfo]()
-  ) extends CoordinatorSystemAdmin with Logging {
+  ) extends SystemAdmin with Logging {
 
   import KafkaSystemAdmin._
 

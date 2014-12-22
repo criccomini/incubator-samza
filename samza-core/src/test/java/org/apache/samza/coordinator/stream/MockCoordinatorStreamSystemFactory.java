@@ -23,9 +23,8 @@ import org.apache.samza.Partition;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.ConfigException;
 import org.apache.samza.metrics.MetricsRegistry;
-import org.apache.samza.system.CoordinatorSystemAdmin;
-import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemAdmin;
+import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemConsumer;
 import org.apache.samza.system.SystemFactory;
 import org.apache.samza.system.SystemProducer;
@@ -89,7 +88,7 @@ public class MockCoordinatorStreamSystemFactory implements SystemFactory {
     return new MockSystemAdmin();
   }
 
-  public static final class MockSystemAdmin extends SinglePartitionWithoutOffsetsSystemAdmin implements CoordinatorSystemAdmin {
+  public static final class MockSystemAdmin extends SinglePartitionWithoutOffsetsSystemAdmin implements SystemAdmin {
     public void createCoordinatorStream(String streamName) {
       // Do nothing.
     }

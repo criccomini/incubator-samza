@@ -258,8 +258,12 @@ class TestOffsetManager {
       def getSystemStreamMetadata(streamNames: java.util.Set[String]) =
         Map[String, SystemStreamMetadata]()
 
-      override def createChangelogStream(topicName: String, numOfChangeLogPartitions: Int) = {
-        new SamzaException("Method not implemented")
+      override def createChangelogStream(topicName: String, numOfChangeLogPartitions: Int) {
+        new UnsupportedOperationException("Method not implemented.")
+      }
+
+      override def createCoordinatorStream(streamName: String) {
+        new UnsupportedOperationException("Method not implemented.")
       }
     }
   }

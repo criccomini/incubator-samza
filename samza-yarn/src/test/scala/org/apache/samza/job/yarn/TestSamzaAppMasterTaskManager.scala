@@ -437,5 +437,11 @@ class MockSystemAdmin(numTasks: Int) extends SystemAdmin {
     }).toMap[String, SystemStreamMetadata]
   }
 
-  override def createChangelogStream(streamName: String, numOfPartitions: Int) = ???
+  override def createChangelogStream(topicName: String, numOfChangeLogPartitions: Int) {
+    new UnsupportedOperationException("Method not implemented.")
+  }
+
+  override def createCoordinatorStream(streamName: String) {
+    new UnsupportedOperationException("Method not implemented.")
+  }
 }

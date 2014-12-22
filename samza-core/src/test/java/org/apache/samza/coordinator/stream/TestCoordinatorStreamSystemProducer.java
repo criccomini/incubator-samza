@@ -31,7 +31,7 @@ import org.apache.samza.SamzaException;
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.Delete;
 import org.apache.samza.coordinator.stream.CoordinatorStreamMessage.SetConfig;
 import org.apache.samza.serializers.model.SamzaObjectMapper;
-import org.apache.samza.system.CoordinatorSystemAdmin;
+import org.apache.samza.system.SystemAdmin;
 import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemProducer;
 import org.apache.samza.system.SystemStream;
@@ -89,15 +89,9 @@ public class TestCoordinatorStreamSystemProducer {
     return null;
   }
 
-  private static class MockSystemAdmin extends SinglePartitionWithoutOffsetsSystemAdmin implements CoordinatorSystemAdmin {
-    private String created = null;
-
+  private static class MockSystemAdmin extends SinglePartitionWithoutOffsetsSystemAdmin implements SystemAdmin {
     public void createCoordinatorStream(String streamName) {
-      created = streamName;
-    }
-
-    public String getCreated() {
-      return created;
+      // Do nothing.
     }
   }
 
