@@ -34,6 +34,15 @@ logger = logging.getLogger(__name__)
 
 class SamzaJobYarnDeployer(Deployer):
   def __init__(self, configs={}):
+    """
+    Instantiates a Samza job deployer that uses run-job.sh and kill-yarn-job.sh 
+    to start and stop Samza jobs in a YARN grid.
+
+    param: configs -- Map of config key/values pairs. These configs will be used
+    as a default whenever overrides are not provided in the methods (intall, 
+    start, stop, etc) below.
+    """
+
     logging.getLogger("paramiko").setLevel(logging.ERROR)
     # map from job_id to app_id
     self.app_ids = {}
@@ -42,11 +51,17 @@ class SamzaJobYarnDeployer(Deployer):
 
   def install(self, package_id, configs={}):
     """
-    TODO docs
-    yarn_nm_hosts
-    install_path
-    executable
+    Installs a package (tarball, or zip) on to a list of remote hosts by 
+    SFTP'ing the package to the remote install_path.
+
+    param: package_id -- A unique ID used to identify an installed YARN package.
+    param: configs -- Map of config key/values pairs. Valid keys include:
+
+    yarn_nm_hosts: A list of YARN NM hosts to install the package onto.
+    install_path: An absolute path where the package will be installed.
+    executable: A local path pointing to the location of the package that should be installed on remote hosts.
     """
+
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['yarn_nm_hosts', 'install_path', 'executable'])
 
@@ -70,14 +85,23 @@ class SamzaJobYarnDeployer(Deployer):
 
   def start(self, job_id, configs={}):
     """
-    TODO docs
-    TODO it's kind of weird to have package_id as config. seems like it should be in method. Discuss with jehrlich.
-    'package_id':
-    'config_factory':
-    'config_file':
-    'install_path':
-    'properties": (optional) [(property-name,property-value)]
+    Starts a Samza job using the bin/run-job.sh script.
+
+    param: job_id -- A unique ID used to idenitfy a Samza job. Job IDs are associated
+    with a package_id, and a config file.
+    param: configs -- Map of config key/values pairs. Valid keys include:
+
+    package_id: The package_id for the package that contains the code for job_id. 
+    Usually, the package_id refers to the .tgz job tarball that contains the 
+    code necessary to run job_id.
+    config_factory: The config factory to use to decode the config_file.
+    config_file: Path to the config file for the job to be run.
+    install_path: Path where the package for the job has been installed on remote NMs.
+    properties: (optional) [(property-name,property-value)] Optional override 
+    properties for the run-job.sh script. These properties override the 
+    config_file's properties.
     """
+
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['package_id', 'config_factory', 'config_file', 'install_path'])
 
@@ -107,17 +131,21 @@ class SamzaJobYarnDeployer(Deployer):
 
   def stop(self, job_id, configs={}):
     """
-    TODO docs
-    TODO it's kind of weird to have package_id as config. seems like it should be in method. Discuss with jehrlich.
-    'package_id':
-    'install_path':
+    Stops a Samza job using the bin/kill-yarn-job.sh script.
+
+    param: job_id -- A unique ID used to idenitfy a Samza job.
+    param: configs -- Map of config key/values pairs. Valid keys include:
+
+    package_id: The package_id for the package that contains the code for job_id.
+    Usually, the package_id refers to the .tgz job tarball that contains the
+    code necessary to run job_id.
     """
+
     configs = self._get_merged_configs(configs)
-    self._validate_configs(configs, ['package_id', 'install_path'])
+    self._validate_configs(configs, ['package_id'])
 
     # Get configs.
     package_id = configs.get('package_id')
-    install_path = configs.get('install_path')
 
     # Get the application_id for the job.
     application_id = self.app_ids.get(job_id)
@@ -133,10 +161,16 @@ class SamzaJobYarnDeployer(Deployer):
 
   def uninstall(self, package_id, configs={}):
     """
-    TODO docs
-    yarn_nm_hosts 
-    install_path
+    Removes the install path for package_id from all remote hosts that it's been
+    installed on.
+
+    param: package_id -- A unique ID used to identify an installed YARN package.
+    param: configs -- Map of config key/values pairs. Valid keys include:
+
+    yarn_nm_hosts: A list of hosts that package was installed on.
+    install_path: Path where the package for the job has been installed on remote NMs.
     """
+
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['yarn_nm_hosts', 'install_path'])
     
