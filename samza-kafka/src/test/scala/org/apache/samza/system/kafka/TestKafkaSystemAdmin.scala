@@ -164,6 +164,10 @@ object TestKafkaSystemAdmin {
 class TestKafkaSystemAdmin {
   import TestKafkaSystemAdmin._
 
+  val systemName = "test"
+  // Provide a random zkAddress, the system admin tries to connect only when a topic is created/validated
+  val systemAdmin = new KafkaSystemAdmin(systemName, brokers, connectZk = () => new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer))
+
   def testShouldAssembleMetadata {
     val oldestOffsets = Map(
       new SystemStreamPartition("test", "stream1", new Partition(0)) -> "o1",
@@ -205,9 +209,6 @@ class TestKafkaSystemAdmin {
 
   @Test
   def testShouldGetOldestNewestAndNextOffsets {
-    val systemName = "test"
-    val systemAdmin = new KafkaSystemAdmin(systemName, brokers, () => new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer))
-
     // Create an empty topic with 50 partitions, but with no offsets.
     createTopic
     validateTopic(TOPIC, 50)
@@ -271,7 +272,6 @@ class TestKafkaSystemAdmin {
 
   @Test
   def testNonExistentTopic {
-    val systemAdmin = new KafkaSystemAdmin("test", brokers, () => new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer))
     val initialOffsets = systemAdmin.getSystemStreamMetadata(Set("non-existent-topic"))
     val metadata = initialOffsets.getOrElse("non-existent-topic", fail("missing metadata"))
     assertEquals(metadata, new SystemStreamMetadata("non-existent-topic", Map(
@@ -280,7 +280,6 @@ class TestKafkaSystemAdmin {
 
   @Test
   def testOffsetsAfter {
-    val systemAdmin = new KafkaSystemAdmin("test", brokers, () => new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer))
     val ssp1 = new SystemStreamPartition("test-system", "test-stream", new Partition(0))
     val ssp2 = new SystemStreamPartition("test-system", "test-stream", new Partition(1))
     val offsetsAfter = systemAdmin.getOffsetsAfter(Map(

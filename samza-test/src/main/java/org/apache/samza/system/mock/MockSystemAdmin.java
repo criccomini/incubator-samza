@@ -54,7 +54,12 @@ public class MockSystemAdmin implements SystemAdmin {
     return metadata;
   }
 
-  @Override
+    @Override
+    public void createChangelogStream(String streamName, int numOfPartitions) {
+        throw new SamzaException("Method not implemented");
+    }
+
+    @Override
   public Map<SystemStreamPartition, String> getOffsetsAfter(Map<SystemStreamPartition, String> offsets) {
     Map<SystemStreamPartition, String> offsetsAfter = new HashMap<SystemStreamPartition, String>();
 

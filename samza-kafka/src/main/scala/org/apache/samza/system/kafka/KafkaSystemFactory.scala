@@ -19,20 +19,20 @@
 
 package org.apache.samza.system.kafka
 
-import org.apache.samza.util.KafkaUtil
+import java.util.Properties
+
+import kafka.utils.ZKStringSerializer
+import org.I0Itec.zkclient.ZkClient
+import org.apache.samza.util.{Logging, KafkaUtil, ExponentialSleepStrategy, ClientUtilTopicMetadataStore}
 import org.apache.samza.config.Config
 import org.apache.samza.metrics.MetricsRegistry
 import org.apache.samza.config.KafkaConfig.Config2Kafka
 import org.apache.samza.SamzaException
 import kafka.producer.Producer
 import org.apache.samza.system.SystemFactory
-import org.apache.samza.util.ExponentialSleepStrategy
-import org.apache.samza.util.ClientUtilTopicMetadataStore
-import org.I0Itec.zkclient.ZkClient
-import kafka.utils.ZKStringSerializer
 import org.apache.samza.checkpoint.kafka.KafkaCheckpointManagerFactory
 
-class KafkaSystemFactory extends SystemFactory {
+class KafkaSystemFactory extends SystemFactory with Logging {
   def getConsumer(systemName: String, config: Config, registry: MetricsRegistry) = {
     val clientId = KafkaUtil.getClientId("samza-consumer", config)
     val metrics = new KafkaSystemConsumerMetrics(systemName, registry)
@@ -110,6 +110,15 @@ class KafkaSystemFactory extends SystemFactory {
     val coordinatorStreamReplicationFactor = config
       .getCheckpointReplicationFactor.getOrElse("3")
       .toInt
+    val storeToChangelog = config.getKafkaChangelogEnabledStores()
+    // Construct the meta information for each topic, if the replication factor is not defined, we use 2 as the number of replicas for the change log stream.
+    val topicMetaInformation = storeToChangelog.map{case (storeName, topicName) =>
+    {
+       val replicationFactor = config.getChangelogStreamReplicationFactor(storeName).getOrElse("2").toInt
+       val changelogInfo = ChangelogInfo(replicationFactor, config.getChangelogKafkaProperties(storeName))
+       info("Creating topic meta information for topic: " + topicName + " with replication factor: " + replicationFactor)
+       (topicName, changelogInfo)
+    }}.toMap
 
     new KafkaSystemAdmin(
       systemName,
@@ -119,6 +128,7 @@ class KafkaSystemFactory extends SystemFactory {
       coordinatorStreamReplicationFactor,
       timeout,
       bufferSize,
-      clientId)
+      clientId,
+      topicMetaInformation)
   }
 }
