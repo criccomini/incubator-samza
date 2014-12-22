@@ -21,7 +21,7 @@ fi
 mkdir -p $TEST_DIR
 rm -rf $SCRIPTS_DIR
 cp -r samza-test/src/main/python/ $SCRIPTS_DIR
-cp ./samza-test-jobs/build/distributions/samza-test-jobs-*.tgz $TEST_DIR
+cp ./samza-test/build/distributions/samza-test*.tgz $TEST_DIR
 cd $TEST_DIR
 
 # setup virtualenv locally if it's not already there

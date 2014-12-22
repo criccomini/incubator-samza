@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.samza.examples;
+package org.apache.samza.test.integration;
 import org.apache.samza.system.IncomingMessageEnvelope;
 import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemStream;

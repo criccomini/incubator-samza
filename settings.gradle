@@ -27,11 +27,10 @@ include \
   'samza-log4j',
   'samza-shell',
   'samza-yarn',
-  'samza-test',
-  'samza-test-jobs'
+  'samza-test'
 
 rootProject.children.each {
-  if (it.name != 'samza-api' && it.name != 'samza-shell' && it.name != 'samza-log4j' && it.name != 'samza-test-jobs') {
+  if (it.name != 'samza-api' && it.name != 'samza-shell' && it.name != 'samza-log4j') {
     it.name = it.name + "_" + scalaVersion
   }
 }
