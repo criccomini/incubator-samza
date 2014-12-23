@@ -206,6 +206,8 @@ project(":samza-yarn_$scalaVersion") {
     compile("org.apache.hadoop:hadoop-common:$yarnVersion") {
       exclude module: 'slf4j-log4j12'
       exclude module: 'servlet-api'
+      // Exclude because YARN's 3.4.5 ZK version is incompatbile with Kafka's 3.3.4.
+      exclude module: 'zookeeper'
     }
     compile("org.scalatra:scalatra_$scalaVersion:$scalatraVersion") {
       exclude module: 'scala-compiler'
@@ -216,6 +218,7 @@ project(":samza-yarn_$scalaVersion") {
       exclude module: 'slf4j-api'
     }
     compile "joda-time:joda-time:$jodaTimeVersion"
+    compile "org.apache.zookeeper:zookeeper:$zookeeperVersion"
     testCompile "junit:junit:$junitVersion"
     testCompile "org.mockito:mockito-all:$mockitoVersion"
   }
@@ -364,9 +367,6 @@ project(":samza-test_$scalaVersion") {
     compile project(":samza-core_$scalaVersion")
     runtime project(":samza-log4j")
     runtime project(":samza-yarn_$scalaVersion")
-    runtime("org.apache.hadoop:hadoop-hdfs:$yarnVersion") {
-      exclude module: 'slf4j-log4j12'
-    }
     runtime project(":samza-kafka_$scalaVersion")
     compile "org.scala-lang:scala-library:$scalaLibVersion"
     compile "net.sf.jopt-simple:jopt-simple:$joptSimpleVersion"
@@ -375,6 +375,7 @@ project(":samza-test_$scalaVersion") {
     compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
     testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
     testCompile "com.101tec:zkclient:$zkClientVersion"
+    testCompile project(":samza-kafka_$scalaVersion")
     testCompile "org.scalatest:scalatest_$scalaVersion:$scalaTestVersion"
     testRuntime "org.slf4j:slf4j-simple:$slf4jVersion"
   }
