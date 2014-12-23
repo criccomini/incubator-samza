@@ -74,7 +74,7 @@ Samza uses [Zopkio](https://github.com/linkedin/Zopkio) to deploy and execute it
 
     ./bin/integration-tests.sh /tmp/samza-tests
 
-The parameter defines where the integration tests should install packages locally. Executing this command will:
+The parameter defines where the integration tests should install packages both locally and on remote systems. Executing this command will:
 
 1. Build a samza-test job tarball.
 2. Download and install YARN, Kafka, and ZooKeeper.
