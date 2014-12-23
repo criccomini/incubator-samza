@@ -1,5 +1,3 @@
-* update test docs with integration test description
-
 * make naraad work
 * add usr/bin/python to all python files
 * update yarn_instance_0 logs in perf.py to point to userlogs dir when https://github.com/linkedin/Zopkio/issues/17 is resolved.

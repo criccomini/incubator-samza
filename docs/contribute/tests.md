@@ -19,7 +19,7 @@ title: Tests
    limitations under the License.
 -->
 
-Samza's unit tests are written on top of [JUnit](http://junit.org/), and license checking is done with [Apache Rat](http://creadur.apache.org/rat/). An extensive integration test suite is not currently available. This is being actively worked on in [SAMZA-6](https://issues.apache.org/jira/browse/SAMZA-6) and [SAMZA-14](https://issues.apache.org/jira/browse/SAMZA-14).
+Samza's unit tests are written on top of [JUnit](http://junit.org/), and license checking is done with [Apache Rat](http://creadur.apache.org/rat/). Samza's integration tests are written on top of [Zopkio](https://github.com/linkedin/Zopkio).
 
 ### Running Unit Tests Locally
 
@@ -67,3 +67,20 @@ On Mac, check-all.sh will default to the appropriate path for each environment v
 [Travis CI](https://travis-ci.org/apache/incubator-samza) has been configured to run Samza's unit tests after every commit to Samza's [master branch](https://git-wip-us.apache.org/repos/asf?p=incubator-samza.git;a=tree). The test results are mailed to the [developer mailing list](/community/mailing-lists.html), and posted in the [IRC channel](/community/irc.html).
 
 [![Build Status](https://travis-ci.org/apache/incubator-samza.svg?branch=master)](https://travis-ci.org/apache/incubator-samza)
+
+### Running Integration Tests Locally
+
+Samza uses [Zopkio](https://github.com/linkedin/Zopkio) to deploy and execute its integration tests. Integration tests can be executed by running:
+
+    ./bin/integration-tests.sh /tmp/samza-tests
+
+The parameter defines where the integration tests should install packages locally. Executing this command will:
+
+1. Build a samza-test job tarball.
+2. Download and install YARN, Kafka, and ZooKeeper.
+3. Deploy the samza-test job tarball to all YARN NM machines.
+4. Start all Samza integration test jobs.
+5. Feed input data to the jobs, and verify the results.
+6. Open a report, and aggregate all remote logs.
+
+The default configurations that ship with Samza deploy all software, and run all tests locally on the machine from which the `integration-tests.sh` command was executed.
