@@ -1,4 +1,3 @@
-* docs for tests.py
 * update test docs with integration test description
 
 * make naraad work
