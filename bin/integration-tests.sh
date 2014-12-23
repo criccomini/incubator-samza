@@ -14,6 +14,13 @@ if test -z "$TEST_DIR"; then
   exit 0
 fi
 
+# safety check for virtualenv
+if [ -f $HOME/.pydistutils.cfg ]; then
+  echo "Virtualenv can't run while $HOME/.pydistutils.cfg exists."
+  echo "Please remove $HOME/.pydistutils.cfg, and try again."
+  exit 0
+fi
+
 # build integration test tarball
 ./gradlew releaseTestJobs
 
@@ -25,7 +32,7 @@ cp ./samza-test/build/distributions/samza-test*.tgz $TEST_DIR
 cd $TEST_DIR
 
 # setup virtualenv locally if it's not already there
-VIRTUAL_ENV=virtualenv-1.9
+VIRTUAL_ENV=virtualenv-12.0.2
 if [[ ! -d "${TEST_DIR}/${VIRTUAL_ENV}" ]] ; then
   curl -O https://pypi.python.org/packages/source/v/virtualenv/$VIRTUAL_ENV.tar.gz
   tar xvfz $VIRTUAL_ENV.tar.gz
