@@ -18,6 +18,7 @@
  */
 
 package org.apache.samza.test.integration;
+
 import org.apache.samza.system.IncomingMessageEnvelope;
 import org.apache.samza.system.OutgoingMessageEnvelope;
 import org.apache.samza.system.SystemStream;
@@ -25,13 +26,15 @@ import org.apache.samza.task.MessageCollector;
 import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskCoordinator;
 
-
+/*
+ * A simple test job that reads strings, converts them to integers, multiplies 
+ * by -1, and outputs to "samza-test-topic-output" stream.
+ */
 public class NegateNumberTask implements StreamTask {
   public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
     String input = (String) envelope.getMessage();
     Integer number = Integer.valueOf(input);
     Integer output = number.intValue() * -1;
-    collector.send(
-        new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-test-topic-output"), output.toString()));
+    collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "samza-test-topic-output"), output.toString()));
   }
 }
