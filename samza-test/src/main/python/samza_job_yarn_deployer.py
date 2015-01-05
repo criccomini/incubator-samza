@@ -166,7 +166,7 @@ class SamzaJobYarnDeployer(Deployer):
     """
     configs = self._get_merged_configs(configs)
     self._validate_configs(configs, ['yarn_nm_hosts', 'install_path'])
-    
+
     # Get configs.
     nm_hosts = configs.get('yarn_nm_hosts')
     install_path = configs.get('install_path')
