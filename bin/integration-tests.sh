@@ -1,8 +1,9 @@
-#!/bin/bash
+#!/bin/bash -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR=$DIR/..
-TEST_DIR=$1
+# always use absolute paths for TEST_DIR
+TEST_DIR=$(cd $(dirname $1); pwd)/$(basename $1)
 SCRIPTS_DIR=$TEST_DIR/scripts
 
 if test -z "$TEST_DIR"; then
