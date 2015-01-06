@@ -18,18 +18,21 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR=$DIR/..
-# always use absolute paths for TEST_DIR
-TEST_DIR=$(cd $(dirname $1); pwd)/$(basename $1)
-SCRIPTS_DIR=$TEST_DIR/scripts
+TEST_DIR=$1
+AUTH_TYPE=$2
 
 if test -z "$TEST_DIR"; then
   echo
   echo "  USAGE:"
   echo
-  echo "    ${BASH_SOURCE[0]##*/} \"<dirname to run tests in>\""
+  echo "    ${BASH_SOURCE[0]##*/} \"<dirname to run tests in>\" [zopkio args...]"
   echo
   exit 0
 fi
+
+# always use absolute paths for ABS_TEST_DIR
+ABS_TEST_DIR=$(cd $(dirname $TEST_DIR); pwd)/$(basename $TEST_DIR)
+SCRIPTS_DIR=$ABS_TEST_DIR/scripts
 
 # safety check for virtualenv
 if [ -f $HOME/.pydistutils.cfg ]; then
@@ -42,21 +45,21 @@ fi
 ./gradlew releaseTestJobs
 
 # create integration test directory
-mkdir -p $TEST_DIR
+mkdir -p $ABS_TEST_DIR
 rm -rf $SCRIPTS_DIR
 cp -r samza-test/src/main/python/ $SCRIPTS_DIR
-cp ./samza-test/build/distributions/samza-test*.tgz $TEST_DIR
-cd $TEST_DIR
+cp ./samza-test/build/distributions/samza-test*.tgz $ABS_TEST_DIR
+cd $ABS_TEST_DIR
 
 # setup virtualenv locally if it's not already there
 VIRTUAL_ENV=virtualenv-12.0.2
-if [[ ! -d "${TEST_DIR}/${VIRTUAL_ENV}" ]] ; then
+if [[ ! -d "${ABS_TEST_DIR}/${VIRTUAL_ENV}" ]] ; then
   curl -O https://pypi.python.org/packages/source/v/virtualenv/$VIRTUAL_ENV.tar.gz
   tar xvfz $VIRTUAL_ENV.tar.gz
 fi
 
 # build a clean virtual environment
-SAMZA_INTEGRATION_TESTS_DIR=$TEST_DIR/samza-integration-tests
+SAMZA_INTEGRATION_TESTS_DIR=$ABS_TEST_DIR/samza-integration-tests
 if [[ ! -d "${SAMZA_INTEGRATION_TESTS_DIR}" ]] ; then
   python $VIRTUAL_ENV/virtualenv.py $SAMZA_INTEGRATION_TESTS_DIR
 fi
@@ -67,8 +70,17 @@ source $SAMZA_INTEGRATION_TESTS_DIR/bin/activate
 # install zopkio and requests
 pip install -r $SCRIPTS_DIR/requirements.txt
 
+# treat all trailing parameters (after dirname) as zopkio switches
+shift
+SWITCHES="$*"
+
+# default to info-level debugging if not specified
+if [[ $SWITCHES != *"console-log-level"* ]]; then
+  SWITCHES="$SWITCHES --console-log-level INFO"
+fi
+
 # run the tests
-zopkio --config-overrides remote_install_path=$TEST_DIR --console-log-level INFO --nopassword $SCRIPTS_DIR/tests.py
+zopkio --config-overrides remote_install_path=$ABS_TEST_DIR $SWITCHES $SCRIPTS_DIR/tests.py
 
 # go back to execution directory
 deactivate

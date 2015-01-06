@@ -84,3 +84,30 @@ The parameter defines where the integration tests should install packages both l
 6. Open a report, and aggregate all remote logs.
 
 The default configurations that ship with Samza deploy all software, and run all tests locally on the machine from which the `integration-tests.sh` command was executed.
+
+The integration tests use SSH to interact with remote machines (and localhost). This means that you need an authentication mechanism when connecting to the machines. The two authentication mechanisms provided are:
+
+1. Interactive
+2. Public key
+
+#### Interactive
+
+Zopkio will prompt you for a password by default. This password will be used as the SSH password when trying to log into remote systems.
+
+#### Public Key
+
+Zopkio supports public key authentication if you prefer to use it, or if your environment doesn't allow interactive authentication. To use public key authentication, add your public SSH key to ~/.ssh/authorized\_keys, and SSH to all of the machines that you'll be deploying to (localhost by default). See [here](http://www.linuxproblem.org/art_9.html) for details.
+
+Once this is done, you can run Zopkio with the \-\-nopassword parameter:
+
+    ./bin/integration-tests.sh /tmp/samza-tests --nopassword
+
+This will skip the password prompt, and force Zopkio to try public key authentication.
+
+#### Console Logging
+
+The integration-tests.sh script will set the console log level to INFO by default. The level can be changed with:
+
+    ./bin/integration-tests.sh /tmp/samza-tests --console-log-level DEBUG
+
+Changing this setting will define how verbose Zopkio is during test execution. It does not affect any of the log4j.xml settings in Samza, YARN, Kafka, or ZooKeeper.
