@@ -19,7 +19,6 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BASE_DIR=$DIR/..
 TEST_DIR=$1
-AUTH_TYPE=$2
 
 if test -z "$TEST_DIR"; then
   echo
