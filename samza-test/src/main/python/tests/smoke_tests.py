@@ -71,7 +71,7 @@ def _get_kafka_client(num_retries=20, retry_sleep=1):
   kafka_hosts = runtime.get_active_config('kafka_hosts').values()
   kafka_port = runtime.get_active_config('kafka_port')
   assert len(kafka_hosts) > 0, 'Missing required configuration: kafka_hosts'
-  connect_string = ','.join(map(lambda h: h + ':{0},'.format(kafka_port), kafka_hosts))
+  connect_string = ','.join(map(lambda h: h + ':{0},'.format(kafka_port), kafka_hosts)).rstrip(',')
   # wait for at least one broker to come up
   if not _wait_for_server(kafka_hosts[0], kafka_port, 30):
     raise Exception('Unable to connect to Kafka broker: {0}:{1}'.format(kafka_hosts[0], kafka_port))
