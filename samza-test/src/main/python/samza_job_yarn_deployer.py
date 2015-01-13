@@ -23,6 +23,7 @@ import requests
 import shutil
 import tarfile
 import zopkio.constants as constants
+import templates
 
 from subprocess import PIPE, Popen
 from zopkio.deployer import Deployer, Process
@@ -54,12 +55,14 @@ class SamzaJobYarnDeployer(Deployer):
     param: package_id -- A unique ID used to identify an installed YARN package.
     param: configs -- Map of config key/values pairs. Valid keys include:
 
+    yarn_site_template: Jinja2 yarn-site.xml template local path.
+    yarn_driver_configs: Key/value pairs to be injected into the yarn-site.xml template.
     yarn_nm_hosts: A list of YARN NM hosts to install the package onto.
     install_path: An absolute path where the package will be installed.
     executable: A local path pointing to the location of the package that should be installed on remote hosts.
     """
     configs = self._get_merged_configs(configs)
-    self._validate_configs(configs, ['yarn_nm_hosts', 'install_path', 'executable'])
+    self._validate_configs(configs, ['yarn_site_template', 'yarn_driver_configs', 'yarn_nm_hosts', 'install_path', 'executable'])
 
     # Get configs.
     nm_hosts = configs.get('yarn_nm_hosts')
@@ -70,14 +73,25 @@ class SamzaJobYarnDeployer(Deployer):
     exec_file_location = os.path.join(install_path, self._get_package_tgz_name(package_id))
     exec_file_install_path = os.path.join(install_path, package_id)
     for host in nm_hosts:
+      logger.info('Deploying {0} on host: {1}'.format(package_id, host))
       with get_ssh_client(host) as ssh:
         better_exec_command(ssh, "mkdir -p {0}".format(install_path), "Failed to create path: {0}".format(install_path))
       with get_sftp_client(host) as ftp:
-        ftp.put(executable, exec_file_location)
+        def progress(transferred_bytes, total_bytes_to_transfer):
+          logger.debug("{0} of {1} bytes transferred.".format(transferred_bytes, total_bytes_to_transfer))
+        ftp.put(executable, exec_file_location, callback=progress)
 
     # Extract archive locally so we can use run-job.sh.
     executable_tgz = tarfile.open(executable, 'r:gz')
     executable_tgz.extractall(package_id)
+
+    # Generate yarn-site.xml install it in package's local 'config' directory.
+    yarn_site_dir = self._get_yarn_conf_dir(package_id)
+    yarn_site_path = os.path.join(yarn_site_dir, 'yarn-site.xml')
+    logger.info("Installing yarn-site.xml to {0}".format(yarn_site_path))
+    if not os.path.exists(yarn_site_dir):
+      os.makedirs(yarn_site_dir)
+    templates.render_config(configs.get('yarn_site_template'), yarn_site_path, configs.get('yarn_driver_configs'))
 
   def start(self, job_id, configs={}):
     """
@@ -110,11 +124,13 @@ class SamzaJobYarnDeployer(Deployer):
 
     # Execute bin/run-job.sh locally from driver machine.
     command = "{0} --config-factory={1} --config-path={2}".format(os.path.join(package_id, "bin/run-job.sh"), config_factory, os.path.join(package_id, config_file))
+    env = self._get_env_vars(package_id)
     for property_name, property_value in properties.iteritems():
       command += " --config {0}={1}".format(property_name, property_value)
-    p = Popen(command.split(' '), stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    p = Popen(command.split(' '), stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
     output, err = p.communicate()
-    assert p.returncode == 0, "Command returned non-zero exit code ({0}): {1}".format(p.returncode, command)
+    logger.debug("Output from run-job.sh:\nstdout: {0}\nstderr: {1}".format(output, err))
+    assert p.returncode == 0, "Command ({0}) returned non-zero exit code ({1}).\nstdout: {2}\nstderr: {3}".format(command, p.returncode, output, err)
 
     # Save application_id for job_id so we can kill the job later.
     regex = r'.*Submitted application (\w*)'
@@ -144,12 +160,13 @@ class SamzaJobYarnDeployer(Deployer):
     # Get the application_id for the job.
     application_id = self.app_ids.get(job_id)
 
-    # Kill the job, if it's been started, or WARN and return if it's wasn't.
+    # Kill the job, if it's been started, or WARN and return if it's hasn't.
     if not application_id:
       logger.warn("Can't stop a job that was never started: {0}".format(job_id))
     else:
       command = "{0} {1}".format(os.path.join(package_id, "bin/kill-yarn-job.sh"), application_id)
-      p = Popen(command.split(' '), stdin=PIPE, stdout=PIPE, stderr=PIPE)
+      env = self._get_env_vars(package_id)
+      p = Popen(command.split(' '), stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
       p.wait()
       assert p.returncode == 0, "Command returned non-zero exit code ({0}): {1}".format(p.returncode, command)
 
@@ -222,4 +239,17 @@ class SamzaJobYarnDeployer(Deployer):
 
   def _get_package_tgz_name(self, package_id):
     return '{0}.tgz'.format(package_id)
+
+  def _get_yarn_home_dir(self, package_id):
+    return os.path.abspath(package_id)
+
+  def _get_yarn_conf_dir(self, package_id):
+    return os.path.join(self._get_yarn_home_dir(package_id), 'config')
+
+  def _get_env_vars(self, package_id):
+    env = os.environ.copy()
+    env['YARN_CONF_DIR'] = self._get_yarn_conf_dir(package_id)
+    env['HADOOP_CONF_DIR'] = env['YARN_CONF_DIR']
+    logger.debug('Built environment: {0}'.format(env))
+    return env
 

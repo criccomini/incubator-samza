@@ -18,3 +18,4 @@
 zopkio
 requests
 kafka-python
+Jinja2

@@ -1,4 +1,5 @@
 {
+  "yarn_site_template": "scripts/templates/yarn-site.xml",
   "yarn_rm_hosts": {
     "yarn_rm_instance_0": "localhost"
   },
@@ -30,5 +31,8 @@
   "yarn_nm_executable": "hadoop-2.4.0.tar.gz",
   "yarn_nm_logs": [
     "hadoop-2.4.0/logs"
-  ]
+  ],
+  "yarn_driver_configs": {
+    "yarn.resourcemanager.hostname": "localhost"
+  }
 }
