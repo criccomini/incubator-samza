@@ -17,15 +17,15 @@
 # under the License.
 
 # Job
-job.name=watcher
+job.name=joiner
 
 # Task
-task.class=samza.test.integration.join.Joiner
-task.inputs=kafka.epoch
+task.class=org.apache.samza.test.integration.join.Joiner
+task.inputs=kafka.emitted
 
-task.window.ms=300000
+stores.joiner-state.factory=org.apache.samza.storage.kv.KeyValueStorageEngineFactory
+stores.joiner-state.key.serde=string
+stores.joiner-state.msg.serde=string
+stores.joiner-state.changelog=kafka.joiner-state
 
-max.time.between.epochs.ms=600000
-mail.smtp.host=TODO
-mail.to=dev@samza.incubator.apache.org
-mail.from=gregor@incubator.apache.org
+num.partitions=2

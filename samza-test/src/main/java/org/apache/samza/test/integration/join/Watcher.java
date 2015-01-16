@@ -20,7 +20,6 @@
 package org.apache.samza.test.integration.join;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Properties;
 
 import javax.mail.Message;
@@ -38,8 +37,11 @@ import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
 import org.apache.samza.task.WindowableTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Watcher implements StreamTask, WindowableTask, InitableTask {
+  private static Logger logger = LoggerFactory.getLogger(Watcher.class);
 
   private boolean inError = false;
   private long lastEpochChange = System.currentTimeMillis();
@@ -48,7 +50,7 @@ public class Watcher implements StreamTask, WindowableTask, InitableTask {
   private String smtpHost;
   private String to;
   private String from;
-  
+
   @Override
   public void init(Config config, TaskContext context) {
     this.maxTimeBetweenEpochsMs = config.getLong("max.time.between.epochs.ms");
@@ -56,41 +58,43 @@ public class Watcher implements StreamTask, WindowableTask, InitableTask {
     this.to = config.get("mail.to");
     this.from = config.get("mail.from");
   }
-  
+
   @Override
   public void process(IncomingMessageEnvelope envelope, MessageCollector collector, TaskCoordinator coordinator) {
     int epoch = Integer.parseInt((String) envelope.getMessage());
-    if(epoch > currentEpoch) {
+    if (epoch > currentEpoch) {
+      logger.info("Epoch changed to " + epoch + " from " + currentEpoch);
       this.currentEpoch = epoch;
       this.lastEpochChange = System.currentTimeMillis();
       this.inError = false;
     }
   }
-  
+
   @Override
   public void window(MessageCollector collector, TaskCoordinator coordinator) {
     boolean isLagging = System.currentTimeMillis() - lastEpochChange > maxTimeBetweenEpochsMs;
-    if(!inError && isLagging) {
+    if (!inError && isLagging) {
       this.inError = true;
-      sendEmail(from, to, "Job failed to make progress!", String.format("No epoch change for %d minutes.", this.maxTimeBetweenEpochsMs / (60*1000)));
+      logger.info("Error state detected, alerting...");
+      sendEmail(from, to, "Job failed to make progress!", String.format("No epoch change for %d minutes.", this.maxTimeBetweenEpochsMs / (60 * 1000)));
     }
   }
-  
+
   private void sendEmail(String from, String to, String subject, String body) {
     Properties props = new Properties();
     props.put("mail.smtp.host", smtpHost);
     Session session = Session.getInstance(props, null);
     try {
-        MimeMessage msg = new MimeMessage(session);
-        msg.setFrom(new InternetAddress(from));
-        msg.addRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
-        msg.setSubject(subject);
-        msg.setSentDate(new Date());
-        msg.setText(body);
-        Transport.send(msg);
+      MimeMessage msg = new MimeMessage(session);
+      msg.setFrom(new InternetAddress(from));
+      msg.addRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+      msg.setSubject(subject);
+      msg.setSentDate(new Date());
+      msg.setText(body);
+      Transport.send(msg);
     } catch (MessagingException e) {
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     }
   }
-  
+
 }

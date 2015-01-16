@@ -373,6 +373,7 @@ project(":samza-test_$scalaVersion") {
     compile "javax.mail:mail:1.4"
     compile "junit:junit:$junitVersion"
     compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
+    compile "org.slf4j:slf4j-api:$slf4jVersion"
     testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
     testCompile "com.101tec:zkclient:$zkClientVersion"
     testCompile project(":samza-kafka_$scalaVersion")

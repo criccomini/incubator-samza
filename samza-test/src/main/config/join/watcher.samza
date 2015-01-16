@@ -17,17 +17,14 @@
 # under the License.
 
 # Job
-job.name=emitter
+job.name=watcher
 
 # Task
-task.class=samza.test.integration.join.Emitter
+task.class=org.apache.samza.test.integration.join.Watcher
 task.inputs=kafka.epoch
+task.window.ms=30000
 
-stores.emitter-state.factory=samza.storage.kv.KeyValueStorageEngineFactory
-stores.emitter-state.key.serde=string
-stores.emitter-state.msg.serde=string
-stores.emitter-state.changelog=kafka.emitter-state
-
-task.window.ms=0
-
-count=100000
+max.time.between.epochs.ms=60000
+mail.smtp.host=email.enron.com
+mail.to=dev@samza.incubator.apache.org
+mail.from=gregor-noreply@incubator.apache.org

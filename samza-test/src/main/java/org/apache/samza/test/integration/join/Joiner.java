@@ -32,10 +32,13 @@ import org.apache.samza.task.MessageCollector;
 import org.apache.samza.task.StreamTask;
 import org.apache.samza.task.TaskContext;
 import org.apache.samza.task.TaskCoordinator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unchecked")
 public class Joiner implements StreamTask, InitableTask {
-  
+  private static Logger logger = LoggerFactory.getLogger(Joiner.class);
+
   private KeyValueStore<String, String> store;
   private int expected;
 
@@ -53,55 +56,61 @@ public class Joiner implements StreamTask, InitableTask {
     int epoch = Integer.parseInt(pieces[0]);
     int partition = Integer.parseInt(pieces[1]);
     Partitions partitions = loadPartitions(epoch, key);
-    if(partitions.epoch != epoch) {
+    logger.info("Joiner got epoch = " + epoch + ", partition = " + partition + ", parts = " + partitions);
+    if (partitions.epoch < epoch) {
       // we are in a new era
-      if(partitions.partitions.size() != expected)
+      if (partitions.partitions.size() != expected)
         throw new IllegalArgumentException("Should have " + expected + " partitions when new epoch starts.");
+      logger.info("Resetting epoch to " + epoch);
       this.store.delete(key);
       partitions.epoch = epoch;
       partitions.partitions.clear();
       partitions.partitions.add(partition);
+    } else if (partitions.epoch > epoch) {
+      logger.info("Ignoring message for epoch " + epoch);
     } else {
       partitions.partitions.add(partition);
-      if(partitions.partitions.size() == expected)
+      if (partitions.partitions.size() == expected) {
         collector.send(new OutgoingMessageEnvelope(new SystemStream("kafka", "completed-keys"), key, Integer.toString(epoch)));
+        logger.info("Completed key " + key + " for epoch " + epoch);
+      }
     }
     this.store.put(key, partitions.toString());
   }
-  
+
   private Partitions loadPartitions(int epoch, String key) {
     String current = this.store.get(key);
     Partitions partitions;
-    if(current == null)
+    if (current == null)
       partitions = new Partitions(epoch, new HashSet<Integer>());
     else
       partitions = Partitions.parse(current);
     return partitions;
   }
-  
+
   private static class Partitions {
     int epoch;
     Set<Integer> partitions;
-    
+
     public Partitions(int epoch, Set<Integer> partitions) {
       this.epoch = epoch;
       this.partitions = partitions;
     }
-    
+
     public static Partitions parse(String s) {
       String[] pieces = s.split("\\|", -1);
       int epoch = Integer.parseInt(pieces[1]);
       Set<Integer> set = new HashSet<Integer>(pieces.length);
-      for(int i = 2; i < pieces.length - 1; i++)
+      for (int i = 2; i < pieces.length - 1; i++)
         set.add(Integer.parseInt(pieces[i]));
       return new Partitions(epoch, set);
     }
-    
+
     public String toString() {
       StringBuilder b = new StringBuilder("|");
       b.append(epoch);
       b.append("|");
-      for(int p: partitions) {
+      for (int p : partitions) {
         b.append(p);
         b.append("|");
       }

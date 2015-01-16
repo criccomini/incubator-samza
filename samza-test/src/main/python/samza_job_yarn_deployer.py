@@ -123,7 +123,7 @@ class SamzaJobYarnDeployer(Deployer):
     properties['yarn.package.path'] = 'file:' + os.path.join(install_path, self._get_package_tgz_name(package_id))
 
     # Execute bin/run-job.sh locally from driver machine.
-    command = "{0} --config-factory={1} --config-path={2}".format(os.path.join(package_id, "bin/run-job.sh"), config_factory, os.path.join(package_id, config_file))
+    command = "{0} --config-factory={1} --config-path={2} --config-path={3}".format(os.path.join(package_id, "bin/run-job.sh"), config_factory, os.path.join(package_id, 'config', 'common.properties'), os.path.join(package_id, config_file))
     env = self._get_env_vars(package_id)
     for property_name, property_value in properties.iteritems():
       command += " --config {0}={1}".format(property_name, property_value)
