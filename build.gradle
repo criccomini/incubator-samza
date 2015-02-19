@@ -313,6 +313,7 @@ project(':samza-standalone') {
 
   dependencies {
     compile project(':samza-api')
+    compile project(":samza-core_$scalaVersion")
     testCompile "junit:junit:$junitVersion"
   }
 }
