@@ -19,24 +19,86 @@
 
 package org.apache.samza.job.standalone;
 
+import java.util.Set;
+
+import org.apache.samza.SamzaException;
+import org.apache.samza.container.SamzaContainer;
+import org.apache.samza.container.TaskName;
+import org.apache.samza.job.ApplicationStatus;
+import org.apache.samza.job.local.ThreadJob;
+import org.apache.samza.job.model.ContainerModel;
+import org.apache.samza.job.model.JobModel;
+
 public class StandaloneJobController {
+  private int containerId = -1;
   private ThreadJob threadJob;
+  private JobModel jobModel;
 
-  private void onControllerStart() {
-  }
-
-  private void onContainerJoined() {
+  /**
+   * Triggered when a container joins or updates their task ownership.
+   */
+  private void onContainerUpdated() {
+    // /containers
+    // TODO compute expected task ownership for all containers.
+    // TODO if there's a diff with assignments, shift assignments.
   }
 
   private void onContainerFailed() {
+    // /containers
   }
 
-  private void onPartitionAssignment() {
+  private void onTaskAssignment() {
+    // /assignments
+    stopThreadJob();
+    startThreadJob();
+    announceOwnership();
   }
 
   private void onCoordinatorFailure() {
+    // /coordinator
+    stopCoordinator();
+    electCoordinator();
+  }
+
+  private void onCoordinatorElected() {
+    // /coordinator
+    startCoordinator();
+    refreshCoordinatorPath();
+  }
+
+  private void onZooKeeperConnect() {
+    electCoordinator();
   }
 
   private void onZooKeeperFailure() {
+    stopCoordinator();
+    stopThreadJob();
+  }
+
+  private void startThreadJob() {
+    if (containerId < 0) {
+      throw new SamzaException("Can't create a new container without an assigned container ID.");
+    }
+    if (threadJob != null && threadJob.getStatus().equals(ApplicationStatus.Running)) {
+      throw new SamzaException("Weird state. Can't start a container when one is already running.");
+    }
+    jobModel = SamzaContainer.readJobModel("TODO need HTTP URL for coordinator");
+    ContainerModel containerModel = jobModel.getContainers().get(containerId);
+    threadJob = new ThreadJob(SamzaContainer.apply(containerModel, jobModel.getConfig()));
+    threadJob.submit();
+  }
+
+  private void stopThreadJob() {
+    int timeout = 60000;
+    threadJob.kill();
+    threadJob.waitForFinish(timeout);
+    if (!threadJob.getStatus().equals(ApplicationStatus.UnsuccessfulFinish) && !threadJob.getStatus().equals(ApplicationStatus.SuccessfulFinish)) {
+      throw new SamzaException("Unable to successfully stop container after " + timeout + " seconds.");
+    }
+  }
+
+  private void announceOwnership() {
+    // TODO tell ZK that the container now owns a bunch of tasks.
+    Set<TaskName> taskNames = jobModel.getContainers().get(containerId).getTasks().keySet();
   }
 }
