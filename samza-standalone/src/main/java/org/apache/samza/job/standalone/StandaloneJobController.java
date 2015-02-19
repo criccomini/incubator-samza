@@ -19,8 +19,13 @@
 
 package org.apache.samza.job.standalone;
 
+import java.util.List;
 import java.util.Set;
 
+import org.I0Itec.zkclient.IZkChildListener;
+import org.I0Itec.zkclient.IZkDataListener;
+import org.I0Itec.zkclient.IZkStateListener;
+import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.SamzaException;
 import org.apache.samza.container.SamzaContainer;
 import org.apache.samza.container.TaskName;
@@ -28,11 +33,32 @@ import org.apache.samza.job.ApplicationStatus;
 import org.apache.samza.job.local.ThreadJob;
 import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
 
 public class StandaloneJobController {
+  private final ZkClient zkClient;
   private int containerId = -1;
   private ThreadJob threadJob;
   private JobModel jobModel;
+
+  public StandaloneJobController() {
+    zkClient = new ZkClient("");
+    zkClient.subscribeStateChanges(new IZkStateListener() {
+      @Override
+      public void handleStateChanged(KeeperState state) throws Exception {
+        if (state.equals(KeeperState.Disconnected) || state.equals(KeeperState.Expired)) {
+          onZooKeeperFailure();
+        } else {
+          onZooKeeperConnect();
+        }
+      }
+
+      @Override
+      public void handleNewSession() throws Exception {
+        // TODO what is this?
+      }
+    });
+  }
 
   /**
    * Triggered when a container joins or updates their task ownership.
@@ -54,14 +80,9 @@ public class StandaloneJobController {
     announceOwnership();
   }
 
-  private void onCoordinatorFailure() {
-    // /coordinator
-    stopCoordinator();
-    electCoordinator();
-  }
-
   private void onCoordinatorElected() {
     // /coordinator
+    stopCoordinator();
     startCoordinator();
     refreshCoordinatorPath();
   }
@@ -100,5 +121,33 @@ public class StandaloneJobController {
   private void announceOwnership() {
     // TODO tell ZK that the container now owns a bunch of tasks.
     Set<TaskName> taskNames = jobModel.getContainers().get(containerId).getTasks().keySet();
+  }
+
+  //
+  // ZK
+  //
+
+  private void electCoordinator() {
+    String path = zkClient.createEphemeralSequential("/coordinator/coordinator", null);
+    List<String> children = zkClient.getChildren("/coordinator");
+    String prior = null; // TOOD prior = child right before sequential ephemeral
+                         // path. chained watchers.
+    zkClient.subscribeDataChanges(prior, new IZkDataListener() {
+      @Override
+      public void handleDataChange(String dataPath, Object data) throws Exception {
+      }
+
+      @Override
+      public void handleDataDeleted(String dataPath) throws Exception {
+      }
+    });
+    // TODO subscribe to data node instead.
+    List<String> children = zkClient.subscribeChildChanges("/coordinator", new IZkChildListener() {
+      @Override
+      public void handleChildChange(String parentPath, List<String> currentChilds) throws Exception {
+        onCoordinatorElected();
+      }
+    });
+    // TODO if path == min(children), isLeader = true
   }
 }

@@ -314,6 +314,7 @@ project(':samza-standalone') {
   dependencies {
     compile project(':samza-api')
     compile project(":samza-core_$scalaVersion")
+    compile "com.101tec:zkclient:$zkClientVersion"
     testCompile "junit:junit:$junitVersion"
   }
 }
