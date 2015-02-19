@@ -308,6 +308,15 @@ project(":samza-shell") {
   }
 }
 
+project(':samza-standalone') {
+  apply plugin: 'java'
+
+  dependencies {
+    compile project(':samza-api')
+    testCompile "junit:junit:$junitVersion"
+  }
+}
+
 project(":samza-kv_$scalaVersion") {
   apply plugin: 'scala'
 

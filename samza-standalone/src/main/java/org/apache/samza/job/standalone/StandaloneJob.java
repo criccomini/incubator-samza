@@ -16,21 +16,40 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-include \
-  'samza-api',
-  'samza-core',
-  'samza-kafka',
-  'samza-kv',
-  'samza-kv-inmemory',
-  'samza-kv-rocksdb',
-  'samza-log4j',
-  'samza-shell',
-  'samza-standalone',
-  'samza-yarn',
-  'samza-test'
 
-rootProject.children.each {
-  if (it.name != 'samza-api' && it.name != 'samza-shell' && it.name != 'samza-log4j' && it.name != 'samza-standalone') {
-    it.name = it.name + "_" + scalaVersion
+package org.apache.samza.job.standalone;
+
+import org.apache.samza.job.ApplicationStatus;
+import org.apache.samza.job.StreamJob;
+
+public class StandaloneJob implements StreamJob {
+  @Override
+  public StreamJob submit() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public StreamJob kill() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public ApplicationStatus waitForFinish(long timeoutMs) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public ApplicationStatus waitForStatus(ApplicationStatus status, long timeoutMs) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public ApplicationStatus getStatus() {
+    // TODO Auto-generated method stub
+    return null;
   }
 }

@@ -16,21 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-include \
-  'samza-api',
-  'samza-core',
-  'samza-kafka',
-  'samza-kv',
-  'samza-kv-inmemory',
-  'samza-kv-rocksdb',
-  'samza-log4j',
-  'samza-shell',
-  'samza-standalone',
-  'samza-yarn',
-  'samza-test'
 
-rootProject.children.each {
-  if (it.name != 'samza-api' && it.name != 'samza-shell' && it.name != 'samza-log4j' && it.name != 'samza-standalone') {
-    it.name = it.name + "_" + scalaVersion
+package org.apache.samza.job.standalone;
+
+import org.apache.samza.config.Config;
+import org.apache.samza.job.StreamJob;
+import org.apache.samza.job.StreamJobFactory;
+
+public class StandaloneJobFactory implements StreamJobFactory {
+  @Override
+  public StreamJob getJob(Config config) {
+    return new StandaloneJob();
   }
 }
