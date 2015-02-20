@@ -316,9 +316,6 @@ project(':samza-standalone') {
     compile project(":samza-core_$scalaVersion")
     compile "com.101tec:zkclient:$zkClientVersion"
     testCompile "junit:junit:$junitVersion"
-    // Pull in Kafka for EmbeddedZookeeper
-    testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
-    testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
   }
 }
 
@@ -383,6 +380,7 @@ project(":samza-test_$scalaVersion") {
     compile "javax.mail:mail:1.4"
     compile "junit:junit:$junitVersion"
     compile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
+    testCompile project(':samza-standalone')
     testCompile "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
     testCompile "com.101tec:zkclient:$zkClientVersion"
     testCompile project(":samza-kafka_$scalaVersion")

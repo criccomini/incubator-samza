@@ -62,8 +62,17 @@ public class StandaloneZkCoordinatorController {
     zkClient.waitUntilConnected();
     zkClient.createPersistent(COORDINATOR_PATH);
     zkClient.createPersistent(CONTAINER_PATH);
+    // TODO only do this if it doesn't exist.
+    zkClient.createPersistent(ASSIGNMENTS_PATH, Collections.emptyMap());
     state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, new CoordinatorPathListener()));
     state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
+  }
+
+  public void stop() {
+    JobCoordinator coordinator = state.getJobCoordinator();
+    if (coordinator != null) {
+      coordinator.stop();
+    }
   }
 
   private void checkLeadership() {
@@ -94,6 +103,7 @@ public class StandaloneZkCoordinatorController {
         setAssignments();
       } catch (Exception e) {
         System.err.println(e);
+        e.printStackTrace();
       }
     }
   }
@@ -108,9 +118,14 @@ public class StandaloneZkCoordinatorController {
     List<String> containerSequentialIds = state.getContainerSequentialIds();
     Map<String, Set<String>> expectedTaskAssignments = new HashMap<String, Set<String>>();
     if (containerSequentialIds.size() > 0) {
-      System.err.println("1");
-      Map<Integer, ContainerModel> containerModels = JobCoordinator.apply(config, containerSequentialIds.size()).jobModel().getContainers();
-      System.err.println("2");
+      JobCoordinator jobCoordinator = state.getJobCoordinator();
+      if (jobCoordinator != null) {
+        jobCoordinator.stop();
+      }
+      jobCoordinator = JobCoordinator.apply(config, containerSequentialIds.size());
+      jobCoordinator.start();
+      state.setJobCoordinator(jobCoordinator);
+      Map<Integer, ContainerModel> containerModels = jobCoordinator.jobModel().getContainers();
       // Build an assignment map from sequential ID to container ID.
       List<Integer> containerIds = new ArrayList<Integer>(containerModels.keySet());
       assert containerIds.size() == containerSequentialIds.size();
@@ -130,7 +145,7 @@ public class StandaloneZkCoordinatorController {
       containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
     }
     state.setExpectedTaskAssignments(expectedTaskAssignments);
-    zkClient.createPersistent(ASSIGNMENTS_PATH, containerIdAssignments);
+    zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
   }
 
   private class CoordinatorStateListener implements IZkStateListener {
