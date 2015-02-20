@@ -1,7 +1,10 @@
 package org.apache.samza.job.standalone.controller;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import kafka.zk.EmbeddedZookeeper;
@@ -27,24 +30,43 @@ public class TestStandaloneZkCoordinatorController {
       System.err.println("Starting controller.");
       controller.start();
       Thread.sleep(5000);
+
       System.err.println("Creating container.");
       String c1EphemeralNode = zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList());
       Thread.sleep(5000);
       Map<String, Object> assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
       System.err.println("Assignments: " + assignments);
+
+      String c1ContainerSequentialId = new File(c1EphemeralNode).getName();
+      List<String> taskNames = new ArrayList<String>();
+      taskNames.add("Partition 0");
+      taskNames.add("Partition 1");
+      taskNames.add("Partition 2");
+      taskNames.add("Partition 3");
+      System.err.println("Claiming assignment for container (0): " + taskNames);
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + c1ContainerSequentialId, taskNames);
+      Thread.sleep(5000);
+
       System.err.println("Creating second container.");
       String c2EphemeralNode = zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList());
       Thread.sleep(5000);
       assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
       System.err.println("Assignments: " + assignments);
+
+      System.err.println("Releasing assignment for container (0): " + taskNames);
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + c1ContainerSequentialId, Collections.emptyList());
       Thread.sleep(5000);
+      assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
+      System.err.println("Assignments: " + assignments);
+
       System.err.println("Deleting first container.");
       zkClient.delete(c1EphemeralNode);
       Thread.sleep(5000);
       assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
       System.err.println("Assignments: " + assignments);
+
       System.err.println("Deleting second container.");
-      zkClient.delete(c1EphemeralNode);
+      zkClient.delete(c2EphemeralNode);
       Thread.sleep(5000);
       assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
       System.err.println("Assignments: " + assignments);

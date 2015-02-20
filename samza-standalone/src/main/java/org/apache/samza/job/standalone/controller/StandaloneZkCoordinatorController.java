@@ -83,28 +83,21 @@ public class StandaloneZkCoordinatorController {
 
   @SuppressWarnings("unchecked")
   private void assignTasksToContainers() {
-    boolean allContainersEmpty = true;
     Map<String, Set<String>> expectedAssignments = state.getExpectedTaskAssignments();
-    for (String containerSequentialId : state.getContainerSequentialIds()) {
-      List<String> taskAssignments = (List<String>) zkClient.readData(CONTAINER_PATH + "/" + containerSequentialId, true);
-      Set<String> expectedContainerTasks = expectedAssignments.get(containerSequentialId);
-      // If there are assignments, and a container doesn't match the assignment,
-      // then clear everything and start over.
-      if (expectedAssignments.size() > 0 && taskAssignments.size() > 0 && !taskAssignments.equals(expectedContainerTasks)) {
-        clearAssignments();
-        break;
+    if (expectedAssignments.size() == 0) {
+      // If all container ownership is empty, then setAssignments()
+      boolean allContainersEmpty = true;
+      for (String containerSequentialId : state.getContainerSequentialIds()) {
+        List<String> taskAssignments = (List<String>) zkClient.readData(CONTAINER_PATH + "/" + containerSequentialId, true);
+        System.err.println(containerSequentialId + ": " + taskAssignments);
+        allContainersEmpty &= taskAssignments.size() == 0;
       }
-      allContainersEmpty &= taskAssignments.size() == 0;
-    }
-    // If expected assignments matched container ownership, and assignments are
-    // empty, then create a new non-empty assignment for all containers.
-    if (allContainersEmpty && expectedAssignments.size() == 0) {
-      try {
+      if (allContainersEmpty) {
         setAssignments();
-      } catch (Exception e) {
-        System.err.println(e);
-        e.printStackTrace();
       }
+    } else if (expectedAssignments.size() > 0 && !expectedAssignments.equals(state.getContainerSequentialIds())) {
+      // If a container was added or removed, clear assignments, and start over.
+      clearAssignments();
     }
   }
 
@@ -174,6 +167,7 @@ public class StandaloneZkCoordinatorController {
   private class ContainerPathListener implements IZkChildListener {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
+//      Set<String> previousContainerSequentialIds = new HashSet<String>(state.getContainerSequentialIds());
       state.setContainerSequentialIds(currentChildren);
       assignTasksToContainers();
     }
