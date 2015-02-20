@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.I0Itec.zkclient.IZkChildListener;
+import org.I0Itec.zkclient.IZkDataListener;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.config.Config;
@@ -89,14 +90,14 @@ public class StandaloneZkCoordinatorController {
       boolean allContainersEmpty = true;
       for (String containerSequentialId : state.getContainerSequentialIds()) {
         List<String> taskAssignments = (List<String>) zkClient.readData(CONTAINER_PATH + "/" + containerSequentialId, true);
-        System.err.println(containerSequentialId + ": " + taskAssignments);
         allContainersEmpty &= taskAssignments.size() == 0;
       }
       if (allContainersEmpty) {
         setAssignments();
       }
-    } else if (expectedAssignments.size() > 0 && !expectedAssignments.equals(state.getContainerSequentialIds())) {
+    } else if (expectedAssignments.size() > 0 && !expectedAssignments.keySet().equals(new HashSet<String>(state.getContainerSequentialIds()))) {
       // If a container was added or removed, clear assignments, and start over.
+      System.err.println("Assignment miss. " + expectedAssignments.keySet() + " vs. " + state.getContainerSequentialIds());
       clearAssignments();
     }
   }
@@ -111,6 +112,7 @@ public class StandaloneZkCoordinatorController {
     List<String> containerSequentialIds = state.getContainerSequentialIds();
     Map<String, Set<String>> expectedTaskAssignments = new HashMap<String, Set<String>>();
     if (containerSequentialIds.size() > 0) {
+      // TODO shouldn't need to bounce entire coordinator to generate new model.
       JobCoordinator jobCoordinator = state.getJobCoordinator();
       if (jobCoordinator != null) {
         jobCoordinator.stop();
@@ -137,6 +139,7 @@ public class StandaloneZkCoordinatorController {
       }
       containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
     }
+    System.err.println("Expected assignments: " + expectedTaskAssignments);
     state.setExpectedTaskAssignments(expectedTaskAssignments);
     zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
   }
@@ -167,9 +170,27 @@ public class StandaloneZkCoordinatorController {
   private class ContainerPathListener implements IZkChildListener {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
-//      Set<String> previousContainerSequentialIds = new HashSet<String>(state.getContainerSequentialIds());
+      Set<String> previousContainerSequentialIds = new HashSet<String>(state.getContainerSequentialIds());
+      Set<String> newContainerSequentialIds = new HashSet<String>(currentChildren);
+      newContainerSequentialIds.removeAll(previousContainerSequentialIds);
+      // Listen to container sequential IDs so we can keep track of ownership.
+      for (String newContainerSequentialId : newContainerSequentialIds) {
+        zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + newContainerSequentialId, new ContainerAssignmentPathListener());
+      }
       state.setContainerSequentialIds(currentChildren);
       assignTasksToContainers();
+    }
+  }
+
+  private class ContainerAssignmentPathListener implements IZkDataListener {
+    @Override
+    public void handleDataChange(String dataPath, Object data) throws Exception {
+      assignTasksToContainers();
+    }
+
+    @Override
+    public void handleDataDeleted(String dataPath) throws Exception {
+      // TODO do we need to unsubscribe?
     }
   }
 }

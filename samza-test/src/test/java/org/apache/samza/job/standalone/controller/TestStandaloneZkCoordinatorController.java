@@ -59,11 +59,45 @@ public class TestStandaloneZkCoordinatorController {
       assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
       System.err.println("Assignments: " + assignments);
 
+      taskNames = new ArrayList<String>();
+      taskNames.add("Partition 1");
+      taskNames.add("Partition 3");
+      System.err.println("Claiming assignment for container (0): " + taskNames);
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + c1ContainerSequentialId, taskNames);
+      Thread.sleep(5000);
+      assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
+      System.err.println("Assignments: " + assignments);
+
+      String c2ContainerSequentialId = new File(c2EphemeralNode).getName();
+      taskNames = new ArrayList<String>();
+      taskNames.add("Partition 0");
+      taskNames.add("Partition 2");
+      System.err.println("Claiming assignment for container (1): " + taskNames);
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + c2ContainerSequentialId, taskNames);
+      Thread.sleep(5000);
+      assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
+      System.err.println("Assignments: " + assignments);
+
       System.err.println("Deleting first container.");
       zkClient.delete(c1EphemeralNode);
       Thread.sleep(5000);
       assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
       System.err.println("Assignments: " + assignments);
+
+      System.err.println("Releasing assignment for container (1): " + taskNames);
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + c2ContainerSequentialId, Collections.emptyList());
+      Thread.sleep(5000);
+      assignments = zkClient.readData(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH);
+      System.err.println("Assignments: " + assignments);
+
+      taskNames = new ArrayList<String>();
+      taskNames.add("Partition 0");
+      taskNames.add("Partition 1");
+      taskNames.add("Partition 2");
+      taskNames.add("Partition 3");
+      System.err.println("Claiming assignment for container (1): " + taskNames);
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + c2ContainerSequentialId, taskNames);
+      Thread.sleep(5000);
 
       System.err.println("Deleting second container.");
       zkClient.delete(c2EphemeralNode);
