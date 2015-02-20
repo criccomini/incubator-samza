@@ -51,6 +51,9 @@ public class StandaloneZkCoordinatorState {
   }
 
   public void setCoordinatorSequentialIds(List<String> coordinatorSequentialIds) {
+    if (coordinatorSequentialIds == null) {
+      coordinatorSequentialIds = Collections.emptyList();
+    }
     this.coordinatorSequentialIds = Collections.unmodifiableList(coordinatorSequentialIds);
   }
 
@@ -59,6 +62,9 @@ public class StandaloneZkCoordinatorState {
   }
 
   public void setContainerSequentialIds(List<String> containerSequentialIds) {
+    if (containerSequentialIds == null) {
+      containerSequentialIds = Collections.emptyList();
+    }
     this.containerSequentialIds = Collections.unmodifiableList(containerSequentialIds);
   }
 

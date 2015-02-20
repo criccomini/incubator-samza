@@ -19,6 +19,7 @@
 
 package org.apache.samza.job.standalone.controller;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -59,8 +60,10 @@ public class StandaloneZkCoordinatorController {
   public void start() {
     zkClient.subscribeStateChanges(new CoordinatorStateListener());
     zkClient.waitUntilConnected();
+    zkClient.createPersistent(COORDINATOR_PATH);
+    zkClient.createPersistent(CONTAINER_PATH);
     state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, new CoordinatorPathListener()));
-    state.setCoordinatorSequentialId(zkClient.createEphemeralSequential(COORDINATOR_PATH, null));
+    state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
   }
 
   private void checkLeadership() {
@@ -87,7 +90,11 @@ public class StandaloneZkCoordinatorController {
     // If expected assignments matched container ownership, and assignments are
     // empty, then create a new non-empty assignment for all containers.
     if (allContainersEmpty && expectedAssignments.size() == 0) {
-      setAssignments();
+      try {
+        setAssignments();
+      } catch (Exception e) {
+        System.err.println(e);
+      }
     }
   }
 
@@ -97,29 +104,33 @@ public class StandaloneZkCoordinatorController {
   }
 
   public void setAssignments() {
-    List<String> containerSequentialIds = state.getContainerSequentialIds();
-    Map<Integer, ContainerModel> containerModels = JobCoordinator.apply(config, containerSequentialIds.size()).jobModel().getContainers();
-    Map<String, Set<String>> expectedTaskAssignments = new HashMap<String, Set<String>>();
-    // Build an assignment map from sequential ID to container ID.
-    List<Integer> containerIds = new ArrayList<Integer>(containerModels.keySet());
-    assert containerIds.size() == containerSequentialIds.size();
-    Collections.sort(containerIds);
     Map<String, Object> containerIdAssignments = new HashMap<String, Object>();
-    Iterator<String> containerSequentialIdsIt = containerSequentialIds.iterator();
-    Iterator<Integer> containerIdsIt = containerIds.iterator();
-    while (containerSequentialIdsIt.hasNext() && containerIdsIt.hasNext()) {
-      String containerSequentialId = containerSequentialIdsIt.next();
-      Integer containerId = containerIdsIt.next();
-      Set<String> taskNames = new HashSet<String>();
-      for (TaskName taskName : containerModels.get(containerId).getTasks().keySet()) {
-        taskNames.add(taskName.toString());
+    List<String> containerSequentialIds = state.getContainerSequentialIds();
+    Map<String, Set<String>> expectedTaskAssignments = new HashMap<String, Set<String>>();
+    if (containerSequentialIds.size() > 0) {
+      System.err.println("1");
+      Map<Integer, ContainerModel> containerModels = JobCoordinator.apply(config, containerSequentialIds.size()).jobModel().getContainers();
+      System.err.println("2");
+      // Build an assignment map from sequential ID to container ID.
+      List<Integer> containerIds = new ArrayList<Integer>(containerModels.keySet());
+      assert containerIds.size() == containerSequentialIds.size();
+      Collections.sort(containerIds);
+      Iterator<String> containerSequentialIdsIt = containerSequentialIds.iterator();
+      Iterator<Integer> containerIdsIt = containerIds.iterator();
+      while (containerSequentialIdsIt.hasNext() && containerIdsIt.hasNext()) {
+        String containerSequentialId = containerSequentialIdsIt.next();
+        Integer containerId = containerIdsIt.next();
+        Set<String> taskNames = new HashSet<String>();
+        for (TaskName taskName : containerModels.get(containerId).getTasks().keySet()) {
+          taskNames.add(taskName.toString());
+        }
+        expectedTaskAssignments.put(containerSequentialId, taskNames);
+        containerIdAssignments.put(containerSequentialId, containerId);
       }
-      expectedTaskAssignments.put(containerSequentialId, taskNames);
-      containerIdAssignments.put(containerSequentialId, containerId);
+      containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
     }
-    containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
     state.setExpectedTaskAssignments(expectedTaskAssignments);
-    zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
+    zkClient.createPersistent(ASSIGNMENTS_PATH, containerIdAssignments);
   }
 
   private class CoordinatorStateListener implements IZkStateListener {
