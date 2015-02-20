@@ -57,8 +57,8 @@ public class StandaloneZkCoordinatorState {
   }
 
   public void clear() {
-    coordinatorSequentialIds = new ArrayList<String>();
-    containerSequentialIds = new ArrayList<String>();
+    coordinatorSequentialIds = Collections.unmodifiableList(new ArrayList<String>());
+    containerSequentialIds = Collections.unmodifiableList(new ArrayList<String>());
     coordinatorSequentialId = null;
     jobCoordinator = null;
   }

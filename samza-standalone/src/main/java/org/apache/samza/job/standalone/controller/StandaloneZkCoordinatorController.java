@@ -57,7 +57,8 @@ public class StandaloneZkCoordinatorController {
       state.getJobCoordinator().stop();
     }
     // TODO update JobCoordinator.buildJobModel to take a previousJobModel to
-    // allow it to minimize partition shifting when a container dies.
+    // allow it to minimize partition shifting when a container dies. See
+    // GroupByContainerCount for a possible injection point.
     state.setJobCoordinator(JobCoordinator.apply(config, state.getContainerSequentialIds().size()));
     state.getJobCoordinator().start();
     List<Integer> containerIds = new ArrayList<Integer>(state.getJobCoordinator().jobModel().getContainers().keySet());
@@ -102,6 +103,7 @@ public class StandaloneZkCoordinatorController {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
       state.setContainerSequentialIds(currentChildren);
+      checkLeadership();
     }
   }
 }
