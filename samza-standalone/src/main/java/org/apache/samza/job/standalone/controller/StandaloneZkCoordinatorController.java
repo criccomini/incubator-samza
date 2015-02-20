@@ -1,17 +1,40 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.samza.job.standalone.controller;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.config.Config;
+import org.apache.samza.container.TaskName;
 import org.apache.samza.coordinator.JobCoordinator;
+import org.apache.samza.job.model.ContainerModel;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 
 public class StandaloneZkCoordinatorController {
@@ -41,40 +64,62 @@ public class StandaloneZkCoordinatorController {
   }
 
   private void checkLeadership() {
-    if (state.isLeader()) {
-      if (!state.isLeaderRunning()) {
-        state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, new ContainerPathListener()));
-      }
-      assignTasksToContainers();
+    if (state.isLeader() && !state.isLeaderRunning()) {
+      state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, new ContainerPathListener()));
     }
   }
 
-  // TODO this needs work. can't just update assignments. has to be two phase:
-  // first revoke, then check /containers for ownership. then shift.
+  @SuppressWarnings("unchecked")
   private void assignTasksToContainers() {
-    // TODO should be able to do this without bouncing the entire coordinator.
-    if (state.getJobCoordinator() != null) {
-      state.getJobCoordinator().stop();
+    boolean allContainersEmpty = true;
+    Map<String, Set<String>> expectedAssignments = state.getExpectedTaskAssignments();
+    for (String containerSequentialId : state.getContainerSequentialIds()) {
+      List<String> taskAssignments = (List<String>) zkClient.readData(CONTAINER_PATH + "/" + containerSequentialId, true);
+      Set<String> expectedContainerTasks = expectedAssignments.get(containerSequentialId);
+      // If there are assignments, and a container doesn't match the assignment,
+      // then clear everything and start over.
+      if (expectedAssignments.size() > 0 && taskAssignments.size() > 0 && !taskAssignments.equals(expectedContainerTasks)) {
+        clearAssignments();
+        break;
+      }
+      allContainersEmpty &= taskAssignments.size() == 0;
     }
-    // TODO update JobCoordinator.buildJobModel to take a previousJobModel to
-    // allow it to minimize partition shifting when a container dies. See
-    // GroupByContainerCount for a possible injection point.
-    state.setJobCoordinator(JobCoordinator.apply(config, state.getContainerSequentialIds().size()));
-    state.getJobCoordinator().start();
-    List<Integer> containerIds = new ArrayList<Integer>(state.getJobCoordinator().jobModel().getContainers().keySet());
+    // If expected assignments matched container ownership, and assignments are
+    // empty, then create a new non-empty assignment for all containers.
+    if (allContainersEmpty && expectedAssignments.size() == 0) {
+      setAssignments();
+    }
+  }
+
+  public void clearAssignments() {
+    state.setExpectedTaskAssignments(Collections.emptyMap());
+    zkClient.writeData(ASSIGNMENTS_PATH, state.getExpectedTaskAssignments());
+  }
+
+  public void setAssignments() {
     List<String> containerSequentialIds = state.getContainerSequentialIds();
+    Map<Integer, ContainerModel> containerModels = JobCoordinator.apply(config, containerSequentialIds.size()).jobModel().getContainers();
+    Map<String, Set<String>> expectedTaskAssignments = new HashMap<String, Set<String>>();
     // Build an assignment map from sequential ID to container ID.
+    List<Integer> containerIds = new ArrayList<Integer>(containerModels.keySet());
     assert containerIds.size() == containerSequentialIds.size();
     Collections.sort(containerIds);
-    Map<String, Object> containerAssignments = new HashMap<String, Object>();
+    Map<String, Object> containerIdAssignments = new HashMap<String, Object>();
     Iterator<String> containerSequentialIdsIt = containerSequentialIds.iterator();
     Iterator<Integer> containerIdsIt = containerIds.iterator();
     while (containerSequentialIdsIt.hasNext() && containerIdsIt.hasNext()) {
-      containerAssignments.put(containerSequentialIdsIt.next(), containerIdsIt.next());
+      String containerSequentialId = containerSequentialIdsIt.next();
+      Integer containerId = containerIdsIt.next();
+      Set<String> taskNames = new HashSet<String>();
+      for (TaskName taskName : containerModels.get(containerId).getTasks().keySet()) {
+        taskNames.add(taskName.toString());
+      }
+      expectedTaskAssignments.put(containerSequentialId, taskNames);
+      containerIdAssignments.put(containerSequentialId, containerId);
     }
-    // TODO this is hacky.
-    containerAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
-    zkClient.createPersistent(ASSIGNMENTS_PATH, containerAssignments);
+    containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
+    state.setExpectedTaskAssignments(expectedTaskAssignments);
+    zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
   }
 
   private class CoordinatorStateListener implements IZkStateListener {
@@ -96,6 +141,7 @@ public class StandaloneZkCoordinatorController {
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
       state.setCoordinatorSequentialIds(currentChildren);
       checkLeadership();
+      assignTasksToContainers();
     }
   }
 
@@ -103,7 +149,7 @@ public class StandaloneZkCoordinatorController {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
       state.setContainerSequentialIds(currentChildren);
-      checkLeadership();
+      assignTasksToContainers();
     }
   }
 }
