@@ -70,6 +70,7 @@ public class StandaloneZkCoordinatorController {
   }
 
   public void stop() {
+    // TODO zkClient.unsubscribe
     JobCoordinator coordinator = state.getJobCoordinator();
     if (coordinator != null) {
       coordinator.stop();
