@@ -97,7 +97,6 @@ public class StandaloneZkCoordinatorController {
       }
     } else if (expectedAssignments.size() > 0 && !expectedAssignments.keySet().equals(new HashSet<String>(state.getContainerSequentialIds()))) {
       // If a container was added or removed, clear assignments, and start over.
-      System.err.println("Assignment miss. " + expectedAssignments.keySet() + " vs. " + state.getContainerSequentialIds());
       clearAssignments();
     }
   }
@@ -139,7 +138,6 @@ public class StandaloneZkCoordinatorController {
       }
       containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
     }
-    System.err.println("Expected assignments: " + expectedTaskAssignments);
     state.setExpectedTaskAssignments(expectedTaskAssignments);
     zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
   }
