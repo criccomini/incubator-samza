@@ -34,20 +34,22 @@ import org.apache.samza.job.model.JobModel;
 
 public class StandaloneZkContainerController {
   private final ZkClient zkClient;
+  private final IZkDataListener assignmentPathListener;
   private String containerSequentialId;
   private Thread containerThread;
 
   public StandaloneZkContainerController(ZkClient zkClient) {
     this.zkClient = zkClient;
+    this.assignmentPathListener = new AssignmentPathListener();
   }
 
   public void start() {
-    zkClient.subscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, new AssignmentPathListener());
+    zkClient.subscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, assignmentPathListener);
     containerSequentialId = new File(zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList())).getName();
   }
 
   public void stop() throws Exception {
-    // TODO zkClient.unsubscribe
+    zkClient.unsubscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, assignmentPathListener);
     if (containerThread != null) {
       containerThread.interrupt();
       containerThread.join();
