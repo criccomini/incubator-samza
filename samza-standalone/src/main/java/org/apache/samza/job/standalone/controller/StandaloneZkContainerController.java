@@ -46,17 +46,27 @@ public class StandaloneZkContainerController {
     containerSequentialId = new File(zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList())).getName();
   }
 
-  public void stop() {
+  public void stop() throws Exception {
     // TODO zkClient.unsubscribe
+    if (containerThread != null) {
+      containerThread.interrupt();
+      containerThread.join();
+    }
+    if (containerSequentialId != null) {
+      zkClient.delete(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId);
+    }
   }
 
   public class AssignmentPathListener implements IZkDataListener {
     @Override
     @SuppressWarnings("unchecked")
     public void handleDataChange(String dataPath, Object data) throws Exception {
+      List<String> taskNames = new ArrayList<String>();
       if (containerThread != null) {
         // TODO this seems like it might take a while. Should we move it into
         // another thread (off the ZK event thread)?
+        // TODO this is a real bummer. looks like something is swallowing
+        // interrupts.
         containerThread.interrupt();
         containerThread.join();
       }
@@ -78,13 +88,12 @@ public class StandaloneZkContainerController {
         containerThread.setDaemon(true);
         containerThread.setName("Container ID (" + containerId + ")");
         containerThread.start();
-        // Announce ownership.
-        List<String> taskNames = new ArrayList<String>();
         for (TaskName taskName : containerModel.getTasks().keySet()) {
           taskNames.add(taskName.toString());
         }
-        zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId, taskNames);
       }
+      // Announce ownership.
+      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId, taskNames);
     }
 
     @Override

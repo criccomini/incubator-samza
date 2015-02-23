@@ -75,6 +75,9 @@ public class StandaloneZkCoordinatorController {
     if (coordinator != null) {
       coordinator.stop();
     }
+    if (state.getCoordinatorSequentialId() != null) {
+      zkClient.delete(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId());
+    }
   }
 
   private void checkLeadership() {

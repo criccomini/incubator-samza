@@ -61,7 +61,7 @@ class RunLoop(
    * unhandled exception is thrown.
    */
   def run {
-    while (!shutdownNow) {
+    while (!shutdownNow && !Thread.currentThread().isInterrupted()) {
       process
       window
       commit

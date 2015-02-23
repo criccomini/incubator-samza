@@ -165,7 +165,7 @@ public class MockSystemConsumer extends BlockingEnvelopeMap {
           }
         }
       } catch (InterruptedException e) {
-        System.out.println("Got interrupt. Shutting down.");
+        System.err.println("Got interrupt. Shutting down.");
       }
     }
   }
