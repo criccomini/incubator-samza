@@ -32,6 +32,8 @@ import org.apache.samza.container.TaskName;
 import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
 
+// TODO implement a state listener that handles ZK disconnects.
+
 public class StandaloneZkContainerController {
   private final ZkClient zkClient;
   private final IZkDataListener assignmentPathListener;
@@ -44,6 +46,7 @@ public class StandaloneZkContainerController {
   }
 
   public void start() {
+    zkClient.waitUntilConnected();
     zkClient.subscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, assignmentPathListener);
     containerSequentialId = new File(zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList())).getName();
   }

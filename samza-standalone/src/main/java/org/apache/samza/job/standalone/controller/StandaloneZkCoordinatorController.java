@@ -47,6 +47,10 @@ public class StandaloneZkCoordinatorController {
   private final Config config;
   private final ZkClient zkClient;
   private final StandaloneZkCoordinatorState state;
+  private final IZkStateListener coordinatorStateListener;
+  private final IZkChildListener coordinatorPathListener;
+  private final IZkChildListener containerPathListener;
+  private final IZkDataListener containerAssignmentPathListener;
 
   public StandaloneZkCoordinatorController(Config config, ZkClient zkClient) {
     this(config, zkClient, new StandaloneZkCoordinatorState());
@@ -56,21 +60,30 @@ public class StandaloneZkCoordinatorController {
     this.config = config;
     this.zkClient = zkClient;
     this.state = state;
+    this.coordinatorStateListener = new CoordinatorStateListener();
+    this.coordinatorPathListener = new CoordinatorPathListener();
+    this.containerPathListener = new ContainerPathListener();
+    this.containerAssignmentPathListener = new ContainerAssignmentPathListener();
   }
 
   public void start() {
-    zkClient.subscribeStateChanges(new CoordinatorStateListener());
+    zkClient.subscribeStateChanges(coordinatorStateListener);
     zkClient.waitUntilConnected();
     zkClient.createPersistent(COORDINATOR_PATH);
     zkClient.createPersistent(CONTAINER_PATH);
     // TODO only do this if it doesn't exist.
     zkClient.createPersistent(ASSIGNMENTS_PATH, Collections.emptyMap());
-    state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, new CoordinatorPathListener()));
+    state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener));
     state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
   }
 
   public void stop() {
-    // TODO zkClient.unsubscribe
+    zkClient.unsubscribeStateChanges(coordinatorStateListener);
+    zkClient.unsubscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener);
+    zkClient.unsubscribeChildChanges(CONTAINER_PATH, containerPathListener);
+    for (String containerSequentialId : state.getContainerSequentialIds()) {
+      zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
+    }
     JobCoordinator coordinator = state.getJobCoordinator();
     if (coordinator != null) {
       coordinator.stop();
@@ -82,7 +95,7 @@ public class StandaloneZkCoordinatorController {
 
   private void checkLeadership() {
     if (state.isLeader() && !state.isLeaderRunning()) {
-      state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, new ContainerPathListener()));
+      state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
     }
   }
 
@@ -175,9 +188,14 @@ public class StandaloneZkCoordinatorController {
       Set<String> previousContainerSequentialIds = new HashSet<String>(state.getContainerSequentialIds());
       Set<String> newContainerSequentialIds = new HashSet<String>(currentChildren);
       newContainerSequentialIds.removeAll(previousContainerSequentialIds);
+      previousContainerSequentialIds.removeAll(currentChildren);
       // Listen to container sequential IDs so we can keep track of ownership.
       for (String newContainerSequentialId : newContainerSequentialIds) {
-        zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + newContainerSequentialId, new ContainerAssignmentPathListener());
+        zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + newContainerSequentialId, containerAssignmentPathListener);
+      }
+      // Stop listening to removed containers.
+      for (String oldContainerSequentialId : previousContainerSequentialIds) {
+        zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + oldContainerSequentialId, containerAssignmentPathListener);
       }
       state.setContainerSequentialIds(currentChildren);
       assignTasksToContainers();
