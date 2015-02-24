@@ -21,9 +21,14 @@ package org.apache.samza.util;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.serializers.zk.ZkJsonSerde;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ZkUtil {
+  private static final Logger log = LoggerFactory.getLogger(ZkUtil.class);
+
   public static void setupZkEnvironment(String zkConnect) {
+    log.debug("Setting up ZK environment for {}.", zkConnect);
     int chrootIdx = zkConnect.indexOf("/");
     String chroot = (chrootIdx > 0) ? zkConnect.substring(chrootIdx) : null;
     ZkClient zkClient = null;
@@ -31,6 +36,7 @@ public class ZkUtil {
       if (chroot != null) {
         String zkConnForChrootCreation = zkConnect.substring(0, chrootIdx);
         zkClient = new ZkClient(zkConnForChrootCreation, 6000, 6000, new ZkJsonSerde());
+        log.info("Creating '{}' with base '{}'.", chroot, zkConnForChrootCreation);
         zkClient.createPersistent(chroot, true);
       }
     } finally {

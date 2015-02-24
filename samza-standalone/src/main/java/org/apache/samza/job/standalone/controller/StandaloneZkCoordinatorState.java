@@ -26,10 +26,14 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.samza.coordinator.JobCoordinator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // TODO can we get rid of this and just move it into StandaloneZkContainerController?
 
 public class StandaloneZkCoordinatorState {
+  private static final Logger log = LoggerFactory.getLogger(StandaloneZkCoordinatorState.class);
+
   private volatile List<String> coordinatorSequentialIds;
   private volatile List<String> containerSequentialIds;
   private volatile String coordinatorSequentialId;
@@ -49,6 +53,7 @@ public class StandaloneZkCoordinatorState {
     for (String key : unmodifiableMap.keySet()) {
       unmodifiableMap.put(key, Collections.unmodifiableSet(unmodifiableMap.get(key)));
     }
+    log.debug("Setting expected task assignments: {}", unmodifiableMap);
     this.expectedTaskAssignments = Collections.unmodifiableMap(unmodifiableMap);
   }
 
@@ -56,6 +61,7 @@ public class StandaloneZkCoordinatorState {
     if (coordinatorSequentialIds == null) {
       coordinatorSequentialIds = Collections.emptyList();
     }
+    log.debug("Setting coordinator sequential IDs: {}", coordinatorSequentialIds);
     this.coordinatorSequentialIds = Collections.unmodifiableList(coordinatorSequentialIds);
   }
 
@@ -67,6 +73,7 @@ public class StandaloneZkCoordinatorState {
     if (containerSequentialIds == null) {
       containerSequentialIds = Collections.emptyList();
     }
+    log.debug("Setting container sequential IDs: {}", containerSequentialIds);
     this.containerSequentialIds = Collections.unmodifiableList(containerSequentialIds);
   }
 
@@ -79,6 +86,7 @@ public class StandaloneZkCoordinatorState {
   }
 
   public void setCoordinatorSequentialId(String coordinatorSequentialId) {
+    log.debug("Setting container sequential ID: {}", coordinatorSequentialId);
     this.coordinatorSequentialId = coordinatorSequentialId;
   }
 
@@ -90,15 +98,16 @@ public class StandaloneZkCoordinatorState {
     this.jobCoordinator = jobCoordinator;
   }
 
-  public boolean isLeader() {
+  public boolean isElectedLeader() {
     return coordinatorSequentialIds.get(0).equals(coordinatorSequentialId);
   }
 
   public boolean isLeaderRunning() {
-    return isLeader() && jobCoordinator != null;
+    return isElectedLeader() && jobCoordinator != null;
   }
 
   public void clear() {
+    log.info("Clearing all coordinator state.");
     coordinatorSequentialIds = Collections.unmodifiableList(Collections.emptyList());
     containerSequentialIds = Collections.unmodifiableList(Collections.emptyList());
     expectedTaskAssignments = Collections.unmodifiableMap(Collections.emptyMap());

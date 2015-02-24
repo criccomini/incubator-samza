@@ -32,10 +32,13 @@ import org.apache.samza.container.TaskName;
 import org.apache.samza.job.ApplicationStatus;
 import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // TODO implement a state listener that handles ZK disconnects.
 
 public class StandaloneZkContainerController {
+  private static final Logger log = LoggerFactory.getLogger(StandaloneZkContainerController.class);
   private final ZkClient zkClient;
   private final IZkDataListener assignmentPathListener;
   private volatile String containerSequentialId;
@@ -49,12 +52,15 @@ public class StandaloneZkContainerController {
   }
 
   public void start() {
+    log.info("Starting container controller.");
     zkClient.waitUntilConnected();
     zkClient.subscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, assignmentPathListener);
     containerSequentialId = new File(zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList())).getName();
+    log.debug("Finished starting container controller.");
   }
 
   public void stop() throws InterruptedException {
+    log.info("Stopping container controller.");
     zkClient.unsubscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, assignmentPathListener);
     if (containerThread != null) {
       containerThread.interrupt();
@@ -63,6 +69,7 @@ public class StandaloneZkContainerController {
     if (containerSequentialId != null) {
       zkClient.delete(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId);
     }
+    log.debug("Finished stopping container controller.");
   }
 
   public ApplicationStatus getStatus() {
@@ -73,8 +80,10 @@ public class StandaloneZkContainerController {
     @Override
     @SuppressWarnings("unchecked")
     public void handleDataChange(String dataPath, Object data) throws Exception {
+      log.trace("AssignmentPathListener.handleDataChange with data path {} and payload: {}", dataPath, data);
       List<String> taskNames = new ArrayList<String>();
       if (containerThread != null) {
+        log.info("Shutting down container thread.");
         // TODO this seems like it might take a while. Should we move it into
         // another thread (off the ZK event thread)?
         // TODO this is a real bummer. looks like something is swallowing
@@ -85,6 +94,7 @@ public class StandaloneZkContainerController {
       // TODO need to manage everything that's in SamzaContainer.safeMain();
       // JmxServer, exception handler, etc.
       Map<String, Object> assignments = (Map<String, Object>) data;
+      log.info("Received task task assignments: {}", assignments);
       if (assignments.size() > 0) {
         Integer containerId = (Integer) assignments.get(containerSequentialId);
         String url = (String) assignments.get(StandaloneZkCoordinatorController.COORDINATOR_URL_KEY);
@@ -94,10 +104,12 @@ public class StandaloneZkContainerController {
         containerThread = new Thread(new Runnable() {
           @Override
           public void run() {
+            log.info("Running new container.");
             container.run();
             status = ApplicationStatus.SuccessfulFinish;
           }
         });
+        log.info("Starting new container thread.");
         status = ApplicationStatus.Running;
         containerThread.setDaemon(true);
         containerThread.setName("Container ID (" + containerId + ")");
@@ -107,6 +119,7 @@ public class StandaloneZkContainerController {
         }
       }
       // Announce ownership.
+      log.info("Annoncing ownership for container {} with tasks: {}", containerSequentialId, taskNames);
       zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId, taskNames);
     }
 
