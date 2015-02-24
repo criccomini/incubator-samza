@@ -20,7 +20,7 @@
 package org.apache.samza.job
 
 import org.apache.samza.SamzaException
-import org.apache.samza.config.{Config, ConfigRewriter}
+import org.apache.samza.config.{ Config, ConfigRewriter }
 import org.apache.samza.config.JobConfig.Config2Job
 import org.apache.samza.config.factories.PropertiesConfigFactory
 import org.apache.samza.job.ApplicationStatus.Running
@@ -28,6 +28,7 @@ import org.apache.samza.util.Util
 import org.apache.samza.util.CommandLine
 import org.apache.samza.util.Logging
 import scala.collection.JavaConversions._
+import org.apache.samza.config.JobConfig
 
 object JobRunner extends Logging {
   def main(args: Array[String]) {
@@ -44,7 +45,6 @@ object JobRunner extends Logging {
  * and returns a Config, which is used to execute the job.
  */
 class JobRunner(config: Config) extends Logging with Runnable {
-
   def run() {
     val conf = rewriteConfig(config)
 
@@ -55,27 +55,30 @@ class JobRunner(config: Config) extends Logging with Runnable {
 
     val jobFactory = Class.forName(jobFactoryClass).newInstance.asInstanceOf[StreamJobFactory]
 
+    val awaitFinish = conf
+      .getAwaitFinish
+      .getOrElse("true")
+      .equals("true");
+
     info("job factory: %s" format (jobFactoryClass))
     debug("config: %s" format (conf))
 
     // Create the actual job, and submit it.
     val job = jobFactory.getJob(conf).submit
+    var status = job.getStatus
 
-    info("waiting for job to start")
+    info("job started")
 
-    // Wait until the job has started, then exit.
-    Option(job.waitForStatus(Running, 500)) match {
-      case Some(appStatus) => {
-        if (Running.equals(appStatus)) {
-          info("job started successfully")
-        } else {
-          warn("unable to start job successfully. job has status %s" format (appStatus))
-        }
+    if (awaitFinish) {
+      info("waiting for job to finish. this can be disabled by setting: %s=false" format JobConfig.JOB_AWAIT_FINISH)
+      while (status.equals(ApplicationStatus.Running) || status.equals(ApplicationStatus.New)) {
+        Thread.sleep(1000);
+        status = job.getStatus
+        trace("job still running with status: %s" format status)
       }
-      case _ => warn("unable to start job successfully.")
-    }
 
-    info("exiting")
+      info("job finished with status: %s" format status)
+    }
   }
 
   // Apply any and all config re-writer classes that the user has specified

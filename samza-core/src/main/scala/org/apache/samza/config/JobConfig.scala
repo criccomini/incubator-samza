@@ -35,6 +35,8 @@ object JobConfig {
   val CONFIG_REWRITER_CLASS = "job.config.rewriter.%s.class" // streaming.job_config_rewriter_class - regex, system, config
   val JOB_NAME = "job.name" // streaming.job_name
   val JOB_ID = "job.id" // streaming.job_id
+  // TODO add docs for this
+  val JOB_AWAIT_FINISH = "job.await.finsh"
 
   val SSP_GROUPER_FACTORY = "job.systemstreampartition.grouper.factory"
 
@@ -53,4 +55,6 @@ class JobConfig(config: Config) extends ScalaMapConfig(config) {
   def getConfigRewriterClass(name: String) = getOption(JobConfig.CONFIG_REWRITER_CLASS format name)
 
   def getSystemStreamPartitionGrouperFactory = getOption(JobConfig.SSP_GROUPER_FACTORY).getOrElse(classOf[GroupByPartitionFactory].getCanonicalName)
+
+  def getAwaitFinish = getOption(JobConfig.JOB_AWAIT_FINISH)
 }
