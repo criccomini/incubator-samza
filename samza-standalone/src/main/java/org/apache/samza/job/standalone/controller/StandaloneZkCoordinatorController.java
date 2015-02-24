@@ -37,6 +37,7 @@ import org.apache.samza.config.Config;
 import org.apache.samza.container.TaskName;
 import org.apache.samza.coordinator.JobCoordinator;
 import org.apache.samza.job.model.ContainerModel;
+import org.apache.samza.util.ZkUtil;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 
 public class StandaloneZkCoordinatorController {
@@ -45,6 +46,7 @@ public class StandaloneZkCoordinatorController {
   public static final String ASSIGNMENTS_PATH = "/assignments";
   public static final String COORDINATOR_URL_KEY = "__url";
   private final Config config;
+  private final String zkConnect;
   private final ZkClient zkClient;
   private final StandaloneZkCoordinatorState state;
   private final IZkStateListener coordinatorStateListener;
@@ -52,12 +54,16 @@ public class StandaloneZkCoordinatorController {
   private final IZkChildListener containerPathListener;
   private final IZkDataListener containerAssignmentPathListener;
 
-  public StandaloneZkCoordinatorController(Config config, ZkClient zkClient) {
-    this(config, zkClient, new StandaloneZkCoordinatorState());
+  // TODO should take ZK connect, and session timeouts, and whatnot.
+  // StandaloneJobFactory should yank this from configs. Same for container
+  // controller.
+  public StandaloneZkCoordinatorController(Config config, String zkConnect, ZkClient zkClient) {
+    this(config, zkConnect, zkClient, new StandaloneZkCoordinatorState());
   }
 
-  public StandaloneZkCoordinatorController(Config config, ZkClient zkClient, StandaloneZkCoordinatorState state) {
+  public StandaloneZkCoordinatorController(Config config, String zkConnect, ZkClient zkClient, StandaloneZkCoordinatorState state) {
     this.config = config;
+    this.zkConnect = zkConnect;
     this.zkClient = zkClient;
     this.state = state;
     this.coordinatorStateListener = new CoordinatorStateListener();
@@ -69,10 +75,10 @@ public class StandaloneZkCoordinatorController {
   public void start() {
     zkClient.subscribeStateChanges(coordinatorStateListener);
     zkClient.waitUntilConnected();
-    zkClient.createPersistent(COORDINATOR_PATH);
-    zkClient.createPersistent(CONTAINER_PATH);
-    // TODO only do this if it doesn't exist.
-    zkClient.createPersistent(ASSIGNMENTS_PATH, Collections.emptyMap());
+    ZkUtil.setupZkEnvironment(zkConnect);
+    zkClient.createPersistent(COORDINATOR_PATH, true);
+    zkClient.createPersistent(CONTAINER_PATH, true);
+    zkClient.createPersistent(ASSIGNMENTS_PATH, true);
     state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener));
     state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
   }

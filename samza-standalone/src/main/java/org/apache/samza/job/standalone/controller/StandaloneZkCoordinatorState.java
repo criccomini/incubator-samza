@@ -27,12 +27,14 @@ import java.util.Set;
 
 import org.apache.samza.coordinator.JobCoordinator;
 
+// TODO can we get rid of this and just move it into StandaloneZkContainerController?
+
 public class StandaloneZkCoordinatorState {
-  private List<String> coordinatorSequentialIds;
-  private List<String> containerSequentialIds;
-  private String coordinatorSequentialId;
-  private JobCoordinator jobCoordinator;
-  private Map<String, Set<String>> expectedTaskAssignments;
+  private volatile List<String> coordinatorSequentialIds;
+  private volatile List<String> containerSequentialIds;
+  private volatile String coordinatorSequentialId;
+  private volatile JobCoordinator jobCoordinator;
+  private volatile Map<String, Set<String>> expectedTaskAssignments;
 
   public StandaloneZkCoordinatorState() {
     clear();

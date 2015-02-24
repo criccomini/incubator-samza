@@ -44,6 +44,7 @@ import org.junit.Test;
 public class TestStandaloneZkCoordinatorController {
   public static final String zkConnect = "127.0.0.1:2181";
   StandaloneZkCoordinatorController coordinatorController = null;
+  StandaloneZkCoordinatorController coordinator2Controller = null;
   StandaloneZkContainerController container1Controller = null;
   StandaloneZkContainerController container2Controller = null;
   EmbeddedZookeeper zookeeper = null;
@@ -52,13 +53,13 @@ public class TestStandaloneZkCoordinatorController {
   @Before
   public void before() {
     zookeeper = new EmbeddedZookeeper(zkConnect);
-    zkClient = new ZkClient(zkConnect + "/", 6000, 6000, new ZkJsonSerde());
+    zkClient = new ZkClient(zkConnect, 6000, 6000, new ZkJsonSerde());
     Map<String, String> configMap = new HashMap<String, String>();
     configMap.put("task.class", MockTask.class.getCanonicalName());
     configMap.put("task.inputs", "mock.foo");
     configMap.put("systems.mock.samza.factory", MockSystemFactory.class.getCanonicalName());
     Config config = new MapConfig(configMap);
-    coordinatorController = new StandaloneZkCoordinatorController(config, zkClient);
+    coordinatorController = new StandaloneZkCoordinatorController(config, zkConnect, zkClient);
     container1Controller = new StandaloneZkContainerController(zkClient);
     container2Controller = new StandaloneZkContainerController(zkClient);
   }

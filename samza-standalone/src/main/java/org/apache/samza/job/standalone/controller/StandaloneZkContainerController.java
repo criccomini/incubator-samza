@@ -29,6 +29,7 @@ import org.I0Itec.zkclient.IZkDataListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.container.SamzaContainer;
 import org.apache.samza.container.TaskName;
+import org.apache.samza.job.ApplicationStatus;
 import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
 
@@ -37,12 +38,14 @@ import org.apache.samza.job.model.JobModel;
 public class StandaloneZkContainerController {
   private final ZkClient zkClient;
   private final IZkDataListener assignmentPathListener;
-  private String containerSequentialId;
-  private Thread containerThread;
+  private volatile String containerSequentialId;
+  private volatile Thread containerThread;
+  private volatile ApplicationStatus status;
 
   public StandaloneZkContainerController(ZkClient zkClient) {
     this.zkClient = zkClient;
     this.assignmentPathListener = new AssignmentPathListener();
+    this.status = ApplicationStatus.New;
   }
 
   public void start() {
@@ -51,7 +54,7 @@ public class StandaloneZkContainerController {
     containerSequentialId = new File(zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList())).getName();
   }
 
-  public void stop() throws Exception {
+  public void stop() throws InterruptedException {
     zkClient.unsubscribeDataChanges(StandaloneZkCoordinatorController.ASSIGNMENTS_PATH, assignmentPathListener);
     if (containerThread != null) {
       containerThread.interrupt();
@@ -60,6 +63,10 @@ public class StandaloneZkContainerController {
     if (containerSequentialId != null) {
       zkClient.delete(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId);
     }
+  }
+
+  public ApplicationStatus getStatus() {
+    return status;
   }
 
   public class AssignmentPathListener implements IZkDataListener {
@@ -88,8 +95,10 @@ public class StandaloneZkContainerController {
           @Override
           public void run() {
             container.run();
+            status = ApplicationStatus.SuccessfulFinish;
           }
         });
+        status = ApplicationStatus.Running;
         containerThread.setDaemon(true);
         containerThread.setName("Container ID (" + containerId + ")");
         containerThread.start();
