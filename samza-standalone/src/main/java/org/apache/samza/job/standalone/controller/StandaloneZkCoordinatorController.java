@@ -42,6 +42,9 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// TODO should have metrics for everything.
+// TODO javadocs everywhere.
+
 public class StandaloneZkCoordinatorController {
   public static final String COORDINATOR_PATH = "/coordinator";
   public static final String CONTAINER_PATH = "/containers";
