@@ -29,7 +29,7 @@ import org.apache.samza.coordinator.JobCoordinator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO can we get rid of this and just move it into StandaloneZkContainerController?
+// TODO can we get rid of this and just move it into StandaloneZkCoordinatorController?
 
 public class StandaloneZkCoordinatorState {
   private static final Logger log = LoggerFactory.getLogger(StandaloneZkCoordinatorState.class);
