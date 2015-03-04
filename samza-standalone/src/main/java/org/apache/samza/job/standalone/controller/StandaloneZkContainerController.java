@@ -119,7 +119,7 @@ public class StandaloneZkContainerController {
         }
       }
       // Announce ownership.
-      log.info("Annoncing ownership for container {} with tasks: {}", containerSequentialId, taskNames);
+      log.info("Announcing ownership for container {} with tasks: {}", containerSequentialId, taskNames);
       zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId, taskNames);
     }
 
