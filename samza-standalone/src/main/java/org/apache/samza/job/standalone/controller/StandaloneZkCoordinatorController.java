@@ -116,6 +116,10 @@ public class StandaloneZkCoordinatorController {
     if (isElectedLeader && !isLeaderRunning) {
       log.info("Becoming leader. Listening to all container changes.");
       state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
+      // Listen to existing container sequential IDs to track ownership.
+      for (String containerSequentialId : state.getContainerSequentialIds()) {
+        zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
+      }
       // Clear assignments to reset everything for a fresh coordinator.
       clearAssignments();
     }
