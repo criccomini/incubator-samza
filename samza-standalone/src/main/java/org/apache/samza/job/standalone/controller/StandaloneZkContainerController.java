@@ -124,25 +124,29 @@ public class StandaloneZkContainerController {
     log.info("Received task task assignments: {}", assignments);
     if (assignments.size() > 0) {
       Integer containerId = (Integer) assignments.get(containerSequentialId);
-      String url = (String) assignments.get(StandaloneZkCoordinatorController.COORDINATOR_URL_KEY);
-      JobModel jobModel = SamzaContainer.readJobModel(url);
-      ContainerModel containerModel = jobModel.getContainers().get(containerId);
-      SamzaContainer container = SamzaContainer.apply(containerModel, jobModel.getConfig());
-      containerThread = new Thread(new Runnable() {
-        @Override
-        public void run() {
-          log.info("Running new container.");
-          container.run();
-          status = ApplicationStatus.SuccessfulFinish;
+      if (containerId != null) {
+        String url = (String) assignments.get(StandaloneZkCoordinatorController.COORDINATOR_URL_KEY);
+        JobModel jobModel = SamzaContainer.readJobModel(url);
+        ContainerModel containerModel = jobModel.getContainers().get(containerId);
+        SamzaContainer container = SamzaContainer.apply(containerModel, jobModel.getConfig());
+        containerThread = new Thread(new Runnable() {
+          @Override
+          public void run() {
+            log.info("Running new container.");
+            container.run();
+            status = ApplicationStatus.SuccessfulFinish;
+          }
+        });
+        log.info("Starting new container thread.");
+        status = ApplicationStatus.Running;
+        containerThread.setDaemon(true);
+        containerThread.setName("Container ID (" + containerId + ")");
+        containerThread.start();
+        for (TaskName taskName : containerModel.getTasks().keySet()) {
+          taskNames.add(taskName.toString());
         }
-      });
-      log.info("Starting new container thread.");
-      status = ApplicationStatus.Running;
-      containerThread.setDaemon(true);
-      containerThread.setName("Container ID (" + containerId + ")");
-      containerThread.start();
-      for (TaskName taskName : containerModel.getTasks().keySet()) {
-        taskNames.add(taskName.toString());
+      } else {
+        log.info("No container assignment for: {}", containerSequentialId);
       }
     }
     // Announce ownership.
