@@ -37,7 +37,11 @@ public class StandaloneJob implements StreamJob {
   @Override
   public StreamJob submit() {
     this.coordinatorController.start();
-    this.containerController.start();
+    try {
+      this.containerController.start();
+    } catch (InterruptedException e) {
+      throw new RuntimeException("Unable to start container controller.", e);
+    }
     return this;
   }
 
@@ -61,7 +65,7 @@ public class StandaloneJob implements StreamJob {
         Thread.sleep(100);
         status = this.containerController.getStatus();
       }
-    } catch (Exception e) {
+    } catch (InterruptedException e) {
       // Break sleep loop, and reset interrupt flag.
       Thread.currentThread().interrupt();
     }
@@ -78,7 +82,7 @@ public class StandaloneJob implements StreamJob {
         currentWaitTimeMs += 100;
         status = this.containerController.getStatus();
       }
-    } catch (Exception e) {
+    } catch (InterruptedException e) {
       // Break sleep loop, and reset interrupt flag.
       Thread.currentThread().interrupt();
     }

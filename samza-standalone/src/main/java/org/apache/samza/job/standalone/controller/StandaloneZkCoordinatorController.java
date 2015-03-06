@@ -55,7 +55,7 @@ public class StandaloneZkCoordinatorController {
   private final String zkConnect;
   private final ZkClient zkClient;
   private final StandaloneZkCoordinatorState state;
-  private final IZkStateListener coordinatorStateListener;
+  private final CoordinatorStateListener coordinatorStateListener;
   private final IZkChildListener coordinatorPathListener;
   private final IZkChildListener containerPathListener;
   private final IZkDataListener containerAssignmentPathListener;
@@ -78,40 +78,56 @@ public class StandaloneZkCoordinatorController {
     this.containerAssignmentPathListener = new ContainerAssignmentPathListener();
   }
 
-  public void start() {
-    log.info("Starting coordinator controller.");
-    zkClient.subscribeStateChanges(coordinatorStateListener);
-    zkClient.waitUntilConnected();
-    ZkUtil.setupZkEnvironment(zkConnect);
-    zkClient.createPersistent(COORDINATOR_PATH, true);
-    zkClient.createPersistent(CONTAINER_PATH, true);
-    zkClient.createPersistent(ASSIGNMENTS_PATH, true);
-    state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener));
-    state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
-    log.debug("Finished starting coordinator controller.");
+  public synchronized void start() {
+    if (!state.isRunning()) {
+      log.info("Starting coordinator controller.");
+      zkClient.waitUntilConnected();
+      zkClient.subscribeStateChanges(coordinatorStateListener);
+      ZkUtil.setupZkEnvironment(zkConnect);
+      zkClient.createPersistent(COORDINATOR_PATH, true);
+      zkClient.createPersistent(CONTAINER_PATH, true);
+      zkClient.createPersistent(ASSIGNMENTS_PATH, true);
+      if (state.getCoordinatorSequentialId() == null) {
+        state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
+      }
+      state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener));
+      checkLeadership();
+      log.debug("Finished starting coordinator controller.");
+      state.setRunning(true);
+    } else {
+      log.debug("Attempting to start a coordinator controller that's already been started. Ignoring.");
+    }
+  }
+
+  public synchronized void pause() {
+    if (state.isRunning()) {
+      log.info("Stopping coordinator controller.");
+      zkClient.unsubscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener);
+      zkClient.unsubscribeChildChanges(CONTAINER_PATH, containerPathListener);
+      for (String containerSequentialId : state.getContainerSequentialIds()) {
+        zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
+      }
+      JobCoordinator coordinator = state.getJobCoordinator();
+      if (coordinator != null) {
+        coordinator.stop();
+      }
+      state.clear();
+      log.debug("Finished stopping coordinator controller.");
+    } else {
+      log.debug("Attempting to stop a coordinator controller that's already been started. Ignoring.");
+    }
   }
 
   public void stop() {
-    log.info("Stopping coordinator controller.");
+    this.pause();
+    // TODO should delete ephemeral node here.
+    // Stop listening to ZK, so we never reconnect.
     zkClient.unsubscribeStateChanges(coordinatorStateListener);
-    zkClient.unsubscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener);
-    zkClient.unsubscribeChildChanges(CONTAINER_PATH, containerPathListener);
-    for (String containerSequentialId : state.getContainerSequentialIds()) {
-      zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
-    }
-    JobCoordinator coordinator = state.getJobCoordinator();
-    if (coordinator != null) {
-      coordinator.stop();
-    }
-    if (state.getCoordinatorSequentialId() != null) {
-      zkClient.delete(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId());
-    }
-    log.debug("Finished stopping coordinator controller.");
   }
 
   private void checkLeadership() {
-    boolean isLeaderRunning = state.isLeaderRunning();
     boolean isElectedLeader = state.isElectedLeader();
+    boolean isLeaderRunning = state.isLeaderRunning();
     log.debug("Checking leadership. isElectedLeader={}, isLeaderRunning{}", isElectedLeader, isLeaderRunning);
     if (isElectedLeader && !isLeaderRunning) {
       log.info("Becoming leader. Listening to all container changes.");
@@ -122,6 +138,7 @@ public class StandaloneZkCoordinatorController {
       }
       // Clear assignments to reset everything for a fresh coordinator.
       clearAssignments();
+      assignTasksToContainers();
     }
   }
 
@@ -194,18 +211,24 @@ public class StandaloneZkCoordinatorController {
     zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
   }
 
+  // TODO exact same code in both coordinator and container controller. Clean
+  // up.
   private class CoordinatorStateListener implements IZkStateListener {
     @Override
     public void handleStateChanged(KeeperState zkState) throws Exception {
       if (zkState.equals(KeeperState.Disconnected) || zkState.equals(KeeperState.Expired)) {
         log.warn("Lost connection with ZooKeeper: {}", zkState);
-        state.clear();
+        pause();
+      } else if (zkState.equals(KeeperState.SyncConnected)) {
+        log.info("Reconnected to ZooKeeper.");
+        start();
       }
     }
 
     @Override
     public void handleNewSession() throws Exception {
       // TODO what is this?
+      log.warn("Got a handleNewSession call. What is this? Should we stop(); start();?");
     }
   }
 
@@ -215,7 +238,6 @@ public class StandaloneZkCoordinatorController {
       log.trace("CoordinatorPathListener.handleChildChange with parent path {} and children: {}", parentPath, currentChildren);
       state.setCoordinatorSequentialIds(currentChildren);
       checkLeadership();
-      assignTasksToContainers();
     }
   }
 

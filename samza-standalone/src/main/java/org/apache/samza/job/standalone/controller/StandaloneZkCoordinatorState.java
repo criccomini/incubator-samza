@@ -39,6 +39,7 @@ public class StandaloneZkCoordinatorState {
   private volatile String coordinatorSequentialId;
   private volatile JobCoordinator jobCoordinator;
   private volatile Map<String, Set<String>> expectedTaskAssignments;
+  private volatile boolean running;
 
   public StandaloneZkCoordinatorState() {
     clear();
@@ -99,19 +100,28 @@ public class StandaloneZkCoordinatorState {
   }
 
   public boolean isElectedLeader() {
-    return coordinatorSequentialIds.get(0).equals(coordinatorSequentialId);
+    return coordinatorSequentialIds.size() > 0 && coordinatorSequentialIds.get(0).equals(coordinatorSequentialId);
   }
 
   public boolean isLeaderRunning() {
     return isElectedLeader() && jobCoordinator != null;
   }
 
+  public boolean isRunning() {
+    return running;
+  }
+
+  public void setRunning(boolean running) {
+    this.running = running;
+  }
+
   public void clear() {
     log.info("Clearing all coordinator state.");
+    // Don't clear coordinator sequential ID. Try and re-use it.
     coordinatorSequentialIds = Collections.unmodifiableList(Collections.emptyList());
     containerSequentialIds = Collections.unmodifiableList(Collections.emptyList());
     expectedTaskAssignments = Collections.unmodifiableMap(Collections.emptyMap());
-    coordinatorSequentialId = null;
     jobCoordinator = null;
+    running = false;
   }
 }
