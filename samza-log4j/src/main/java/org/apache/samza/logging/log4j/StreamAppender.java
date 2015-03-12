@@ -83,7 +83,11 @@ public class StreamAppender extends AppenderSkeleton {
   @Override
   public void activateOptions() {
     String containerName = System.getProperty(JAVA_OPTS_CONTAINER_NAME);
-    isApplicationMaster = containerName.contains(APPLICATION_MASTER_TAG);
+    if (containerName != null) {
+      isApplicationMaster = containerName.contains(APPLICATION_MASTER_TAG);
+    } else {
+      log.error("Got null container name from system property: " + JAVA_OPTS_CONTAINER_NAME);
+    }
     key = containerName; // use the container name as the key for the logs
     config = getConfig();
     SystemFactory systemFactory = null;
@@ -185,7 +189,7 @@ public class StreamAppender extends AppenderSkeleton {
     return config;
   }
 
-  private String getStreamName(String jobName, String jobId) {
+  public static String getStreamName(String jobName, String jobId) {
     if (jobName == null) {
       throw new SamzaException("job name is null. Please specify job.name");
     }
@@ -219,5 +223,14 @@ public class StreamAppender extends AppenderSkeleton {
       String serdeKey = String.format(SerializerConfig.SERDE(), serdeName);
       throw new SamzaException("Can not find serializers class for key '" + serdeName + "'. Please specify " + serdeKey + " property");
     }
+  }
+
+  /**
+   * Returns the serde that is being used for the stream appender.
+   * 
+   * @return The Serde&lt;LoggingEvent&gt; that the appender is using.
+   */
+  public Serde<LoggingEvent> getSerde() {
+    return serde;
   }
 }

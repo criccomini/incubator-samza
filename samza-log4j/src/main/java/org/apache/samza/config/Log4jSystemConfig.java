@@ -20,6 +20,7 @@
 package org.apache.samza.config;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.samza.logging.log4j.serializers.LoggingEventStringSerdeFactory;
@@ -62,7 +63,7 @@ public class Log4jSystemConfig {
   public String getSystemName() {
     String log4jSystem = config.get(TASK_LOG4J_SYSTEM, null);
     if (log4jSystem == null) {
-      ArrayList<String> systemNames = getSystemNames();
+      List<String> systemNames = getSystemNames();
       if (systemNames.size() == 1) {
         log4jSystem = systemNames.get(0);
       } else {
@@ -111,7 +112,7 @@ public class Log4jSystemConfig {
    * 
    * @return A list system names
    */
-  protected ArrayList<String> getSystemNames() {
+  protected List<String> getSystemNames() {
     Config subConf = config.subset(SYSTEM_PREFIX, true);
     ArrayList<String> systemNames = new ArrayList<String>();
     for (Map.Entry<String, String> entry : subConf.entrySet()) {
