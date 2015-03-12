@@ -30,6 +30,7 @@ import org.apache.samza.logging.log4j.serializers.LoggingEventStringSerdeFactory
  */
 public class Log4jSystemConfig {
 
+  private static final String LOCATION_ENABLED = "task.log4j.location.info.enabled";
   private static final String TASK_LOG4J_SYSTEM = "task.log4j.system";
   private static final String SYSTEM_PREFIX = "systems.";
   private static final String SYSTEM_FACTORY_SUFFIX = ".samza.factory";
@@ -38,6 +39,18 @@ public class Log4jSystemConfig {
 
   public Log4jSystemConfig(Config config) {
     this.config = config;
+  }
+
+  /**
+   * Defines whether or not to include file location information for Log4J
+   * appender messages. File location information includes the method, line
+   * number, class, etc.
+   * 
+   * @return If true, will include file location (method, line number, etc)
+   *         information in Log4J appender messages.
+   */
+  public boolean getLocationEnabled() {
+    return config.getBoolean(Log4jSystemConfig.LOCATION_ENABLED, false);
   }
 
   /**

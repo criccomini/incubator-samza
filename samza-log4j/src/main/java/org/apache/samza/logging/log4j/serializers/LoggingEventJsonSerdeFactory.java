@@ -21,13 +21,14 @@ package org.apache.samza.logging.log4j.serializers;
 
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.samza.config.Config;
+import org.apache.samza.config.Log4jSystemConfig;
 import org.apache.samza.serializers.Serde;
 import org.apache.samza.serializers.SerdeFactory;
 
 public class LoggingEventJsonSerdeFactory implements SerdeFactory<LoggingEvent> {
   @Override
   public Serde<LoggingEvent> getSerde(String name, Config config) {
-    boolean locationInfoEnabled = config.getBoolean("task.log4j.location.info.enabled", false);
+    boolean locationInfoEnabled = new Log4jSystemConfig(config).getLocationEnabled();
     return new LoggingEventJsonSerde(locationInfoEnabled);
   }
 }
