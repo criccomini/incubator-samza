@@ -32,7 +32,7 @@ import org.apache.samza.config.Log4jSystemConfig;
 import org.apache.samza.config.SerializerConfig;
 import org.apache.samza.config.ShellCommandConfig;
 import org.apache.samza.job.model.JobModel;
-import org.apache.samza.logging.log4j.serializers.LoggingEventStringSerdeFactory;
+import org.apache.samza.logging.log4j.serializers.LoggingEventJsonSerdeFactory;
 import org.apache.samza.metrics.MetricsRegistryMap;
 import org.apache.samza.serializers.Serde;
 import org.apache.samza.serializers.SerdeFactory;
@@ -205,7 +205,7 @@ public class StreamAppender extends AppenderSkeleton {
    * @param streamName name of the stream
    */
   private void setSerde(Log4jSystemConfig log4jSystemConfig, String systemName, String streamName) {
-    String serdeClass = LoggingEventStringSerdeFactory.class.getCanonicalName();;
+    String serdeClass = LoggingEventJsonSerdeFactory.class.getCanonicalName();;
     String serdeName = log4jSystemConfig.getStreamSerdeName(systemName, streamName);
 
     if (serdeName != null) {
