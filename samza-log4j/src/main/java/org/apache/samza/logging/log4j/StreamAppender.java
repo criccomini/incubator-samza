@@ -86,7 +86,7 @@ public class StreamAppender extends AppenderSkeleton {
     if (containerName != null) {
       isApplicationMaster = containerName.contains(APPLICATION_MASTER_TAG);
     } else {
-      log.error("Got null container name from system property: " + JAVA_OPTS_CONTAINER_NAME);
+      throw new SamzaException("Got null container name from system property: " + JAVA_OPTS_CONTAINER_NAME + ". This is used as the key for the log appender, so can't proceed.");
     }
     key = containerName; // use the container name as the key for the logs
     config = getConfig();
