@@ -47,24 +47,24 @@ public class Log4jSystemConfig {
    * @return log4j system name
    */
   public String getSystemName() {
-    String log4jSystem = getValue(TASK_LOG4J_SYSTEM);
+    String log4jSystem = config.get(TASK_LOG4J_SYSTEM, null);
     if (log4jSystem == null) {
       ArrayList<String> systemNames = getSystemNames();
       if (systemNames.size() == 1) {
         log4jSystem = systemNames.get(0);
       } else {
-        throw new ConfigException("Missing task.log4j.system configuration, and more than 1 systems were found.");
+        throw new ConfigException("Missing " + TASK_LOG4J_SYSTEM + " configuration, and more than 1 systems were found.");
       }
     }
     return log4jSystem;
   }
 
   public String getJobName() {
-    return getValue(JobConfig.JOB_NAME());
+    return config.get(JobConfig.JOB_NAME(), null);
   }
 
   public String getJobId() {
-    return getValue(JobConfig.JOB_ID());
+    return config.get(JobConfig.JOB_ID(), null);
   }
 
   public String getSystemFactory(String name) {
@@ -72,47 +72,25 @@ public class Log4jSystemConfig {
       return null;
     }
     String systemFactory = String.format(SystemConfig.SYSTEM_FACTORY(), name);
-    return getValue(systemFactory);
+    return config.get(systemFactory, null);
   }
 
   /**
-   * get the class name according to the serde name. If the serde name is "log4j" and
-   * the serde class is not configured, will use the default {@link LoggingEventStringSerdeFactory}
+   * Get the class name according to the serde name. If the serde name is
+   * "log4j" and the serde class is not configured, will use the default
+   * {@link LoggingEventStringSerdeFactory}.
    * 
-   * @param name serde name
+   * @param name
+   *          serde name
    * @return serde factory name
    */
   public String getSerdeClass(String name) {
-    String className = getValue(String.format(SerializerConfig.SERDE(), name));
-    if (className == null && name.equals("log4j")) {
-      className = LoggingEventStringSerdeFactory.class.getCanonicalName();
-    }
-    return className;
-  }
-
-  public String getSystemSerdeName(String name) {
-    String systemSerdeNameConfig = String.format(SystemConfig.MSG_SERDE(), name);
-    return getValue(systemSerdeNameConfig);
+    return config.get(String.format(SerializerConfig.SERDE(), name), null);
   }
 
   public String getStreamSerdeName(String systemName, String streamName) {
     String streamSerdeNameConfig = String.format(StreamConfig.MSG_SERDE(), systemName, streamName);
-    return getValue(streamSerdeNameConfig);
-  }
-
-  /**
-   * A helper method to get the value from the config. If the config does not
-   * contain the key, return null.
-   *
-   * @param key key name
-   * @return value of the key in the config
-   */
-  protected String getValue(String key) {
-    if (config.containsKey(key)) {
-      return config.get(key);
-    } else {
-      return null;
-    }
+    return config.get(streamSerdeNameConfig, null);
   }
 
   /**

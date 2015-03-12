@@ -29,10 +29,10 @@ import org.apache.log4j.spi.LoggingEvent;
 import org.apache.samza.SamzaException;
 import org.apache.samza.config.Config;
 import org.apache.samza.config.Log4jSystemConfig;
+import org.apache.samza.config.SerializerConfig;
 import org.apache.samza.config.ShellCommandConfig;
-import org.apache.samza.config.StreamConfig;
-import org.apache.samza.config.SystemConfig;
 import org.apache.samza.job.model.JobModel;
+import org.apache.samza.logging.log4j.serializers.LoggingEventStringSerdeFactory;
 import org.apache.samza.metrics.MetricsRegistryMap;
 import org.apache.samza.serializers.Serde;
 import org.apache.samza.serializers.SerdeFactory;
@@ -205,24 +205,19 @@ public class StreamAppender extends AppenderSkeleton {
    * @param streamName name of the stream
    */
   private void setSerde(Log4jSystemConfig log4jSystemConfig, String systemName, String streamName) {
-    String serdeClass = null;
+    String serdeClass = LoggingEventStringSerdeFactory.class.getCanonicalName();;
     String serdeName = log4jSystemConfig.getStreamSerdeName(systemName, streamName);
 
-    if (serdeName == null) {
-      serdeName = log4jSystemConfig.getSystemSerdeName(systemName);
+    if (serdeName != null) {
+      serdeClass = log4jSystemConfig.getSerdeClass(serdeName);
     }
-
-    if (serdeName == null) {
-      throw new SamzaException("Missing serde name. Please specify the " + StreamConfig.MSG_SERDE() + " or " + SystemConfig.MSG_SERDE() + " property.");
-    }
-
-    serdeClass = log4jSystemConfig.getSerdeClass(serdeName);
 
     if (serdeClass != null) {
       SerdeFactory<LoggingEvent> serdeFactory = Util.<SerdeFactory<LoggingEvent>> getObj(serdeClass);
       serde = serdeFactory.getSerde(systemName, config);
     } else {
-      throw new SamzaException("Can not find serializers class. Please specify serializers.registry.s%.class property");
+      String serdeKey = String.format(SerializerConfig.SERDE(), serdeName);
+      throw new SamzaException("Can not find serializers class for key '" + serdeName + "'. Please specify " + serdeKey + " property");
     }
   }
 }
