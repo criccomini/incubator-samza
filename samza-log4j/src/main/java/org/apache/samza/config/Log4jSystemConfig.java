@@ -51,7 +51,7 @@ public class Log4jSystemConfig {
    *         information in Log4J appender messages.
    */
   public boolean getLocationEnabled() {
-    return config.getBoolean(Log4jSystemConfig.LOCATION_ENABLED, false);
+    return "true".equals(config.get(Log4jSystemConfig.LOCATION_ENABLED, "false"));
   }
 
   /**

@@ -25,6 +25,10 @@ import org.apache.samza.config.Log4jSystemConfig;
 import org.apache.samza.serializers.Serde;
 import org.apache.samza.serializers.SerdeFactory;
 
+/**
+ * A factory that returns a Serde suitable for encoding Log4J LoggingEvents as
+ * JSON-encoded maps.
+ */
 public class LoggingEventJsonSerdeFactory implements SerdeFactory<LoggingEvent> {
   @Override
   public Serde<LoggingEvent> getSerde(String name, Config config) {

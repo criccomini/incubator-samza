@@ -33,19 +33,46 @@ import org.apache.log4j.spi.ThrowableInformation;
 import org.apache.samza.serializers.JsonSerde;
 import org.apache.samza.serializers.Serde;
 
+/**
+ * A JSON serde that serializes Log4J LoggingEvent objects into JSON using the
+ * standard logstash LoggingEvent format defined <a
+ * href="https://github.com/logstash/log4j-jsonevent-layout">here</a>.
+ */
 public class LoggingEventJsonSerde implements Serde<LoggingEvent> {
+  /**
+   * The JSON format version.
+   */
   public static final int VERSION = 1;
+
+  /**
+   * The date format to use for the timestamp field.
+   */
   public static final Format DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
   // Have to wrap rather than extend due to type collisions between
   // Serde<LoggingEvent> and SerdeObject>.
   private final JsonSerde jsonSerde;
+
+  /**
+   * Defines whether to include LocationInfo data in the serialized
+   * LoggingEvent. This information includes the file, line, and class that
+   * wrote the log line.
+   */
   private final boolean includeLocationInfo;
 
+  /**
+   * Constructs the serde without location info.
+   */
   public LoggingEventJsonSerde() {
     this(false);
   }
 
+  /**
+   * Constructs the serde.
+   * 
+   * @param includeLocationInfo
+   *          Whether to include location info in the logging event or not.
+   */
   public LoggingEventJsonSerde(boolean includeLocationInfo) {
     this.includeLocationInfo = includeLocationInfo;
     this.jsonSerde = new JsonSerde();
@@ -64,6 +91,16 @@ public class LoggingEventJsonSerde implements Serde<LoggingEvent> {
     return decodeFromMap(loggingEventMap);
   }
 
+  /**
+   * Encodes a LoggingEvent into a HashMap using the logstash JSON format.
+   * 
+   * @param loggingEvent
+   *          The LoggingEvent to encode.
+   * @param includeLocationInfo
+   *          Whether to include LocationInfo in the map, or not.
+   * @return A Map representing the LoggingEvent, which is suitable to be
+   *         serialized by a JSON encoder such as Jackson.
+   */
   @SuppressWarnings("rawtypes")
   public static Map<String, Object> encodeToMap(LoggingEvent loggingEvent, boolean includeLocationInfo) {
     Map<String, Object> logstashEvent = new LoggingEventMap();
@@ -114,14 +151,21 @@ public class LoggingEventJsonSerde implements Serde<LoggingEvent> {
     return logstashEvent;
   }
 
+  /**
+   * This method is not currently implemented.
+   */
   public static LoggingEvent decodeFromMap(Map<String, Object> loggingEventMap) {
-    return null;
+    throw new UnsupportedOperationException("Unable to decode LoggingEvents.");
   }
 
   public static String dateFormat(long time) {
     return DATE_FORMAT.format(new Date(time));
   }
 
+  /**
+   * @return The hostname to use in the hostname field of the encoded
+   *         LoggingEvents.
+   */
   public static String getHostname() {
     try {
       return InetAddress.getLocalHost().getHostName();
@@ -130,6 +174,11 @@ public class LoggingEventJsonSerde implements Serde<LoggingEvent> {
     }
   }
 
+  /**
+   * A helper class that only puts non-null values into the encoded LoggingEvent
+   * map. This helps to shrink over-the-wire byte payloads for encoded
+   * LoggingEvents.
+   */
   @SuppressWarnings("serial")
   public static final class LoggingEventMap extends HashMap<String, Object> {
     public Object put(String key, Object value) {
