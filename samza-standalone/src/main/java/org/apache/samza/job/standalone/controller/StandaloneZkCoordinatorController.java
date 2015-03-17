@@ -227,8 +227,12 @@ public class StandaloneZkCoordinatorController {
 
     @Override
     public void handleNewSession() throws Exception {
-      // TODO what is this?
-      log.warn("Got a handleNewSession call. What is this? Should we stop(); start();?");
+      log.warn("Session has expired. Creating a new one.");
+      pause();
+      // Drop old containerSequentialId since our session has expired. A new one
+      // will be created when start is called.
+      state.setCoordinatorSequentialId(null);
+      start();
     }
   }
 

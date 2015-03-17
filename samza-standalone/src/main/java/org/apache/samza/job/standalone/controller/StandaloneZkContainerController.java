@@ -28,6 +28,7 @@ import java.util.Map;
 import org.I0Itec.zkclient.IZkDataListener;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
 import org.apache.samza.container.SamzaContainer;
 import org.apache.samza.container.TaskName;
 import org.apache.samza.job.ApplicationStatus;
@@ -80,8 +81,13 @@ public class StandaloneZkContainerController {
         containerThread.interrupt();
         containerThread.join();
       }
-      // Relinquish all task ownership.
-      zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId, Collections.emptyList());
+      String containerSequentialIdPath = StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId;
+      try {
+        // Relinquish all task ownership.
+        zkClient.writeData(containerSequentialIdPath, Collections.emptyList());
+      } catch (ZkNoNodeException e) {
+        log.info("Unable to relinquish task ownership due to missing ZK node path: {}", containerSequentialIdPath);
+      }
       log.debug("Finished stopping container controller.");
       running = false;
     } else {
@@ -185,8 +191,12 @@ public class StandaloneZkContainerController {
 
     @Override
     public void handleNewSession() throws Exception {
-      // TODO what is this?
-      log.warn("Got a handleNewSession call. What is this? Should we stop(); start();?");
+      log.warn("Session has expired. Creating a new one.");
+      pause();
+      // Drop old containerSequentialId since our session has expired. A new one
+      // will be created when start is called.
+      containerSequentialId = null;
+      start();
     }
   }
 }
