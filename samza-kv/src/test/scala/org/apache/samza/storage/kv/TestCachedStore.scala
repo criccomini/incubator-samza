@@ -16,23 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- ext {
-  jodaTimeVersion = "2.2"
-  joptSimpleVersion = "3.2"
-  jacksonVersion = "1.8.5"
-  junitVersion = "4.8.1"
-  mockitoVersion = "1.8.4"
-  scalaTestVersion = "2.2.4"
-  zkClientVersion = "0.3"
-  zookeeperVersion = "3.3.4"
-  metricsVersion = "2.2.0"
-  kafkaVersion = "0.8.2.1"
-  commonsHttpClientVersion = "3.1"
-  rocksdbVersion = "3.5.1"
-  yarnVersion = "2.4.0"
-  slf4jVersion = "1.6.2"
-  log4jVersion = "1.2.17"
-  guavaVersion = "17.0"
-  commonsCodecVersion = "1.9"
-  zkClientVersion = "0.3"
+
+package org.apache.samza.storage.kv
+
+import org.junit.Test
+import org.junit.Assert._
+import org.mockito.Mockito._
+
+class TestCachedStore {
+  @Test
+  def testArrayCheck {
+    val kv = mock(classOf[KeyValueStore[Array[Byte], Array[Byte]]])
+    val store = new CachedStore[Array[Byte], Array[Byte]](kv, 100, 100)
+    assertFalse(store.hasArrayKeys)
+    store.put("test1-key".getBytes("UTF-8"), "test1-value".getBytes("UTF-8"))
+    assertTrue(store.hasArrayKeys)
+  }
 }

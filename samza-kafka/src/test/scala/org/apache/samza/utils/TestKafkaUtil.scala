@@ -16,23 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- ext {
-  jodaTimeVersion = "2.2"
-  joptSimpleVersion = "3.2"
-  jacksonVersion = "1.8.5"
-  junitVersion = "4.8.1"
-  mockitoVersion = "1.8.4"
-  scalaTestVersion = "2.2.4"
-  zkClientVersion = "0.3"
-  zookeeperVersion = "3.3.4"
-  metricsVersion = "2.2.0"
-  kafkaVersion = "0.8.2.1"
-  commonsHttpClientVersion = "3.1"
-  rocksdbVersion = "3.5.1"
-  yarnVersion = "2.4.0"
-  slf4jVersion = "1.6.2"
-  log4jVersion = "1.2.17"
-  guavaVersion = "17.0"
-  commonsCodecVersion = "1.9"
-  zkClientVersion = "0.3"
+
+package org.apache.samza.utils
+
+import org.junit.Test
+import org.scalatest.{ Matchers => ScalaTestMatchers }
+import org.apache.samza.util.KafkaUtil
+import kafka.common.ErrorMapping
+
+class TestKafkaUtil extends ScalaTestMatchers {
+  @Test
+  def testMaybeThrowException {
+    intercept[Exception] { KafkaUtil.maybeThrowException(ErrorMapping.UnknownTopicOrPartitionCode) }
+    KafkaUtil.maybeThrowException(ErrorMapping.ReplicaNotAvailableCode)
+  }
 }
