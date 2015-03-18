@@ -34,12 +34,12 @@ import org.slf4j.LoggerFactory;
 public class StandaloneZkCoordinatorState {
   private static final Logger log = LoggerFactory.getLogger(StandaloneZkCoordinatorState.class);
 
-  private volatile List<String> coordinatorSequentialIds;
   private volatile List<String> containerSequentialIds;
   private volatile String coordinatorSequentialId;
   private volatile JobCoordinator jobCoordinator;
   private volatile Map<String, Set<String>> expectedTaskAssignments;
   private volatile boolean running;
+  private volatile boolean electedLeader;
 
   public StandaloneZkCoordinatorState() {
     clear();
@@ -56,18 +56,6 @@ public class StandaloneZkCoordinatorState {
     }
     log.debug("Setting expected task assignments: {}", unmodifiableMap);
     this.expectedTaskAssignments = Collections.unmodifiableMap(unmodifiableMap);
-  }
-
-  public void setCoordinatorSequentialIds(List<String> coordinatorSequentialIds) {
-    if (coordinatorSequentialIds == null) {
-      coordinatorSequentialIds = Collections.emptyList();
-    }
-    log.debug("Setting coordinator sequential IDs: {}", coordinatorSequentialIds);
-    this.coordinatorSequentialIds = Collections.unmodifiableList(coordinatorSequentialIds);
-  }
-
-  public List<String> getCoordinatorSequentialIds() {
-    return coordinatorSequentialIds;
   }
 
   public void setContainerSequentialIds(List<String> containerSequentialIds) {
@@ -99,8 +87,12 @@ public class StandaloneZkCoordinatorState {
     this.jobCoordinator = jobCoordinator;
   }
 
+  public void setElectedLeader(boolean electedLeader) {
+    this.electedLeader = electedLeader;
+  }
+
   public boolean isElectedLeader() {
-    return coordinatorSequentialIds.size() > 0 && coordinatorSequentialIds.get(0).equals(coordinatorSequentialId);
+    return electedLeader;
   }
 
   public boolean isLeaderRunning() {
@@ -118,10 +110,10 @@ public class StandaloneZkCoordinatorState {
   public void clear() {
     log.info("Clearing all coordinator state.");
     // Don't clear coordinator sequential ID. Try and re-use it.
-    coordinatorSequentialIds = Collections.unmodifiableList(Collections.emptyList());
     containerSequentialIds = Collections.unmodifiableList(Collections.emptyList());
     expectedTaskAssignments = Collections.unmodifiableMap(Collections.emptyMap());
     jobCoordinator = null;
     running = false;
+    electedLeader = false;
   }
 }

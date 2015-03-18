@@ -53,8 +53,7 @@ object JobCoordinator extends Logging {
    */
   def apply(config: Config, containerCount: Int) = {
     val jobModel = buildJobModel(config, containerCount)
-    val server = new HttpServer
-    server.addServlet("/*", new JobServlet(jobModel))
+    val server = buildHttpServer(jobModel)
     new JobCoordinator(jobModel, server)
   }
 
@@ -112,6 +111,15 @@ object JobCoordinator extends Logging {
     val factoryString = config.getSystemStreamPartitionGrouperFactory
     val factory = Util.getObj[SystemStreamPartitionGrouperFactory](factoryString)
     factory.getSystemStreamPartitionGrouper(config)
+  }
+
+  /**
+   * Builds an basic REST HTTP server that serves the JobModel via HTTP JSON.
+   */
+  def buildHttpServer(jobModel: JobModel) = {
+    val server = new HttpServer
+    server.addServlet("/*", new JobServlet(jobModel))
+    server
   }
 
   /**
@@ -205,7 +213,8 @@ class JobCoordinator(
   val jobModel: JobModel,
 
   /**
-   * HTTP server used to serve a Samza job's container model to SamzaContainers when they start up.
+   * HTTP server used to serve a Samza job's container model to 
+   * SamzaContainers when they start up.
    */
   val server: HttpServer) extends Logging {
 

@@ -20,11 +20,9 @@
 package org.apache.samza.job.standalone.controller;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +34,10 @@ import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.config.Config;
 import org.apache.samza.container.TaskName;
 import org.apache.samza.coordinator.JobCoordinator;
+import org.apache.samza.coordinator.server.HttpServer;
 import org.apache.samza.job.model.ContainerModel;
+import org.apache.samza.job.model.JobModel;
+import org.apache.samza.job.model.TaskModel;
 import org.apache.samza.util.ZkUtil;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.slf4j.Logger;
@@ -48,8 +49,6 @@ import org.slf4j.LoggerFactory;
 public class StandaloneZkCoordinatorController {
   public static final String COORDINATOR_PATH = "/coordinator";
   public static final String CONTAINER_PATH = "/containers";
-  public static final String ASSIGNMENTS_PATH = "/assignments";
-  public static final String COORDINATOR_URL_KEY = "__url";
   private static final Logger log = LoggerFactory.getLogger(StandaloneZkCoordinatorController.class);
   private final Config config;
   private final String zkConnect;
@@ -86,12 +85,10 @@ public class StandaloneZkCoordinatorController {
       ZkUtil.setupZkEnvironment(zkConnect);
       zkClient.createPersistent(COORDINATOR_PATH, true);
       zkClient.createPersistent(CONTAINER_PATH, true);
-      zkClient.createPersistent(ASSIGNMENTS_PATH, true);
       if (state.getCoordinatorSequentialId() == null) {
-        state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", null)).getName());
+        state.setCoordinatorSequentialId(new File(zkClient.createEphemeralSequential(COORDINATOR_PATH + "/", Collections.emptyMap())).getName());
       }
-      state.setCoordinatorSequentialIds(zkClient.subscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener));
-      checkLeadership();
+      checkLeadership(zkClient.subscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener));
       log.debug("Finished starting coordinator controller.");
       state.setRunning(true);
     } else {
@@ -125,90 +122,75 @@ public class StandaloneZkCoordinatorController {
     zkClient.unsubscribeStateChanges(coordinatorStateListener);
   }
 
-  private void checkLeadership() {
-    boolean isElectedLeader = state.isElectedLeader();
-    boolean isLeaderRunning = state.isLeaderRunning();
-    log.debug("Checking leadership. isElectedLeader={}, isLeaderRunning{}", isElectedLeader, isLeaderRunning);
-    if (isElectedLeader && !isLeaderRunning) {
-      log.info("Becoming leader. Listening to all container changes.");
+  private synchronized void checkLeadership(List<String> coordinatorSequentialIds) {
+    Collections.sort(coordinatorSequentialIds);
+    if (coordinatorSequentialIds.size() > 0 && coordinatorSequentialIds.get(0).equals(state.getCoordinatorSequentialId())) {
+      refreshOwnership();
       state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
       // Listen to existing container sequential IDs to track ownership.
       for (String containerSequentialId : state.getContainerSequentialIds()) {
         zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
       }
-      // Clear assignments to reset everything for a fresh coordinator.
-      clearAssignments();
-      assignTasksToContainers();
+      state.setElectedLeader(true);
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private void assignTasksToContainers() {
-    List<String> containerSequentialIds = state.getContainerSequentialIds();
-    Map<String, Set<String>> expectedAssignments = state.getExpectedTaskAssignments();
-    log.debug("Assigning tasks to containers. Expected assignment: {}", expectedAssignments);
-    log.debug("Current sequential IDs: {}", containerSequentialIds);
-    if (expectedAssignments.size() == 0) {
-      // If all container ownership is empty, then setAssignments()
-      boolean allContainersEmpty = true;
-      for (String containerSequentialId : containerSequentialIds) {
-        List<String> taskAssignments = (List<String>) zkClient.readData(CONTAINER_PATH + "/" + containerSequentialId, true);
-        allContainersEmpty &= taskAssignments.size() == 0;
-        log.debug("Task assignments for container {}: {}", containerSequentialId, taskAssignments);
-      }
-      if (allContainersEmpty) {
-        log.info("All containers have relinquished ownership of their tasks. Setting new assignments.");
-        setAssignments();
-      }
-    } else if (expectedAssignments.size() > 0 && !expectedAssignments.keySet().equals(new HashSet<String>(containerSequentialIds))) {
-      log.info("Current containers did not match expected containers. Clearing assignments.");
-      // If a container was added or removed, clear assignments and start over.
-      clearAssignments();
-    }
-  }
-
-  public void clearAssignments() {
-    log.info("Clearing all assignments.");
-    state.setExpectedTaskAssignments(Collections.emptyMap());
-    zkClient.writeData(ASSIGNMENTS_PATH, state.getExpectedTaskAssignments());
-  }
-
-  public void setAssignments() {
-    Map<String, Object> containerIdAssignments = new HashMap<String, Object>();
-    List<String> containerSequentialIds = state.getContainerSequentialIds();
-    Map<String, Set<String>> expectedTaskAssignments = new HashMap<String, Set<String>>();
-    if (containerSequentialIds.size() > 0) {
-      // TODO shouldn't need to bounce entire coordinator to generate new model.
-      JobCoordinator jobCoordinator = state.getJobCoordinator();
-      if (jobCoordinator != null) {
-        jobCoordinator.stop();
-      }
-      jobCoordinator = JobCoordinator.apply(config, containerSequentialIds.size());
-      jobCoordinator.start();
-      state.setJobCoordinator(jobCoordinator);
-      Map<Integer, ContainerModel> containerModels = jobCoordinator.jobModel().getContainers();
-      // Build an assignment map from sequential ID to container ID.
-      List<Integer> containerIds = new ArrayList<Integer>(containerModels.keySet());
-      assert containerIds.size() == containerSequentialIds.size();
-      Collections.sort(containerIds);
-      Iterator<String> containerSequentialIdsIt = containerSequentialIds.iterator();
-      Iterator<Integer> containerIdsIt = containerIds.iterator();
-      while (containerSequentialIdsIt.hasNext() && containerIdsIt.hasNext()) {
-        String containerSequentialId = containerSequentialIdsIt.next();
-        Integer containerId = containerIdsIt.next();
-        Set<String> taskNames = new HashSet<String>();
-        for (TaskName taskName : containerModels.get(containerId).getTasks().keySet()) {
-          taskNames.add(taskName.toString());
+  private JobModel rebuildJobModel(JobModel idealJobModel, Set<TaskName> strippedTaskNames) {
+    if (strippedTaskNames != null && strippedTaskNames.size() > 0) {
+      Map<Integer, ContainerModel> strippedContainers = new HashMap<Integer, ContainerModel>();
+      for (ContainerModel idealContainerModel : idealJobModel.getContainers().values()) {
+        int containerId = idealContainerModel.getContainerId();
+        Map<TaskName, TaskModel> strippedTaskModels = new HashMap<TaskName, TaskModel>();
+        for (TaskModel taskModel : idealContainerModel.getTasks().values()) {
+          if (!strippedTaskNames.contains(taskModel.getTaskName())) {
+            strippedTaskModels.put(taskModel.getTaskName(), taskModel);
+          }
         }
-        expectedTaskAssignments.put(containerSequentialId, taskNames);
-        containerIdAssignments.put(containerSequentialId, containerId);
+        if (strippedTaskModels.size() > 0) {
+          strippedContainers.put(containerId, new ContainerModel(containerId, strippedTaskModels));
+        }
       }
-      containerIdAssignments.put(COORDINATOR_URL_KEY, state.getJobCoordinator().server().getUrl().toString());
+      return new JobModel(config, strippedContainers);
+    } else {
+      return idealJobModel;
     }
-    log.info("Setting expected container to task assignments: {}", expectedTaskAssignments);
-    state.setExpectedTaskAssignments(expectedTaskAssignments);
-    log.info("Setting expected container sequential id to container id assignments: {}", containerIdAssignments);
-    zkClient.writeData(ASSIGNMENTS_PATH, containerIdAssignments);
+  }
+
+  private synchronized void refreshOwnership() {
+    JobModel idealJobModel = JobCoordinator.buildJobModel(config, state.getContainerSequentialIds().size());
+    Set<TaskName> strippedTaskNames = new HashSet<TaskName>();
+    for (String containerId : state.getContainerSequentialIds()) {
+      ContainerModel idealContainerModel = idealJobModel.getContainers().get(containerId);
+      Map<String, List<String>> taskOwnership = zkClient.readData(CONTAINER_PATH + "/" + containerId, true);
+      if (taskOwnership != null) {
+        // Compare the ideal container model against actual task ownership. If
+        // the container owns something it shouldn't, it must be relinquished by
+        // first stripping the task from the job model, then waiting for the
+        // stripped ideal state to converge, then refreshing again with a full
+        // unstripped ideal state.
+        List<String> taskNames = taskOwnership.get("tasks");
+        for (String taskNameString : taskNames) {
+          TaskName taskName = new TaskName(taskNameString);
+          if (idealContainerModel == null || !idealContainerModel.getTasks().containsKey(taskName)) {
+            strippedTaskNames.add(taskName);
+          }
+        }
+      }
+    }
+    JobModel jobModel = rebuildJobModel(idealJobModel, strippedTaskNames);
+    HttpServer server = JobCoordinator.buildHttpServer(jobModel);
+    // This controller is the leader. Start a JobCoordinator and persist its
+    // URL to the ephemeral node.
+    JobCoordinator jobCoordinator = state.getJobCoordinator();
+    if (jobCoordinator != null) {
+      jobCoordinator.stop();
+    }
+    jobCoordinator = new JobCoordinator(jobModel, server);
+    jobCoordinator.start();
+    state.setJobCoordinator(jobCoordinator);
+    Map<String, Object> coordinatorData = new HashMap<String, Object>();
+    coordinatorData.put("url", jobCoordinator.server().getUrl().toString());
+    zkClient.writeData(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId(), coordinatorData);
   }
 
   // TODO exact same code in both coordinator and container controller. Clean
@@ -240,8 +222,7 @@ public class StandaloneZkCoordinatorController {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
       log.trace("CoordinatorPathListener.handleChildChange with parent path {} and children: {}", parentPath, currentChildren);
-      state.setCoordinatorSequentialIds(currentChildren);
-      checkLeadership();
+      checkLeadership(currentChildren);
     }
   }
 
@@ -264,7 +245,7 @@ public class StandaloneZkCoordinatorController {
         zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + oldContainerSequentialId, containerAssignmentPathListener);
       }
       state.setContainerSequentialIds(currentChildren);
-      assignTasksToContainers();
+      refreshOwnership();
     }
   }
 
@@ -272,7 +253,7 @@ public class StandaloneZkCoordinatorController {
     @Override
     public void handleDataChange(String dataPath, Object data) throws Exception {
       log.trace("ContainerAssignmentPathListener.handleDataChange with data path {} and payload: {}", dataPath, data);
-      assignTasksToContainers();
+      refreshOwnership();
     }
 
     @Override
