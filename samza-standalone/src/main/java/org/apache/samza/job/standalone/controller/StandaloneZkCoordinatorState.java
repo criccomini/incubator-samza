@@ -125,5 +125,6 @@ public class StandaloneZkCoordinatorState {
     jobCoordinator = null;
     running = false;
     electedLeader = false;
+    jobModel = null;
   }
 }

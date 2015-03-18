@@ -159,6 +159,7 @@ public class StandaloneZkCoordinatorController {
 
   private synchronized void refreshOwnership() {
     if (state.getContainerIds().size() > 0) {
+      log.info("Refreshing container ownership.");
       JobModel idealJobModel = JobCoordinator.buildJobModel(config, new HashSet<String>(state.getContainerIds()));
       Set<TaskName> strippedTaskNames = new HashSet<TaskName>();
       for (String containerId : state.getContainerIds()) {
