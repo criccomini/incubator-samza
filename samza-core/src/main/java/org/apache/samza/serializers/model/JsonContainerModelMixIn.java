@@ -30,11 +30,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public abstract class JsonContainerModelMixIn {
   @JsonCreator
-  public JsonContainerModelMixIn(@JsonProperty("container-id") int containerId, @JsonProperty("tasks") Map<TaskName, TaskModel> tasks) {
+  public JsonContainerModelMixIn(@JsonProperty("container-id") String containerId, @JsonProperty("tasks") Map<TaskName, TaskModel> tasks) {
   }
 
   @JsonProperty("container-id")
-  abstract int getContainerId();
+  abstract String getContainerId();
 
   @JsonProperty("tasks")
   abstract Map<TaskName, TaskModel> getTasks();

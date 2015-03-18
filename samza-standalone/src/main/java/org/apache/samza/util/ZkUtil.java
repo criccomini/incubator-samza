@@ -19,6 +19,9 @@
 
 package org.apache.samza.util;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.samza.serializers.zk.ZkJsonSerde;
 import org.slf4j.Logger;
@@ -44,5 +47,14 @@ public class ZkUtil {
         zkClient.close();
       }
     }
+  }
+
+  public static String getLeader(List<String> children) {
+    String coordinatorChild = null;
+    if (children != null && children.size() > 0) {
+      Collections.sort(children);
+      coordinatorChild = children.get(0);
+    }
+    return coordinatorChild;
   }
 }

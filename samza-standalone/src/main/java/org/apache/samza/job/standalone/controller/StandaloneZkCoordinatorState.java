@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.samza.coordinator.JobCoordinator;
+import org.apache.samza.job.model.JobModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +41,18 @@ public class StandaloneZkCoordinatorState {
   private volatile Map<String, Set<String>> expectedTaskAssignments;
   private volatile boolean running;
   private volatile boolean electedLeader;
+  private volatile JobModel jobModel;
 
   public StandaloneZkCoordinatorState() {
     clear();
+  }
+
+  public JobModel getJobModel() {
+    return jobModel;
+  }
+
+  public void setJobModel(JobModel jobModel) {
+    this.jobModel = jobModel;
   }
 
   public Map<String, Set<String>> getExpectedTaskAssignments() {

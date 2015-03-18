@@ -123,8 +123,8 @@ public class StandaloneZkCoordinatorController {
   }
 
   private synchronized void checkLeadership(List<String> coordinatorSequentialIds) {
-    Collections.sort(coordinatorSequentialIds);
-    if (coordinatorSequentialIds.size() > 0 && coordinatorSequentialIds.get(0).equals(state.getCoordinatorSequentialId())) {
+    String coordinatorControllerChild = ZkUtil.getLeader(coordinatorSequentialIds);
+    if (coordinatorControllerChild != null && coordinatorControllerChild.equals(state.getCoordinatorSequentialId())) {
       refreshOwnership();
       state.setContainerIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
       // Listen to existing container sequential IDs to track ownership.
@@ -182,19 +182,22 @@ public class StandaloneZkCoordinatorController {
         }
       }
       JobModel jobModel = rebuildJobModel(idealJobModel, strippedTaskNames);
-      HttpServer server = JobCoordinator.buildHttpServer(jobModel);
-      // This controller is the leader. Start a JobCoordinator and persist its
-      // URL to the ephemeral node.
-      JobCoordinator jobCoordinator = state.getJobCoordinator();
-      if (jobCoordinator != null) {
-        jobCoordinator.stop();
+      if (state.getJobModel() == null || !state.getJobModel().equals(jobModel)) {
+        state.setJobModel(jobModel);
+        HttpServer server = JobCoordinator.buildHttpServer(jobModel);
+        // This controller is the leader. Start a JobCoordinator and persist its
+        // URL to the ephemeral node.
+        JobCoordinator jobCoordinator = state.getJobCoordinator();
+        if (jobCoordinator != null) {
+          jobCoordinator.stop();
+        }
+        jobCoordinator = new JobCoordinator(jobModel, server);
+        jobCoordinator.start();
+        state.setJobCoordinator(jobCoordinator);
+        Map<String, Object> coordinatorData = new HashMap<String, Object>();
+        coordinatorData.put("url", jobCoordinator.server().getUrl().toString());
+        zkClient.writeData(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId(), coordinatorData);
       }
-      jobCoordinator = new JobCoordinator(jobModel, server);
-      jobCoordinator.start();
-      state.setJobCoordinator(jobCoordinator);
-      Map<String, Object> coordinatorData = new HashMap<String, Object>();
-      coordinatorData.put("url", jobCoordinator.server().getUrl().toString());
-      zkClient.writeData(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId(), coordinatorData);
     }
   }
 

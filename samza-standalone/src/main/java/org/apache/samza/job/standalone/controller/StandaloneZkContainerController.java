@@ -21,9 +21,12 @@ package org.apache.samza.job.standalone.controller;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.I0Itec.zkclient.IZkChildListener;
+import org.I0Itec.zkclient.IZkDataListener;
 import org.I0Itec.zkclient.IZkStateListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.exception.ZkNoNodeException;
@@ -32,6 +35,7 @@ import org.apache.samza.container.TaskName;
 import org.apache.samza.job.ApplicationStatus;
 import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
+import org.apache.samza.util.ZkUtil;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,7 @@ public class StandaloneZkContainerController {
   private final ZkClient zkClient;
   private final ContainerStateListener containerStateListener;
   private final IZkChildListener coordinatorPathListener;
+  private final IZkDataListener coordinatorDataListener;
   private final String containerId;
   private final String containerPath;
   private volatile Thread containerThread;
@@ -54,6 +59,7 @@ public class StandaloneZkContainerController {
     this.zkClient = zkClient;
     this.containerStateListener = new ContainerStateListener();
     this.coordinatorPathListener = new CoordinatorPathListener();
+    this.coordinatorDataListener = new CoordinatorDataListener();
     this.status = ApplicationStatus.New;
     this.running = false;
   }
@@ -63,7 +69,8 @@ public class StandaloneZkContainerController {
       log.info("Starting container controller.");
       zkClient.waitUntilConnected();
       zkClient.subscribeStateChanges(containerStateListener);
-      zkClient.subscribeChildChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH, coordinatorPathListener);
+      List<String> coordinatorChildren = zkClient.subscribeChildChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH, coordinatorPathListener);
+      refreshAssignments(coordinatorChildren);
       if (!zkClient.exists(containerPath)) {
         zkClient.createEphemeral(containerPath, Collections.emptyMap());
       }
@@ -105,8 +112,16 @@ public class StandaloneZkContainerController {
     zkClient.unsubscribeStateChanges(containerStateListener);
   }
 
-  private synchronized void refreshAssignments(String url) throws InterruptedException {
-    if (coordinatorUrl == null || !coordinatorUrl.equals(url)) {
+  private synchronized void refreshAssignments(List<String> coordinatorControllerChildren) throws InterruptedException {
+    String coordinatorControllerChild = ZkUtil.getLeader(coordinatorControllerChildren);
+    zkClient.subscribeDataChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH + "/" + coordinatorControllerChild, coordinatorDataListener);
+    Map<String, String> urlMap = zkClient.readData(StandaloneZkCoordinatorController.COORDINATOR_PATH + "/" + coordinatorControllerChild, true);
+    refreshAssignments(urlMap);
+  }
+
+  private synchronized void refreshAssignments(Map<String, String> urlMap) throws InterruptedException {
+    String url = urlMap.get("url");
+    if (url != null && (coordinatorUrl == null || !coordinatorUrl.equals(url))) {
       coordinatorUrl = url;
       List<String> taskNames = new ArrayList<String>();
       if (containerThread != null) {
@@ -144,8 +159,23 @@ public class StandaloneZkContainerController {
         }
         // Announce ownership.
         log.info("Announcing ownership for container {} with tasks: {}", containerId, taskNames);
-        zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId, taskNames);
+        Map<String, List<String>> taskMap = new HashMap<String, List<String>>();
+        taskMap.put("tasks", taskNames);
+        zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId, taskMap);
       }
+    }
+  }
+
+  private class CoordinatorDataListener implements IZkDataListener {
+    @SuppressWarnings("unchecked")
+    @Override
+    public void handleDataChange(String dataPath, Object data) throws Exception {
+      refreshAssignments((Map<String, String>) data);
+    }
+
+    @Override
+    public void handleDataDeleted(String dataPath) throws Exception {
+      // TODO do we need to unsubscribe?
     }
   }
 
@@ -175,12 +205,7 @@ public class StandaloneZkContainerController {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
       log.trace("CoordinatorPathListener.handleChildChange with parent path {} and children: {}", parentPath, currentChildren);
-      Collections.sort(currentChildren);
-      if (currentChildren.size() > 0) {
-        String coordinatorControllerPath = currentChildren.get(0);
-        String url = zkClient.readData(parentPath + "/" + coordinatorControllerPath, true);
-        refreshAssignments(url);
-      }
+      refreshAssignments(currentChildren);
     }
   }
 }
