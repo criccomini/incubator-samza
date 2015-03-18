@@ -111,7 +111,7 @@ public class StandaloneZkCoordinatorController {
       state.clear();
       log.debug("Finished stopping coordinator controller.");
     } else {
-      log.debug("Attempting to stop a coordinator controller that's already been started. Ignoring.");
+      log.debug("Attempting to pause a coordinator controller that's already been paused. Ignoring.");
     }
   }
 
