@@ -170,6 +170,7 @@ public class StandaloneZkContainerController {
     @SuppressWarnings("unchecked")
     @Override
     public void handleDataChange(String dataPath, Object data) throws Exception {
+      log.trace("CoordinatorDataListener.handleDataChange with data path {} and payload: {}", dataPath, data);
       refreshAssignments((Map<String, String>) data);
     }
 
