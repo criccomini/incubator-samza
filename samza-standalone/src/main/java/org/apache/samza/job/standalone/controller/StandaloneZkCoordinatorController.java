@@ -125,12 +125,13 @@ public class StandaloneZkCoordinatorController {
   private synchronized void checkLeadership(List<String> coordinatorSequentialIds) {
     String coordinatorControllerChild = ZkUtil.getLeader(coordinatorSequentialIds);
     if (coordinatorControllerChild != null && coordinatorControllerChild.equals(state.getCoordinatorSequentialId())) {
-      refreshOwnership();
+      log.info("Becoming leader.");
       state.setContainerIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
       // Listen to existing container sequential IDs to track ownership.
       for (String containerSequentialId : state.getContainerIds()) {
         zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
       }
+      refreshOwnership();
       state.setElectedLeader(true);
     }
   }
@@ -166,10 +167,9 @@ public class StandaloneZkCoordinatorController {
         if (taskOwnership != null) {
           // Compare the ideal container model against actual task ownership. If
           // the container owns something it shouldn't, it must be relinquished
-          // by
-          // first stripping the task from the job model, then waiting for the
-          // stripped ideal state to converge, then refreshing again with a full
-          // unstripped ideal state.
+          // by first stripping the task from the job model, then waiting for
+          // the stripped ideal state to converge, then refreshing again with a
+          // full unstripped ideal state.
           List<String> taskNames = taskOwnership.get("tasks");
           if (taskNames != null) {
             for (String taskNameString : taskNames) {
