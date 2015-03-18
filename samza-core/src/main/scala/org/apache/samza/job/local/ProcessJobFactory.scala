@@ -36,7 +36,7 @@ import org.apache.samza.coordinator.JobCoordinator
  */
 class ProcessJobFactory extends StreamJobFactory with Logging {
   def   getJob(config: Config): StreamJob = {
-    val coordinator = JobCoordinator(config, 1)
+    val coordinator = JobCoordinator(config, Set("TODO-container-id"))
     val containerModel = coordinator.jobModel.getContainers.get(0)
 
     try {

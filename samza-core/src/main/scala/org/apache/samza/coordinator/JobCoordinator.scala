@@ -51,8 +51,8 @@ object JobCoordinator extends Logging {
   /**
    * Build a JobCoordinator using a Samza job's configuration.
    */
-  def apply(config: Config, containerCount: Int) = {
-    val jobModel = buildJobModel(config, containerCount)
+  def apply(config: Config, containerIds: Set[String]) = {
+    val jobModel = buildJobModel(config, containerIds)
     val server = buildHttpServer(jobModel)
     new JobCoordinator(jobModel, server)
   }
@@ -121,11 +121,11 @@ object JobCoordinator extends Logging {
     server.addServlet("/*", new JobServlet(jobModel))
     server
   }
-
+  
   /**
    * Build a full Samza job model using the job configuration.
    */
-  def buildJobModel(config: Config, containerCount: Int) = {
+  def buildJobModel(config: Config, containerIds: java.util.Set[String]) = {
     // TODO containerCount should go away when we generalize the job coordinator, 
     // and have a non-yarn-specific way of specifying container count.
     val checkpointManager = getCheckpointManager(config)
@@ -184,10 +184,10 @@ object JobCoordinator extends Logging {
 
     // Here is where we should put in a pluggable option for the 
     // SSPTaskNameGrouper for locality, load-balancing, etc.
-    val containerGrouper = new GroupByContainerCount(containerCount)
+    val containerGrouper = new GroupByContainerCount
     val containerModels = containerGrouper
-      .group(taskModels)
-      .map { case (containerModel) => Integer.valueOf(containerModel.getContainerId) -> containerModel }
+      .group(containerIds.toSet, taskModels)
+      .map { case (containerModel) => containerModel.getContainerId -> containerModel }
       .toMap
 
     new JobModel(config, containerModels)

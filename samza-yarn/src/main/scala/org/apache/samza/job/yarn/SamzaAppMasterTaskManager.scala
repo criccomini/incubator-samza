@@ -69,7 +69,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
       info("No %s specified. Defaulting to one container." format YarnConfig.TASK_COUNT)
       1
     })
-  state.jobCoordinator = JobCoordinator(config, state.taskCount)
+  state.jobCoordinator = JobCoordinator(config, (0 until state.taskCount).map(_.toString).toSet)
 
   var taskFailures = Map[Int, TaskFailure]()
   var tooManyFailedContainers = false
@@ -104,7 +104,7 @@ class SamzaAppMasterTaskManager(clock: () => Long, config: Config, state: SamzaA
     state.unclaimedTasks.headOption match {
       case Some(taskId) => {
         info("Got available task id (%d) for container: %s" format (taskId, container))
-        val sspTaskNames = state.jobCoordinator.jobModel.getContainers.get(taskId)
+        val sspTaskNames = state.jobCoordinator.jobModel.getContainers.get(taskId.toString)
         info("Claimed SSP taskNames %s for container ID %s" format (sspTaskNames, taskId))
         val cmdBuilderClassName = config.getCommandClass.getOrElse(classOf[ShellCommandBuilder].getName)
         val cmdBuilder = Class.forName(cmdBuilderClassName).newInstance.asInstanceOf[CommandBuilder]

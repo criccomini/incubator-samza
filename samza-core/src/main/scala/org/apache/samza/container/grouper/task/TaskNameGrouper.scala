@@ -47,5 +47,5 @@ trait TaskNameGrouper {
    * @param tasks Set of tasks to group into containers.
    * @return Set of containers, which contain the tasks that were passed in.
    */
-  def group(tasks: Set[TaskModel]): Set[ContainerModel]
+  def group(containerIds: Set[String], tasks: Set[TaskModel]): Set[ContainerModel]
 }

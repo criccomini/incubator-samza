@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public class StandaloneZkCoordinatorState {
   private static final Logger log = LoggerFactory.getLogger(StandaloneZkCoordinatorState.class);
 
-  private volatile List<String> containerSequentialIds;
+  private volatile List<String> containerIds;
   private volatile String coordinatorSequentialId;
   private volatile JobCoordinator jobCoordinator;
   private volatile Map<String, Set<String>> expectedTaskAssignments;
@@ -58,16 +58,16 @@ public class StandaloneZkCoordinatorState {
     this.expectedTaskAssignments = Collections.unmodifiableMap(unmodifiableMap);
   }
 
-  public void setContainerSequentialIds(List<String> containerSequentialIds) {
-    if (containerSequentialIds == null) {
-      containerSequentialIds = Collections.emptyList();
+  public void setContainerIds(List<String> containerIds) {
+    if (containerIds == null) {
+      containerIds = Collections.emptyList();
     }
-    log.debug("Setting container sequential IDs: {}", containerSequentialIds);
-    this.containerSequentialIds = Collections.unmodifiableList(containerSequentialIds);
+    log.debug("Setting container IDs: {}", containerIds);
+    this.containerIds = Collections.unmodifiableList(containerIds);
   }
 
-  public List<String> getContainerSequentialIds() {
-    return containerSequentialIds;
+  public List<String> getContainerIds() {
+    return containerIds;
   }
 
   public String getCoordinatorSequentialId() {
@@ -110,7 +110,7 @@ public class StandaloneZkCoordinatorState {
   public void clear() {
     log.info("Clearing all coordinator state.");
     // Don't clear coordinator sequential ID. Try and re-use it.
-    containerSequentialIds = Collections.unmodifiableList(Collections.emptyList());
+    containerIds = Collections.unmodifiableList(Collections.emptyList());
     expectedTaskAssignments = Collections.unmodifiableMap(Collections.emptyMap());
     jobCoordinator = null;
     running = false;

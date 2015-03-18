@@ -19,7 +19,6 @@
 
 package org.apache.samza.job.standalone.controller;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,13 +41,16 @@ public class StandaloneZkContainerController {
   private final ZkClient zkClient;
   private final ContainerStateListener containerStateListener;
   private final IZkChildListener coordinatorPathListener;
-  private volatile String containerSequentialId;
+  private final String containerId;
+  private final String containerPath;
   private volatile Thread containerThread;
   private volatile ApplicationStatus status;
   private volatile boolean running;
   private volatile String coordinatorUrl;
 
-  public StandaloneZkContainerController(ZkClient zkClient) {
+  public StandaloneZkContainerController(String containerId, ZkClient zkClient) {
+    this.containerId = containerId;
+    this.containerPath = StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId;
     this.zkClient = zkClient;
     this.containerStateListener = new ContainerStateListener();
     this.coordinatorPathListener = new CoordinatorPathListener();
@@ -62,8 +64,8 @@ public class StandaloneZkContainerController {
       zkClient.waitUntilConnected();
       zkClient.subscribeStateChanges(containerStateListener);
       zkClient.subscribeChildChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH, coordinatorPathListener);
-      if (containerSequentialId == null) {
-        containerSequentialId = new File(zkClient.createEphemeralSequential(StandaloneZkCoordinatorController.CONTAINER_PATH + "/", Collections.emptyList())).getName();
+      if (!zkClient.exists(containerPath)) {
+        zkClient.createEphemeral(containerPath, Collections.emptyMap());
       }
       log.debug("Finished starting container controller.");
       running = true;
@@ -79,12 +81,11 @@ public class StandaloneZkContainerController {
         containerThread.interrupt();
         containerThread.join();
       }
-      String containerSequentialIdPath = StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId;
       try {
         // Relinquish all task ownership.
-        zkClient.writeData(containerSequentialIdPath, Collections.emptyList());
+        zkClient.writeData(containerPath, Collections.emptyMap());
       } catch (ZkNoNodeException e) {
-        log.info("Unable to relinquish task ownership due to missing ZK node path: {}", containerSequentialIdPath);
+        log.info("Unable to relinquish task ownership due to missing ZK node path: {}", containerPath);
       }
       log.debug("Finished stopping container controller.");
       running = false;
@@ -122,7 +123,7 @@ public class StandaloneZkContainerController {
       // JmxServer, exception handler, etc.
       log.info("Refreshing task assignments with coordinator url: {}", url);
       JobModel jobModel = SamzaContainer.readJobModel(url);
-      ContainerModel containerModel = jobModel.getContainers().get(containerSequentialId);
+      ContainerModel containerModel = jobModel.getContainers().get(containerId);
       if (containerModel != null && containerModel.getTasks().size() > 0) {
         SamzaContainer container = SamzaContainer.apply(containerModel, jobModel.getConfig());
         containerThread = new Thread(new Runnable() {
@@ -136,14 +137,14 @@ public class StandaloneZkContainerController {
         log.info("Starting new container thread.");
         status = ApplicationStatus.Running;
         containerThread.setDaemon(true);
-        containerThread.setName("Container ID (" + containerSequentialId + ")");
+        containerThread.setName("Container ID (" + containerId + ")");
         containerThread.start();
         for (TaskName taskName : containerModel.getTasks().keySet()) {
           taskNames.add(taskName.toString());
         }
         // Announce ownership.
-        log.info("Announcing ownership for container {} with tasks: {}", containerSequentialId, taskNames);
-        zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerSequentialId, taskNames);
+        log.info("Announcing ownership for container {} with tasks: {}", containerId, taskNames);
+        zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId, taskNames);
       }
     }
   }
@@ -166,9 +167,6 @@ public class StandaloneZkContainerController {
     public void handleNewSession() throws Exception {
       log.warn("Session has expired. Creating a new one.");
       pause();
-      // Drop old containerSequentialId since our session has expired. A new one
-      // will be created when start is called.
-      containerSequentialId = null;
       start();
     }
   }

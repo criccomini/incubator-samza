@@ -21,6 +21,7 @@ package org.apache.samza.job.model;
 
 import java.util.Collections;
 import java.util.Map;
+
 import org.apache.samza.container.TaskName;
 
 /**
@@ -37,15 +38,15 @@ import org.apache.samza.container.TaskName;
  * </p>
  */
 public class ContainerModel implements Comparable<ContainerModel> {
-  private final int containerId;
+  private final String containerId;
   private final Map<TaskName, TaskModel> tasks;
 
-  public ContainerModel(int containerId, Map<TaskName, TaskModel> tasks) {
+  public ContainerModel(String containerId, Map<TaskName, TaskModel> tasks) {
     this.containerId = containerId;
     this.tasks = Collections.unmodifiableMap(tasks);
   }
 
-  public int getContainerId() {
+  public String getContainerId() {
     return containerId;
   }
 
@@ -62,7 +63,7 @@ public class ContainerModel implements Comparable<ContainerModel> {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + containerId;
+    result = prime * result + ((containerId == null) ? 0 : containerId.hashCode());
     result = prime * result + ((tasks == null) ? 0 : tasks.hashCode());
     return result;
   }
@@ -76,7 +77,10 @@ public class ContainerModel implements Comparable<ContainerModel> {
     if (getClass() != obj.getClass())
       return false;
     ContainerModel other = (ContainerModel) obj;
-    if (containerId != other.containerId)
+    if (containerId == null) {
+      if (other.containerId != null)
+        return false;
+    } else if (!containerId.equals(other.containerId))
       return false;
     if (tasks == null) {
       if (other.tasks != null)
@@ -87,6 +91,6 @@ public class ContainerModel implements Comparable<ContainerModel> {
   }
 
   public int compareTo(ContainerModel other) {
-    return containerId - other.getContainerId();
+    return containerId.compareTo(other.getContainerId());
   }
 }

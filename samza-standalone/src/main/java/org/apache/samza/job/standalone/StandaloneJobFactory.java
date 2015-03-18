@@ -31,13 +31,19 @@ import org.apache.samza.serializers.zk.ZkJsonSerde;
 public class StandaloneJobFactory implements StreamJobFactory {
   @Override
   public StreamJob getJob(Config config) {
+    // TODO should we auto-generate (and persist to disk) a container ID if one
+    // isn't supplied?
+    String containerId = config.get("container.id");
+    if (containerId == null) {
+      throw new ConfigException("Missing required config: container.id");
+    }
     String zkConnect = config.get("job.zookeeper.connect");
     if (zkConnect == null) {
       throw new ConfigException("Missing required config: job.zookeeper.connect");
     }
     ZkClient zkClient = new ZkClient(zkConnect, 6000, 6000, new ZkJsonSerde());
     StandaloneZkCoordinatorController coordinatorController = new StandaloneZkCoordinatorController(config, zkConnect, zkClient);
-    StandaloneZkContainerController containerController = new StandaloneZkContainerController(zkClient);
+    StandaloneZkContainerController containerController = new StandaloneZkContainerController(containerId, zkClient);
     return new StandaloneJob(coordinatorController, containerController);
   }
 }

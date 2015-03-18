@@ -33,10 +33,11 @@ import scala.collection.JavaConversions._
  * of aggregate SSPs within a container, even distribution of the number of
  * taskNames between containers, etc.
  */
-class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
-  require(numContainers > 0, "Must have at least one container")
-
-  override def group(tasks: Set[TaskModel]): Set[ContainerModel] = {
+class GroupByContainerCount extends TaskNameGrouper {
+  override def group(containerIds: Set[String], tasks: Set[TaskModel]): Set[ContainerModel] = {
+    val numContainers = containerIds.size
+    val containerIdList = containerIds.toList.sorted
+    require(numContainers > 0, "Must have at least one container")
     require(tasks.size > 0, "No tasks found. Likely due to no input partitions. Can't run a job with no tasks.")
     require(tasks.size >= numContainers, "Your container count (%s) is larger than your task count (%s). Can't have containers with nothing to do, so aborting." format (numContainers, tasks.size))
 
@@ -50,7 +51,7 @@ class GroupByContainerCount(numContainers: Int) extends TaskNameGrouper {
       .groupBy(_._2 % numContainers)
       // Take just TaskModel and remove task IDs.
       .mapValues(_.map { case (task, taskId) => (task.getTaskName, task) }.toMap)
-      .map { case (containerId, tasks) => new ContainerModel(containerId, tasks) }
+      .map { case (idx, tasks) => new ContainerModel(containerIdList(idx), tasks) }
       .toSet
   }
 }

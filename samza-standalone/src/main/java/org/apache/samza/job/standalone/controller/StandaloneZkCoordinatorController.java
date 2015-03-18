@@ -101,7 +101,7 @@ public class StandaloneZkCoordinatorController {
       log.info("Stopping coordinator controller.");
       zkClient.unsubscribeChildChanges(COORDINATOR_PATH, coordinatorPathListener);
       zkClient.unsubscribeChildChanges(CONTAINER_PATH, containerPathListener);
-      for (String containerSequentialId : state.getContainerSequentialIds()) {
+      for (String containerSequentialId : state.getContainerIds()) {
         zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
       }
       JobCoordinator coordinator = state.getJobCoordinator();
@@ -126,9 +126,9 @@ public class StandaloneZkCoordinatorController {
     Collections.sort(coordinatorSequentialIds);
     if (coordinatorSequentialIds.size() > 0 && coordinatorSequentialIds.get(0).equals(state.getCoordinatorSequentialId())) {
       refreshOwnership();
-      state.setContainerSequentialIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
+      state.setContainerIds(zkClient.subscribeChildChanges(CONTAINER_PATH, containerPathListener));
       // Listen to existing container sequential IDs to track ownership.
-      for (String containerSequentialId : state.getContainerSequentialIds()) {
+      for (String containerSequentialId : state.getContainerIds()) {
         zkClient.subscribeDataChanges(CONTAINER_PATH + "/" + containerSequentialId, containerAssignmentPathListener);
       }
       state.setElectedLeader(true);
@@ -137,9 +137,9 @@ public class StandaloneZkCoordinatorController {
 
   private JobModel rebuildJobModel(JobModel idealJobModel, Set<TaskName> strippedTaskNames) {
     if (strippedTaskNames != null && strippedTaskNames.size() > 0) {
-      Map<Integer, ContainerModel> strippedContainers = new HashMap<Integer, ContainerModel>();
+      Map<String, ContainerModel> strippedContainers = new HashMap<String, ContainerModel>();
       for (ContainerModel idealContainerModel : idealJobModel.getContainers().values()) {
-        int containerId = idealContainerModel.getContainerId();
+        String containerId = idealContainerModel.getContainerId();
         Map<TaskName, TaskModel> strippedTaskModels = new HashMap<TaskName, TaskModel>();
         for (TaskModel taskModel : idealContainerModel.getTasks().values()) {
           if (!strippedTaskNames.contains(taskModel.getTaskName())) {
@@ -157,40 +157,45 @@ public class StandaloneZkCoordinatorController {
   }
 
   private synchronized void refreshOwnership() {
-    JobModel idealJobModel = JobCoordinator.buildJobModel(config, state.getContainerSequentialIds().size());
-    Set<TaskName> strippedTaskNames = new HashSet<TaskName>();
-    for (String containerId : state.getContainerSequentialIds()) {
-      ContainerModel idealContainerModel = idealJobModel.getContainers().get(containerId);
-      Map<String, List<String>> taskOwnership = zkClient.readData(CONTAINER_PATH + "/" + containerId, true);
-      if (taskOwnership != null) {
-        // Compare the ideal container model against actual task ownership. If
-        // the container owns something it shouldn't, it must be relinquished by
-        // first stripping the task from the job model, then waiting for the
-        // stripped ideal state to converge, then refreshing again with a full
-        // unstripped ideal state.
-        List<String> taskNames = taskOwnership.get("tasks");
-        for (String taskNameString : taskNames) {
-          TaskName taskName = new TaskName(taskNameString);
-          if (idealContainerModel == null || !idealContainerModel.getTasks().containsKey(taskName)) {
-            strippedTaskNames.add(taskName);
+    if (state.getContainerIds().size() > 0) {
+      JobModel idealJobModel = JobCoordinator.buildJobModel(config, new HashSet<String>(state.getContainerIds()));
+      Set<TaskName> strippedTaskNames = new HashSet<TaskName>();
+      for (String containerId : state.getContainerIds()) {
+        ContainerModel idealContainerModel = idealJobModel.getContainers().get(containerId);
+        Map<String, List<String>> taskOwnership = zkClient.readData(CONTAINER_PATH + "/" + containerId, true);
+        if (taskOwnership != null) {
+          // Compare the ideal container model against actual task ownership. If
+          // the container owns something it shouldn't, it must be relinquished
+          // by
+          // first stripping the task from the job model, then waiting for the
+          // stripped ideal state to converge, then refreshing again with a full
+          // unstripped ideal state.
+          List<String> taskNames = taskOwnership.get("tasks");
+          if (taskNames != null) {
+            for (String taskNameString : taskNames) {
+              TaskName taskName = new TaskName(taskNameString);
+              if (idealContainerModel == null || !idealContainerModel.getTasks().containsKey(taskName)) {
+                strippedTaskNames.add(taskName);
+              }
+            }
           }
         }
       }
+      JobModel jobModel = rebuildJobModel(idealJobModel, strippedTaskNames);
+      HttpServer server = JobCoordinator.buildHttpServer(jobModel);
+      // This controller is the leader. Start a JobCoordinator and persist its
+      // URL to the ephemeral node.
+      JobCoordinator jobCoordinator = state.getJobCoordinator();
+      if (jobCoordinator != null) {
+        jobCoordinator.stop();
+      }
+      jobCoordinator = new JobCoordinator(jobModel, server);
+      jobCoordinator.start();
+      state.setJobCoordinator(jobCoordinator);
+      Map<String, Object> coordinatorData = new HashMap<String, Object>();
+      coordinatorData.put("url", jobCoordinator.server().getUrl().toString());
+      zkClient.writeData(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId(), coordinatorData);
     }
-    JobModel jobModel = rebuildJobModel(idealJobModel, strippedTaskNames);
-    HttpServer server = JobCoordinator.buildHttpServer(jobModel);
-    // This controller is the leader. Start a JobCoordinator and persist its
-    // URL to the ephemeral node.
-    JobCoordinator jobCoordinator = state.getJobCoordinator();
-    if (jobCoordinator != null) {
-      jobCoordinator.stop();
-    }
-    jobCoordinator = new JobCoordinator(jobModel, server);
-    jobCoordinator.start();
-    state.setJobCoordinator(jobCoordinator);
-    Map<String, Object> coordinatorData = new HashMap<String, Object>();
-    coordinatorData.put("url", jobCoordinator.server().getUrl().toString());
-    zkClient.writeData(COORDINATOR_PATH + "/" + state.getCoordinatorSequentialId(), coordinatorData);
   }
 
   // TODO exact same code in both coordinator and container controller. Clean
@@ -230,7 +235,7 @@ public class StandaloneZkCoordinatorController {
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
       log.trace("ContainerPathListener.handleChildChange with parent path {} and children: {}", parentPath, currentChildren);
-      Set<String> previousContainerSequentialIds = new HashSet<String>(state.getContainerSequentialIds());
+      Set<String> previousContainerSequentialIds = new HashSet<String>(state.getContainerIds());
       Set<String> newContainerSequentialIds = new HashSet<String>(currentChildren);
       newContainerSequentialIds.removeAll(previousContainerSequentialIds);
       previousContainerSequentialIds.removeAll(currentChildren);
@@ -244,7 +249,7 @@ public class StandaloneZkCoordinatorController {
       for (String oldContainerSequentialId : previousContainerSequentialIds) {
         zkClient.unsubscribeDataChanges(CONTAINER_PATH + "/" + oldContainerSequentialId, containerAssignmentPathListener);
       }
-      state.setContainerSequentialIds(currentChildren);
+      state.setContainerIds(currentChildren);
       refreshOwnership();
     }
   }

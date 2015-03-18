@@ -37,9 +37,9 @@ import org.apache.samza.config.Config;
  */
 public class JobModel {
   private final Config config;
-  private final Map<Integer, ContainerModel> containers;
+  private final Map<String, ContainerModel> containers;
 
-  public JobModel(Config config, Map<Integer, ContainerModel> containers) {
+  public JobModel(Config config, Map<String, ContainerModel> containers) {
     this.config = config;
     this.containers = Collections.unmodifiableMap(containers);
   }
@@ -48,7 +48,7 @@ public class JobModel {
     return config;
   }
 
-  public Map<Integer, ContainerModel> getContainers() {
+  public Map<String, ContainerModel> getContainers() {
     return containers;
   }
 
