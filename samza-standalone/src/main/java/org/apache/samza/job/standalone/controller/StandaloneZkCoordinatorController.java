@@ -164,18 +164,15 @@ public class StandaloneZkCoordinatorController {
       Set<TaskName> strippedTaskNames = new HashSet<TaskName>();
       for (String containerId : state.getContainerIds()) {
         ContainerModel idealContainerModel = idealJobModel.getContainers().get(containerId);
+        log.info("Got ideal job model: {}", idealJobModel);
         Map<String, List<String>> taskOwnership = zkClient.readData(CONTAINER_PATH + "/" + containerId, true);
         if (taskOwnership != null) {
-          // Compare the ideal container model against actual task ownership. If
-          // the container owns something it shouldn't, it must be relinquished
-          // by first stripping the task from the job model, then waiting for
-          // the stripped ideal state to converge, then refreshing again with a
-          // full unstripped ideal state.
           List<String> taskNames = taskOwnership.get("tasks");
           if (taskNames != null) {
             for (String taskNameString : taskNames) {
               TaskName taskName = new TaskName(taskNameString);
               if (idealContainerModel == null || !idealContainerModel.getTasks().containsKey(taskName)) {
+                log.info("Stripping task: {} from ownership because it's owned by containers id: {}, but it shouldn't be.", taskName, containerId);
                 strippedTaskNames.add(taskName);
               }
             }
@@ -183,7 +180,9 @@ public class StandaloneZkCoordinatorController {
         }
       }
       JobModel jobModel = rebuildJobModel(idealJobModel, strippedTaskNames);
+      log.info("Got actual job model: {}", jobModel);
       if (state.getJobModel() == null || !state.getJobModel().equals(jobModel)) {
+        log.info("Updating job coordinator, since it differs from actual job model.");
         state.setJobModel(jobModel);
         HttpServer server = JobCoordinator.buildHttpServer(jobModel);
         // This controller is the leader. Start a JobCoordinator and persist its
