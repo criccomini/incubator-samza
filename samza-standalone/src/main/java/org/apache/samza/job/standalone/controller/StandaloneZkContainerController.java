@@ -71,9 +71,8 @@ public class StandaloneZkContainerController {
       zkClient.subscribeStateChanges(containerStateListener);
       List<String> coordinatorChildren = zkClient.subscribeChildChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH, coordinatorPathListener);
       refreshAssignments(coordinatorChildren);
-      if (!zkClient.exists(containerPath)) {
-        zkClient.createEphemeral(containerPath, Collections.emptyMap());
-      }
+      zkClient.delete(containerPath);
+      zkClient.createEphemeral(containerPath, Collections.emptyMap());
       log.debug("Finished starting container controller.");
       running = true;
     } else {
