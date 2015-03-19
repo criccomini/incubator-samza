@@ -69,10 +69,10 @@ public class StandaloneZkContainerController {
       log.info("Starting container controller.");
       zkClient.waitUntilConnected();
       zkClient.subscribeStateChanges(containerStateListener);
-      List<String> coordinatorChildren = zkClient.subscribeChildChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH, coordinatorPathListener);
-      refreshAssignments(coordinatorChildren);
       zkClient.delete(containerPath);
       zkClient.createEphemeral(containerPath, Collections.emptyMap());
+      List<String> coordinatorChildren = zkClient.subscribeChildChanges(StandaloneZkCoordinatorController.COORDINATOR_PATH, coordinatorPathListener);
+      refreshAssignments(coordinatorChildren);
       log.debug("Finished starting container controller.");
       running = true;
     } else {

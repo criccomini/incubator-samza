@@ -161,10 +161,10 @@ public class StandaloneZkCoordinatorController {
     if (state.getContainerIds().size() > 0) {
       log.info("Refreshing container ownership.");
       JobModel idealJobModel = JobCoordinator.buildJobModel(config, new HashSet<String>(state.getContainerIds()));
+      log.debug("Got ideal job model: {}", idealJobModel);
       Set<TaskName> strippedTaskNames = new HashSet<TaskName>();
       for (String containerId : state.getContainerIds()) {
         ContainerModel idealContainerModel = idealJobModel.getContainers().get(containerId);
-        log.info("Got ideal job model: {}", idealJobModel);
         Map<String, List<String>> taskOwnership = zkClient.readData(CONTAINER_PATH + "/" + containerId, true);
         if (taskOwnership != null) {
           List<String> taskNames = taskOwnership.get("tasks");
@@ -180,9 +180,10 @@ public class StandaloneZkCoordinatorController {
         }
       }
       JobModel jobModel = rebuildJobModel(idealJobModel, strippedTaskNames);
-      log.info("Got actual job model: {}", jobModel);
+      log.debug("Got actual job model: {}", jobModel);
+      log.debug("Got previous job model: {}", state.getJobModel());
       if (state.getJobModel() == null || !state.getJobModel().equals(jobModel)) {
-        log.info("Updating job coordinator, since it differs from actual job model.");
+        log.info("Updating job coordinator, since previous job model differs from actual job model.");
         state.setJobModel(jobModel);
         HttpServer server = JobCoordinator.buildHttpServer(jobModel);
         // This controller is the leader. Start a JobCoordinator and persist its
