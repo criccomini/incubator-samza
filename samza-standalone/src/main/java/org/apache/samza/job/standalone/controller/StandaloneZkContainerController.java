@@ -136,31 +136,36 @@ public class StandaloneZkContainerController {
       // TODO need to manage everything that's in SamzaContainer.safeMain();
       // JmxServer, exception handler, etc.
       log.info("Refreshing task assignments with coordinator url: {}", url);
-      JobModel jobModel = SamzaContainer.readJobModel(url);
-      ContainerModel containerModel = jobModel.getContainers().get(containerId);
-      if (containerModel != null && containerModel.getTasks().size() > 0) {
-        SamzaContainer container = SamzaContainer.apply(containerModel, jobModel.getConfig());
-        containerThread = new Thread(new Runnable() {
-          @Override
-          public void run() {
-            log.info("Running new container.");
-            container.run();
-            status = ApplicationStatus.SuccessfulFinish;
+      try {
+        JobModel jobModel = SamzaContainer.readJobModel(url);
+        ContainerModel containerModel = jobModel.getContainers().get(containerId);
+        if (containerModel != null && containerModel.getTasks().size() > 0) {
+          SamzaContainer container = SamzaContainer.apply(containerModel, jobModel.getConfig());
+          containerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+              log.info("Running new container.");
+              container.run();
+              status = ApplicationStatus.SuccessfulFinish;
+            }
+          });
+          log.info("Starting new container thread.");
+          status = ApplicationStatus.Running;
+          containerThread.setDaemon(true);
+          containerThread.setName("Container ID (" + containerId + ")");
+          containerThread.start();
+          for (TaskName taskName : containerModel.getTasks().keySet()) {
+            taskNames.add(taskName.toString());
           }
-        });
-        log.info("Starting new container thread.");
-        status = ApplicationStatus.Running;
-        containerThread.setDaemon(true);
-        containerThread.setName("Container ID (" + containerId + ")");
-        containerThread.start();
-        for (TaskName taskName : containerModel.getTasks().keySet()) {
-          taskNames.add(taskName.toString());
+          // Announce ownership.
+          log.info("Announcing ownership for container {} with tasks: {}", containerId, taskNames);
+          Map<String, List<String>> taskMap = new HashMap<String, List<String>>();
+          taskMap.put("tasks", taskNames);
+          zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId, taskMap);
         }
-        // Announce ownership.
-        log.info("Announcing ownership for container {} with tasks: {}", containerId, taskNames);
-        Map<String, List<String>> taskMap = new HashMap<String, List<String>>();
-        taskMap.put("tasks", taskNames);
-        zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId, taskMap);
+      } catch (Exception e) {
+        // Would normally catch a ConnectException, but readJobModel hides it.
+        log.warn("Pausing. Failed to refresh container assignments.", e);
       }
     }
   }
