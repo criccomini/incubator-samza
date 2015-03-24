@@ -35,6 +35,7 @@ import org.apache.samza.container.TaskName;
 import org.apache.samza.job.ApplicationStatus;
 import org.apache.samza.job.model.ContainerModel;
 import org.apache.samza.job.model.JobModel;
+import org.apache.samza.job.standalone.controller.StandaloneZkCoordinatorController;
 import org.apache.samza.util.ZkUtil;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.slf4j.Logger;
@@ -145,8 +146,14 @@ public class StandaloneZkContainerController {
             @Override
             public void run() {
               log.info("Running new container.");
-              container.run();
-              status = ApplicationStatus.SuccessfulFinish;
+              try {
+                container.run();
+                status = ApplicationStatus.SuccessfulFinish;
+              } catch (Exception e) {
+                // TODO this would normally catch an InterruptedException, but
+                // run() hides it.
+                log.info("Shutdown complete.");
+              }
             }
           });
           log.info("Starting new container thread.");
