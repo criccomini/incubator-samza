@@ -19,6 +19,7 @@
 
 package org.apache.samza.job.standalone.controller;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -149,10 +150,9 @@ public class StandaloneZkContainerController {
               try {
                 container.run();
                 status = ApplicationStatus.SuccessfulFinish;
-              } catch (Exception e) {
-                // TODO this would normally catch an InterruptedException, but
-                // run() hides it.
+              } catch (InterruptedException e) {
                 log.info("Shutdown complete.");
+                Thread.currentThread().interrupt();
               }
             }
           });
@@ -170,8 +170,7 @@ public class StandaloneZkContainerController {
           taskMap.put("tasks", taskNames);
           zkClient.writeData(StandaloneZkCoordinatorController.CONTAINER_PATH + "/" + containerId, taskMap);
         }
-      } catch (Exception e) {
-        // Would normally catch a ConnectException, but readJobModel hides it.
+      } catch (ConnectException e) {
         log.warn("Pausing. Failed to refresh container assignments.", e);
       }
     }

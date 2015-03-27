@@ -56,6 +56,7 @@ import org.apache.samza.util.Logging
 import org.apache.samza.util.Util
 import scala.collection.JavaConversions._
 import java.net.URL
+import java.net.ConnectException
 import org.apache.samza.job.model.{TaskModel, ContainerModel, JobModel}
 import org.apache.samza.serializers.model.SamzaObjectMapper
 import org.apache.samza.config.JobConfig.Config2Job
@@ -103,6 +104,7 @@ object SamzaContainer extends Logging {
    * assignments, and returns objects to be used for SamzaContainer's
    * constructor.
    */
+  @throws[ConnectException]
   def readJobModel(url: String) = {
     info("Fetching configuration from: %s" format url)
     SamzaObjectMapper
@@ -534,6 +536,7 @@ class SamzaContainer(
   reporters: Map[String, MetricsReporter] = Map(),
   jvm: JvmMetrics = null) extends Runnable with Logging {
 
+  @throws[InterruptedException]
   def run {
     try {
       info("Starting container.")
