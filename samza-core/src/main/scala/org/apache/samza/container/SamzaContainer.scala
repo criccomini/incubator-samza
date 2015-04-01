@@ -416,7 +416,7 @@ object SamzaContainer extends Logging {
     // Increment by 1 because partition starts from 0, but we need the absolute count,
     // this value is used for change log topic creation.
     val maxChangeLogStreamPartitions = containerModel.getTasks.values
-            .max(Ordering.by{task:TaskModel => task.getChangelogPartition.getPartitionId})
+            .max(Ordering.by { task:TaskModel => task.getChangelogPartition.getPartitionId })
             .getChangelogPartition.getPartitionId + 1
 
     val taskInstances: Map[TaskName, TaskInstance] = containerModel.getTasks.values.map(taskModel => {
@@ -496,6 +496,7 @@ object SamzaContainer extends Logging {
         metrics = taskInstanceMetrics,
         consumerMultiplexer = consumerMultiplexer,
         collector = collector,
+        containerContext = containerContext,
         offsetManager = offsetManager,
         storageManager = storageManager,
         reporters = reporters,
@@ -544,8 +545,8 @@ class SamzaContainer(
       startMetrics
       startOffsetManager
       startStores
-      startTask
       startProducers
+      startTask
       startConsumers
 
       info("Entering run loop.")
@@ -558,8 +559,8 @@ class SamzaContainer(
       info("Shutting down.")
 
       shutdownConsumers
-      shutdownProducers
       shutdownTask
+      shutdownProducers
       shutdownStores
       shutdownOffsetManager
       shutdownMetrics
