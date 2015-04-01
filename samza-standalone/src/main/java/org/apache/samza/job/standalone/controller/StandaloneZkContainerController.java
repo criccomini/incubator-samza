@@ -129,10 +129,17 @@ public class StandaloneZkContainerController {
         log.info("Shutting down container thread.");
         // TODO this seems like it might take a while. Should we move it into
         // another thread (off the ZK event thread)?
-        // TODO this is a real bummer. looks like something is swallowing
-        // interrupts.
-        containerThread.interrupt();
-        containerThread.join();
+        // TODO this is the worst. We should only have to interrupt once, but
+        // Kafka's Metadata class catches InterruptExceptions in
+        // Metdata.awaitUpdate! It looks like this is fixed in trunk, but in
+        // 0.8.2, the bug is still there. As a result, when we interrupt, the
+        // Metadata class catches the exception and disregards it. To get around
+        // this, just keep throwing it until the thread dies. Should go away
+        // after 0.8.2 Kafka.
+        while (containerThread.isAlive()) {
+          containerThread.interrupt();
+          Thread.sleep(5);
+        }
         containerThread = null;
       }
       // TODO need to manage everything that's in SamzaContainer.safeMain();
